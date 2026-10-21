@@ -1,14 +1,15 @@
 # 架构与核心接口
 
-本文定义后续实现的契约，不表示接口已经存在。主体使用 C++17，Python 只负责
+本文定义整体接口契约。M1 已实现模型、正演、配置与结果输出；灵敏度及反演接口尚未实现。
+主体使用 C++17，Python 只负责
 处理与可视化。优先用普通数据结构和少量可替换接口，不建立通用工厂层。
 
 ## 依赖和分发
 
 - CMake：构建、CTest、安装目标及构建信息。
 - Eigen：向量、矩阵、Cholesky、QR、SVD；不要求外部 BLAS。
-- toml11：模型、运行及算法参数配置；在 M1 固定并验证具体版本。
-- CLI11：命令行与子命令；候选固定版本 2.4.2。
+- toml11：模型、运行及算法参数配置；M1 固定为 4.4.0。
+- CLI11：命令行与子命令；M1 固定为 2.4.2。
 - invLM 数值源码：随仓库保存，不要求用户预先安装 invLM。
 - Python：NumPy 与 Matplotlib 为绘图依赖；SciPy 仅用于可选独立验证。
 
@@ -18,7 +19,7 @@ HMC/NUTS 与 RJMCMC 后续分阶段实现；开源算法用于参考与独立对
 
 依赖采用固定版本源码包或受控的随库源码，保留许可证与校验值。
 默认配置过程不得自动联网；已准备依赖后应能在断网环境完成构建。
-支持显式使用系统包，但要报告实际版本。将第三方源码更新作为独立变更审查。
+M1 默认且仅支持随库依赖；显式使用系统包的选项留到确有需要时增加，并报告实际版本。将第三方源码更新作为独立变更审查。
 M0 不承诺未经测试的平台支持，M1 首先验收 Linux 的干净构建。
 
 ## 最小布局
@@ -62,7 +63,7 @@ struct LayeredModel {
 ```cpp
 struct DispersionQuery { double frequency_hz; int mode; };
 ForwardResult evaluate(const LayeredModel&, const std::vector<DispersionQuery>&,
-                       bool request_sensitivity) const;
+                       bool request_sensitivity) const; // 计划的 M2 扩展；M1 无此参数
 ```
 
 输入为逐观测点的 `(frequency, mode)`，允许乱序、重复频率、各阶不等采样。

@@ -1,0 +1,8 @@
+[model]
+depth = [0.0]
+vs = [0.6]
+vp = [1.038]
+rho = [2.0]
+[queries]
+frequency_hz = [1.0, 1.0]
+mode = [0, 1]

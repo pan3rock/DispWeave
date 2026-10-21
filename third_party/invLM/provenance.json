@@ -1,0 +1,30 @@
+{
+  "upstream": "invLM",
+  "commit": "86ad6fa5aaec3f44c6ddcac3d69b27a2f13c2e88",
+  "modified": true,
+  "sha256": {
+    "src/dispersion.cpp": "9fbe449f5f829cb00fc82d325aba8d6649fb3ecf318fab7f1027077832a0136e",
+    "src/secfunc.cpp": "e97b53c3ada9a7708c49b1e3a5faed43a6f66da308d417b762d5ed19ea55ac26",
+    "src/secfunc_fast_scalar.cpp": "7edb594fca6e9c231888d9e3d03f31344bbfc9b43717076ef5421b200840def9",
+    "src/toms748.cpp": "d79a6720a831fab8429b21f3aac3fb943e17a211404319f86f35fe059abb4fbf",
+    "include/dispersion.hpp": "01ddca0eaa3f2b39f292cf999abbd9063577ddac1bd5ca0ed99c798f3920f9a9",
+    "include/secfunc.hpp": "9aef0a63c7741bdd06a79276d5ad8ec4ecf0b5045c98a217c4809d84ca5078ea",
+    "include/secfunc_fast_scalar.hpp": "e66cc093145e7e01e6d90e7724e858601934b5d165a31e6ef2e4a795cf6c8611",
+    "include/toms748.h": "ab9d8065a244984ab00a8bb7ffbfbc0bded1fb1fee1e2b61601ae10203396e1a",
+    "include/areclose.hpp": "bfa4f63ff3b9b21e29ac89115a19ed32a23bc75efca05de614c09fbe9d89edba",
+    "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "upstream_sha256": {
+    "src/dispersion.cpp": "c939a9674ead6c37f3bd50ec2bdf77144fbdaeb42022b2f2bf9ff87cd518f898",
+    "src/secfunc.cpp": "e97b53c3ada9a7708c49b1e3a5faed43a6f66da308d417b762d5ed19ea55ac26",
+    "src/secfunc_fast_scalar.cpp": "7edb594fca6e9c231888d9e3d03f31344bbfc9b43717076ef5421b200840def9",
+    "src/toms748.cpp": "d79a6720a831fab8429b21f3aac3fb943e17a211404319f86f35fe059abb4fbf",
+    "include/dispersion.hpp": "01ddca0eaa3f2b39f292cf999abbd9063577ddac1bd5ca0ed99c798f3920f9a9",
+    "include/secfunc.hpp": "9aef0a63c7741bdd06a79276d5ad8ec4ecf0b5045c98a217c4809d84ca5078ea",
+    "include/secfunc_fast_scalar.hpp": "e66cc093145e7e01e6d90e7724e858601934b5d165a31e6ef2e4a795cf6c8611",
+    "include/toms748.h": "ab9d8065a244984ab00a8bb7ffbfbc0bded1fb1fee1e2b61601ae10203396e1a",
+    "include/areclose.hpp": "bfa4f63ff3b9b21e29ac89115a19ed32a23bc75efca05de614c09fbe9d89edba",
+    "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "patches": "PATCHES.md"
+}

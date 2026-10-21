@@ -1,0 +1,10 @@
+[model]
+depth = [0.0, 2.0, 4.0]
+vs = [1.0, 2.0, 3.0]
+vp = [1.8, 3.6, 5.2]
+rho = [2.0, 2.2, 2.5]
+
+# Paired rows, not a Cartesian grid; preserve order and duplicate requests.
+[queries]
+frequency_hz = [0.5, 0.5, 0.5, 0.5, 0.5, 0.1, 0.5]
+mode = [0, 1, 2, 3, 4, 0, 1]
