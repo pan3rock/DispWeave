@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix="dispweave-workflow-") as tmp:
     result = work / "noiseless"
     run("synthetic", "--config", config, "--output", result)
     runs = table(result / "runs.txt")
-    assert len(runs) == 3 and all(r[1] == "1" for r in runs)
+    assert len(runs) == 3 and all(r[1] == "1" and r[-2] == "converged" for r in runs)
     assert max(float(r[2]) for r in runs) < 1e-12
     best = metadata(result / "metadata.txt")["best_run"]
     for row in table(result / f"run_{best}_model.txt"):
@@ -47,6 +47,20 @@ with tempfile.TemporaryDirectory(prefix="dispweave-workflow-") as tmp:
         assert (result / "runs.txt").read_bytes() == (replay / "runs.txt").read_bytes()
         # Exact saved observations/covariance enable replay independent of RNG libraries.
         assert (result / "covariance.txt").read_bytes() == (replay / "covariance.txt").read_bytes()
+    # Regression: formerly clipped coupled steps needed 78--151 evaluations at the bound.
+    fundamental = template.replace("0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0, 0.2", "0.2").replace(
+        "0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1", "0, 0, 0, 0, 0, 0, 0")
+    for name, correlation in [("bounded_independent", "0.0"), ("bounded_correlated", "0.5")]:
+        config.write_text(fundamental.replace("add_noise = false", "add_noise = true").replace("correlation = 0.0", f"correlation = {correlation}"))
+        result = work / name
+        run("synthetic", "--config", config, "--output", result)
+        bounded = table(result / "runs.txt")
+        assert all(r[1] == "1" and r[-2] == "converged" for r in bounded)
+        assert max(int(r[3]) for r in bounded) < 25
+        assert max(float(r[2]) for r in bounded) - min(float(r[2]) for r in bounded) < 1e-7
+        for i in range(3):
+            model = table(result / f"run_{i}_model.txt")
+            assert abs(float(model[-1][3]) - 3.5) < 1e-12
     config.write_text(template.replace("max_iterations = 150", "max_iterations = 1"))
     run("synthetic", "--config", config, "--output", work / "limited", code=4)
     assert all(r[-1] == "max_iterations" for r in table(work / "limited/runs.txt"))
@@ -64,5 +78,5 @@ with tempfile.TemporaryDirectory(prefix="dispweave-workflow-") as tmp:
     # Requested overtone cannot be recovered at a low frequency; no rows can be dropped.
     bad.write_text("0.01 2.9 1 0.01\n")
     run("invert", "--config", config, "--data", bad, "--output", work / "missing", code=4)
-    assert all(r[-1] == "invalid_initial_evaluation" and r[6] == "1" for r in table(work / "missing/runs.txt"))
+    assert all(r[-1] == "invalid_initial_evaluation" and r[-2] == "failed" and r[6] == "1" for r in table(work / "missing/runs.txt"))
 print("workflow passed: noiseless/noisy/correlated, exact replay, failures, missing roots")

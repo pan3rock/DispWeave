@@ -88,6 +88,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     LMOptions options;
     options.max_iterations=toml::find_or<int>(inv,"max_iterations",options.max_iterations);
     options.gradient_tolerance=toml::find_or<double>(inv,"gradient_tolerance",options.gradient_tolerance);
+    options.step_tolerance=toml::find_or<double>(inv,"step_tolerance",options.step_tolerance);
     options.initial_damping=toml::find_or<double>(inv,"initial_damping",options.initial_damping);
     InvLMForward backend; DispersionObservations data;
     int seed=0; bool noise=false;
@@ -130,7 +131,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     std::filesystem::create_directories(output);
     std::filesystem::copy_file(config_path,output/"config.toml"); save_data(output,data);
     auto summary=output_file(output/"runs.txt");
-    summary<<"# run converged cost evaluations accepted rejected forward_failures gradient_failures cauchy_steps projected_gradient bound_parameters reason\n";
+    summary<<"# run converged cost evaluations accepted rejected forward_failures gradient_failures box_iterations projected_gradient bound_parameters termination reason\n";
     // Each start and final iterate is saved even if no run converged.
     for(size_t i=0;i<runs.size();++i) {
         const auto& r=runs[i]; const auto prefix="run_"+std::to_string(i);
@@ -139,10 +140,10 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
             for(Eigen::Index k=0;k<r.q.size();++k)
                 if(r.q[k]==parameters.lower()[k] || r.q[k]==parameters.upper()[k]) ++bounds;
         summary<<i<<' '<<r.converged<<' '<<r.evaluation.least_squares_cost<<' '<<r.evaluations<<' '<<r.accepted<<' '<<r.rejected<<' '
-               <<r.forward_failures<<' '<<r.gradient_failures<<' '<<r.cauchy_steps<<' '<<r.projected_gradient<<' '<<bounds<<' '<<r.reason<<'\n';
+               <<r.forward_failures<<' '<<r.gradient_failures<<' '<<r.box_iterations<<' '<<r.projected_gradient<<' '<<bounds<<' '<<to_string(r.termination)<<' '<<r.reason<<'\n';
         auto trace=output_file(output/(prefix+"_trace.txt"));
-        trace<<"# iteration cost trial_cost damping gain_ratio projected_gradient accepted trial_status\n";
-        for(const auto& t:r.trace) trace<<t.iteration<<' '<<t.cost<<' '<<t.trial_cost<<' '<<t.damping<<' '<<t.gain_ratio<<' '<<t.projected_gradient<<' '<<t.accepted<<' '<<status(t.trial_status)<<'\n';
+        trace<<"# iteration cost trial_cost damping gain_ratio projected_gradient accepted trial_status predicted_reduction actual_reduction step_norm box_iterations\n";
+        for(const auto& t:r.trace) trace<<t.iteration<<' '<<t.cost<<' '<<t.trial_cost<<' '<<t.damping<<' '<<t.gain_ratio<<' '<<t.projected_gradient<<' '<<t.accepted<<' '<<status(t.trial_status)<<' '<<t.predicted_reduction<<' '<<t.actual_reduction<<' '<<t.step_norm<<' '<<t.box_iterations<<'\n';
         auto m=output_file(output/(prefix+"_model.txt"));
         m<<"# depth_km reference_vs initial_vs final_vs final_vp rho; reference is truth only for synthetic\n";
         for(Eigen::Index k=0;k<model.vs.size();++k) {
@@ -152,7 +153,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
         if(!r.evaluation.forward.rows.empty())
             write_forward_result(output/(prefix+"_prediction.txt"),{parameters.decode(r.q),data.queries},r.evaluation.forward);
         auto diag=output_file(output/(prefix+"_diagnostic.txt"));
-        diag<<"status="<<status(r.evaluation.status)<<"\nmessage="<<r.evaluation.message<<'\n';
+        diag<<"termination="<<to_string(r.termination)<<"\nreason="<<r.reason<<"\nstatus="<<status(r.evaluation.status)<<"\nmessage="<<r.evaluation.message<<'\n';
     }
     const double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
     auto metadata=output_file(output/"metadata.txt");

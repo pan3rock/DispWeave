@@ -7,12 +7,13 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M4a：固定参数化的白化灵敏度谱与局部岭分辨诊断。**
+**M4d：固定层数 LM 的边界步与停滞诊断。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
 Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、显式参数尺度和岭分辨矩阵。
-近期优先完善固定层数下的 LM，再推进同样固定层数的 HMC；LM 自适应分层暂缓。
+固定层数 LM 已改用有界阻尼子问题，分别报告收敛、停滞和失败；下一项为固定维度 HMC。
+LM 自适应分层暂缓。
 固定层数不等于固定层厚：当前固定层厚，若以后反演层厚，须先验证相应参数化和导数。
 已移除候选模型的 AIC/BIC、验证评分及排名实验；采样器尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
@@ -89,6 +90,7 @@ python scripts/plot_inversion.py results/synthetic
 
 反演输出目录必须新建或为空；保存所有初值、终止原因、正演/梯度异常和试算轨迹。
 若没有初值通过收敛标准，返回码 **4**，不能将末次模型当成已收敛解。
+`runs.txt` 的 `termination` 区分 `converged`、`stalled`、`failed`；小步停滞不视为成功。
 观测列为 `frequency_hz phase_km_s mode sigma_km_s`；可提供完整协方差。
 当前固定层顶与密度，反演 Vs，Vp 固定或按指定 Vp/Vs 随动。
 
@@ -100,6 +102,12 @@ python scripts/run_inversion_example.py --output results/m3
 
 绘图需要 NumPy、Matplotlib；核心无需它们。参数、数学定义和实际收敛局限见
 [M3 验收报告](docs/m3-validation.md)。反演结果没有后验可信区间，触界不代表数据可靠约束。
+
+固定层数的扩展回归及算法变更见 [M4d 验收](docs/m4d-validation.md)：
+
+```bash
+python scripts/benchmark_fixed_lm.py --extended --output results/fixed-lm
+```
 
 ## 局部灵敏度与分辨诊断
 
@@ -126,6 +134,7 @@ python scripts/run_resolution_example.py --output results/m4a
 
 ## 文档
 
+- [M4d 验收结果](docs/m4d-validation.md)
 - [M4a 验收结果](docs/m4a-validation.md)
 - [M3 验收结果](docs/m3-validation.md)
 - [M2 验收结果](docs/m2-validation.md)
