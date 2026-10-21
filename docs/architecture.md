@@ -1,7 +1,8 @@
 # 架构与核心接口
 
 本文定义整体接口契约。M3 已实现模型、正演与灵敏度、固定 Vs 参数化、协方差似然和后验目标，
-以及有界 LM 和多初值文件工作流；采样尚未实现。
+以及有界 LM 和多初值文件工作流；M4a 增加固定参数化的局部谱与岭分辨诊断。
+自适应分层和采样尚未实现。
 主体使用 C++17，Python 只负责
 处理与可视化。优先用普通数据结构和少量可替换接口，不建立通用工厂层。
 
@@ -174,6 +175,14 @@ PosteriorEvaluation log_posterior(const DispersionProblem&, const Eigen::VectorX
 首版不默认强平滑或自适应增层；这些改变科学问题，另行验收。
 实际接口为 `bounded_lm` / `invert_lm`，数值常量、投影 Cauchy 步、终止定义与局限见
 [M3 验收报告](m3-validation.md)。
+
+## 局部信息诊断（M4a）
+
+`local_resolution` 以白化 Jacobian 和明确参数尺度为输入，以完整 SVD 保留欠定零空间。
+数值秩单独报告；给定 `alpha>0`，计算 `s²/(s²+alpha²)`、其总和与模型分辨矩阵。
+它们对应指定尺度下的岭线性估计器，不是层数选择或后验可信度。
+`resolution` CLI 当前只分析固定 Vp/密度/界面的 log-Vs 参考模型，支持完整协方差。
+具体测度、文件与解释边界见 [M4a 验收](m4a-validation.md)。
 
 ## 主要风险
 

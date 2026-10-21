@@ -7,11 +7,12 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M3：固定层数 LM 反演、合成/观测工作流与 Python 绘图。**
+**M4a：固定参数化的白化灵敏度谱与局部岭分辨诊断。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
-Phase 1 最小可运行版本已完成；下一项是 M4，采样器尚未实现。
+Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、显式参数尺度和岭分辨矩阵。
+自适应分层尚未实现，M4 继续分项验收；采样器尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -98,6 +99,18 @@ python scripts/run_inversion_example.py --output results/m3
 绘图需要 NumPy、Matplotlib；核心无需它们。参数、数学定义和实际收敛局限见
 [M3 验收报告](docs/m3-validation.md)。反演结果没有后验可信区间，触界不代表数据可靠约束。
 
+## 局部灵敏度与分辨诊断
+
+```bash
+build/dispweave resolution --config examples/resolution/reference.toml --output results/local-resolution
+python scripts/run_resolution_example.py --output results/m4a
+```
+
+在固定 Vp、密度、界面的参考模型处，输出白化且按声明参数尺度缩放的奇异值、
+数值秩、给定岭强度下的有效维度和模型分辨矩阵。支持完整观测协方差。
+数值秩不等于可辨识层数，分辨矩阵不等于后验协方差；本项未自动选取层数或正则化。
+见 [M4a 数学定义与验收](docs/m4a-validation.md)。
+
 ## 已知边界
 
 支持全固体、各向同性、弹性的一维模型；允许低速层和高速夹层。
@@ -111,6 +124,7 @@ python scripts/run_inversion_example.py --output results/m3
 
 ## 文档
 
+- [M4a 验收结果](docs/m4a-validation.md)
 - [M3 验收结果](docs/m3-validation.md)
 - [M2 验收结果](docs/m2-validation.md)
 - [M1 验收结果](docs/m1-validation.md)
