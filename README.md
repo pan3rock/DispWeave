@@ -7,13 +7,14 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M2：正演灵敏度、固定 Vs 参数化与协方差似然/后验目标。**
+**M3：固定层数 LM 反演、合成/观测工作流与 Python 绘图。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
-完整协方差似然和明确测度的后验目标。LM 与采样器尚未接入；下一项是 M3。
+完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
+Phase 1 最小可运行版本已完成；下一项是 M4，采样器尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
-C++17 为主体，Python 用于后续数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
+C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
 CLI11 2.4.2 和所需 invLM 数值源码随仓库提供，构建无需联网或安装反演框架。
 
 ## 构建与运行
@@ -71,7 +72,31 @@ build/objective_example
 
 两种灵敏度接口独立保留有效根和梯度诊断。请求梯度但只有梯度失败时返回码为 3。
 后验示例通过 C++ API 使用相关误差，输出目标分解及梯度，不执行优化或采样。
-观测文件反演 CLI 留到 M3。见 [M2 接口与验收](docs/m2-validation.md)。
+见 [M2 接口与验收](docs/m2-validation.md)。
+
+## 固定层数反演
+
+```bash
+build/dispweave synthetic --config examples/inversion/synthetic.toml --output results/synthetic
+build/dispweave invert --config examples/inversion/synthetic.toml \
+  --data results/synthetic/observations.txt --covariance results/synthetic/covariance.txt \
+  --output results/replay
+python scripts/plot_inversion.py results/synthetic
+```
+
+反演输出目录必须新建或为空；保存所有初值、终止原因、正演/梯度异常和试算轨迹。
+若没有初值通过收敛标准，返回码 **4**，不能将末次模型当成已收敛解。
+观测列为 `frequency_hz phase_km_s mode sigma_km_s`；可提供完整协方差。
+当前固定层顶与密度，反演 Vs，Vp 固定或按指定 Vp/Vs 随动。
+
+一条命令完成构建、测试、六组基阶/多模态及噪声对照、绘图与观测重放：
+
+```bash
+python scripts/run_inversion_example.py --output results/m3
+```
+
+绘图需要 NumPy、Matplotlib；核心无需它们。参数、数学定义和实际收敛局限见
+[M3 验收报告](docs/m3-validation.md)。反演结果没有后验可信区间，触界不代表数据可靠约束。
 
 ## 已知边界
 
@@ -86,6 +111,7 @@ build/objective_example
 
 ## 文档
 
+- [M3 验收结果](docs/m3-validation.md)
 - [M2 验收结果](docs/m2-validation.md)
 - [M1 验收结果](docs/m1-validation.md)
 - [现有代码审查](docs/code-audit.md)
