@@ -2,7 +2,7 @@
 
 每项只包含一个可以独立审阅和验收的目标。完成实现、必要测试、示例和结果记录后
 单独 commit；失败不标记完成，不以编译通过替代数值验收。
-当前完成 M0–M1；后续按顺序推进，不同时铺开全部算法。
+当前完成 M0–M2；后续按顺序推进，不同时铺开全部算法。
 
 ## M0 架构与代码审查
 
@@ -47,6 +47,8 @@
 建议提交：`feat: add validated invLM Rayleigh forward baseline`。
 
 ## M2 核函数与统一观测目标
+
+状态：已完成，见 [M2 验证报告](m2-validation.md)。
 
 交付：能量核、隐式物性导数、固定 Vs 参数化、Gaussian likelihood、log posterior 契约。
 不实现 HMC。

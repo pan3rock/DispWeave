@@ -1,6 +1,6 @@
 # 架构与核心接口
 
-本文定义整体接口契约。M1 已实现模型、正演、配置与结果输出；灵敏度及反演接口尚未实现。
+本文定义整体接口契约。M2 已实现模型、正演与灵敏度、固定 Vs 参数化、协方差似然和后验目标；优化与采样尚未实现。
 主体使用 C++17，Python 只负责
 处理与可视化。优先用普通数据结构和少量可替换接口，不建立通用工厂层。
 
@@ -63,7 +63,7 @@ struct LayeredModel {
 ```cpp
 struct DispersionQuery { double frequency_hz; int mode; };
 ForwardResult evaluate(const LayeredModel&, const std::vector<DispersionQuery>&,
-                       bool request_sensitivity) const; // 计划的 M2 扩展；M1 无此参数
+                       SensitivityMethod = SensitivityMethod::none) const;
 ```
 
 输入为逐观测点的 `(frequency, mode)`，允许乱序、重复频率、各阶不等采样。
@@ -124,8 +124,9 @@ H/V 不等于 Rayleigh 椭圆率；接收函数还需滤波、时间偏移及震
 ```cpp
 Model decode(const Eigen::VectorXd& q) const;
 Eigen::VectorXd encode(const Model&) const;
-ParameterJacobian physical_jacobian(const Eigen::VectorXd& q) const;
-TransformDensity log_abs_det_jacobian(const Eigen::VectorXd& q) const;
+Eigen::MatrixXd phase_jacobian(const Eigen::VectorXd& q, const ForwardResult&) const;
+double log_abs_det_jacobian(const Eigen::VectorXd& q) const;
+Eigen::VectorXd log_abs_det_gradient(const Eigen::VectorXd& q) const;
 ```
 
 `encode` 必须校验模型确实属于该参数化，不能静默丢失层厚、Vp 或密度变化。
@@ -141,8 +142,8 @@ RJMCMC 使用自身可变维度状态，不强行套用固定长度 q。
 ## Log posterior
 
 ```cpp
-PosteriorEvaluation log_posterior(const Eigen::VectorXd& q,
-                                 bool request_gradient) const;
+PosteriorEvaluation log_posterior(const DispersionProblem&, const Eigen::VectorXd& q,
+                                 const Prior&, bool gradient=true, double log_scale=0);
 ```
 
 返回 log likelihood、log prior、变换项、总值、可选梯度及状态，分别保存来源。

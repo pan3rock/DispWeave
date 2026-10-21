@@ -19,7 +19,12 @@ bool ForwardResult::all_valid() const {
         return r.status==RootStatus::valid && std::isfinite(r.phase_velocity) && r.phase_velocity>0;
     });
 }
-ForwardResult InvLMForward::evaluate(const LayeredModel& m,const std::vector<DispersionQuery>& queries) const {
+bool ForwardResult::all_sensitivities_valid() const {
+    return all_valid() && std::all_of(rows.begin(),rows.end(),[](const auto& row) {
+        return row.sensitivity.status==SensitivityStatus::valid;
+    });
+}
+ForwardResult InvLMForward::evaluate(const LayeredModel& m,const std::vector<DispersionQuery>& queries,SensitivityMethod sensitivity) const {
     m.validate();
     if(queries.empty()) throw std::invalid_argument("Empty query list");
     std::map<double,std::vector<size_t>> groups;
@@ -33,7 +38,7 @@ ForwardResult InvLMForward::evaluate(const LayeredModel& m,const std::vector<Dis
     native.col(0)=Eigen::VectorXd::LinSpaced(m.vs.size(),0,m.vs.size()-1);
     native.col(1)=m.depth; native.col(2)=m.rho; native.col(3)=m.vs; native.col(4)=m.vp;
     fwd::Dispersion dispersion(native,false,method_==SecularMethod::dunkin?fwd::DispMethod::DUNKIN:fwd::DispMethod::FAST_SCALAR);
-    ForwardResult result; result.rows.resize(queries.size());
+    ForwardResult result; result.sensitivity_method=sensitivity; result.rows.resize(queries.size());
     for(const auto& [frequency,indices]:groups) {
         int wanted=0; for(auto i:indices) wanted=std::max(wanted,queries[i].mode+1);
         std::vector<double> roots; bool issue=false; std::string message;
@@ -59,6 +64,18 @@ ForwardResult InvLMForward::evaluate(const LayeredModel& m,const std::vector<Dis
             } else if(queries[i].mode>=static_cast<int>(roots.size())) {
                 row.message="Requested mode absent or unresolved; absence is not certified";
             } else { row.phase_velocity=roots[queries[i].mode]; row.status=RootStatus::valid; }
+        }
+    }
+    if(sensitivity!=SensitivityMethod::none) {
+        for(size_t i=0;i<result.rows.size();++i) {
+            auto& row=result.rows[i];
+            if(row.status==RootStatus::valid)
+                row.sensitivity=rayleigh_sensitivity(m,queries[i].frequency_hz,row.phase_velocity,sensitivity);
+            else {
+                row.sensitivity.status=SensitivityStatus::unavailable;
+                row.sensitivity.message="Root unavailable";
+                row.sensitivity.dc_dvs=row.sensitivity.dc_dvp=row.sensitivity.dc_drho=Eigen::VectorXd::Constant(m.vs.size(),NAN);
+            }
         }
     }
     return result;

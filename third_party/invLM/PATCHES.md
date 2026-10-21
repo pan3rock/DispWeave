@@ -25,4 +25,11 @@ constitute a completeness proof for general layered spectra.
 Tests cover independent halfspace cubic roots at ratios 1.155, 1.2, 1.41, 1.73,
 3 and 10, at 0.001, 1 and 1000 Hz. Existing layered regressions, independent
 P/SV boundary matching and layer-subdivision checks also run after this change.
-No sensitivity kernels, LM, HMC or RJMCMC code is included in M1.
+No sensitivity kernels, LM, HMC or RJMCMC code was included in M1.
+
+## M2 kernel import
+
+The original `dispersion_kernel.cpp`, `dunkin_derivative.cpp`, their headers and
+`model.hpp` are now imported from the same base commit without modifications.
+Validation and separate root/gradient status handling live in DispWeave adapters.
+No upstream kernel tolerance or root algorithm was changed in M2.

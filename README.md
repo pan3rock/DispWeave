@@ -7,10 +7,10 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M1：C++ 构建与多阶 Rayleigh 相速度正演基线。**
+**M2：正演灵敏度、固定 Vs 参数化与协方差似然/后验目标。**
 
-已提供模型验证、invLM Dunkin 正演适配、逐行根诊断、命令行与数值测试。
-核函数、似然、LM 和采样器尚未接入；下一项是 M2。
+已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
+完整协方差似然和明确测度的后验目标。LM 与采样器尚未接入；下一项是 M3。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于后续数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -59,10 +59,24 @@ python scripts/verify_vendor.py
 /usr/bin/time -v build/forward_benchmark dense_low_velocity
 ```
 
+## 灵敏度与目标函数
+
+```bash
+build/dispweave forward --config examples/forward/normal.toml \
+  --sensitivity energy --output build/energy.txt
+build/dispweave forward --config examples/forward/normal.toml \
+  --sensitivity implicit --output build/implicit.txt
+build/objective_example
+```
+
+两种灵敏度接口独立保留有效根和梯度诊断。请求梯度但只有梯度失败时返回码为 3。
+后验示例通过 C++ API 使用相关误差，输出目标分解及梯度，不执行优化或采样。
+观测文件反演 CLI 留到 M3。见 [M2 接口与验收](docs/m2-validation.md)。
+
 ## 已知边界
 
 支持全固体、各向同性、弹性的一维模型；允许低速层和高速夹层。
-只提供 Rayleigh 相速度，不支持液层、泄漏波或梯度接口。
+提供 Rayleigh 相速度及 Vs/Vp/rho 灵敏度，不支持液层、泄漏波或层厚导数。
 缺根可能是物理截止，也可能是搜索未解析，不能据此断言模态不存在。
 上游没有提供一般 Rayleigh 根全集的完备性证明。
 
@@ -72,6 +86,7 @@ python scripts/verify_vendor.py
 
 ## 文档
 
+- [M2 验收结果](docs/m2-validation.md)
 - [M1 验收结果](docs/m1-validation.md)
 - [现有代码审查](docs/code-audit.md)
 - [架构和数学接口](docs/architecture.md)

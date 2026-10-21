@@ -26,14 +26,27 @@ void write_forward_result(const std::filesystem::path& path,const ForwardConfig&
     f.exceptions(std::ios::badbit|std::ios::failbit);
     f<<std::setprecision(17);
     f<<"# DispWeave "<<DW_VERSION<<"; invLM "<<DW_INVLM_COMMIT<<"\n# compiler "<<DW_COMPILER<<"; build "<<DW_BUILD_TYPE
-     <<"\n# Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2; backend dunkin; no sensitivities\n";
+     <<"\n# Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2; backend dunkin; sensitivity "<<to_string(r.sensitivity_method)<<"\n";
     for(Eigen::Index i=0;i<c.model.vs.size();++i)
         f<<"# model depth_km vs_km_s vp_km_s rho_g_cm3: "<<c.model.depth[i]<<' '<<c.model.vs[i]<<' '<<c.model.vp[i]<<' '<<c.model.rho[i]<<'\n';
-    f<<"# row frequency_hz mode phase_km_s status roots_found message\n";
+    f<<"# row frequency_hz mode phase_km_s status roots_found message";
+    if(r.sensitivity_method!=SensitivityMethod::none) {
+        f<<" sensitivity_status energy_residual root_correction stabilized sensitivity_message";
+        for(const char* property:{"Vs","Vp","rho"})
+            for(Eigen::Index layer=0;layer<c.model.vs.size();++layer) f<<" dc_d"<<property<<"_"<<layer;
+    }
+    f<<'\n';
     for(size_t i=0;i<r.rows.size();++i) {
         const auto& row=r.rows[i];
         f<<i<<' '<<c.queries[i].frequency_hz<<' '<<c.queries[i].mode<<' '<<row.phase_velocity<<' '
-         <<to_string(row.status)<<' '<<row.roots_found<<' '<<std::quoted(row.message)<<'\n';
+         <<to_string(row.status)<<' '<<row.roots_found<<' '<<std::quoted(row.message);
+        if(r.sensitivity_method!=SensitivityMethod::none) {
+            const auto& s=row.sensitivity;
+            f<<' '<<to_string(s.status)<<' '<<s.energy_residual<<' '<<s.root_correction<<' '<<s.stabilized<<' '<<std::quoted(s.message);
+            for(const auto* property:{&s.dc_dvs,&s.dc_dvp,&s.dc_drho})
+                for(Eigen::Index layer=0;layer<property->size();++layer) f<<' '<<(*property)[layer];
+        }
+        f<<'\n';
     }
     f.close();
 }
