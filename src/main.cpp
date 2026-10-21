@@ -21,11 +21,17 @@ int main(int argc,char** argv) {
     }
     invert->add_option("--data",data)->required()->check(CLI::ExistingFile);
     invert->add_option("--covariance",covariance)->check(CLI::ExistingFile);
+    auto hmc=app.add_subcommand("hmc","Sample fixed-layer Vs posterior with static HMC");
+    hmc->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
+    hmc->add_option("--output",inv_output)->required();
+    hmc->add_option("--data",data)->required()->check(CLI::ExistingFile);
+    hmc->add_option("--covariance",covariance)->check(CLI::ExistingFile);
     auto resolution=app.add_subcommand("resolution","Local scaled sensitivity and ridge resolution at a reference model");
     resolution->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
     resolution->add_option("--output",inv_output)->required();
     CLI11_PARSE(app,argc,argv);
     try {
+        if(*hmc) return dw::run_hmc(inv_config,inv_output,data,covariance);
         if(*resolution) return dw::run_resolution(inv_config,inv_output);
         if(*synthetic || *invert) return dw::run_inversion(inv_config,inv_output,static_cast<bool>(*synthetic),data,covariance);
         if(std::filesystem::weakly_canonical(config)==std::filesystem::weakly_canonical(output))

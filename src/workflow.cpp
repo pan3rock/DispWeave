@@ -1,6 +1,7 @@
 #include "dispweave/workflow.hpp"
 #include "dispweave/io.hpp"
 #include "dispweave/lm.hpp"
+#include "dispweave/hmc.hpp"
 #include "version.hpp"
 #include <toml.hpp>
 #include <Eigen/Cholesky>
@@ -164,5 +165,94 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     std::cout<<"runs="<<runs.size()<<" best_run="<<best<<" seconds="<<seconds<<" output="<<output<<'\n';
     if(best>=0) std::cout<<"cost="<<runs[best].evaluation.least_squares_cost<<" reason="<<runs[best].reason<<'\n';
     return best>=0?0:4;
+}
+int run_hmc(const std::filesystem::path& config_path,const std::filesystem::path& output,
+            const std::filesystem::path& data_path,const std::filesystem::path& cov_path) {
+    const auto begin=std::chrono::steady_clock::now();
+    if(std::filesystem::exists(output) && (!std::filesystem::is_directory(output) || !std::filesystem::is_empty(output)))
+        throw std::invalid_argument("Output directory must be new or empty");
+    const auto document=toml::parse(config_path.string());
+    const auto table=toml::find(document,"model"),inv=toml::find(document,"inversion"),cfg=toml::find(document,"hmc");
+    LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
+    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
+    const auto method_name=toml::find_or<std::string>(inv,"sensitivity","implicit");
+    if(method_name!="energy" && method_name!="implicit") throw std::invalid_argument("Unknown sensitivity");
+    InvLMForward backend; const auto data=read_observations(data_path,cov_path);
+    DispersionProblem problem(backend,parameters,data,method_name=="energy"?SensitivityMethod::energy:SensitivityMethod::implicit);
+    const auto prior_name=toml::find<std::string>(cfg,"prior");
+    if(prior_name!="uniform_vs" && prior_name!="uniform_log_vs") throw std::invalid_argument("HMC prior must be uniform_vs or uniform_log_vs");
+    const auto prior=prior_name=="uniform_vs"?
+        uniform_prior(vector(inv,"lower_vs"),vector(inv,"upper_vs"),PriorMeasure::physical_vs):
+        uniform_prior(parameters.lower(),parameters.upper(),PriorMeasure::log_vs);
+    LogisticBox box(parameters.lower(),parameters.upper());
+    const auto target=transform_density(dispersion_density(problem,prior),box);
+    const auto starts=toml::find<std::vector<std::vector<double>>>(inv,"starts_vs");
+    if(starts.empty()) throw std::invalid_argument("At least one HMC start required");
+    std::vector<Eigen::VectorXd> initial;
+    for(const auto& start:starts) {
+        const Eigen::VectorXd q=Eigen::Map<const Eigen::VectorXd>(start.data(),start.size()).array().log();
+        initial.push_back(box.inverse(q));
+        if(target(initial.back()).status!=EvaluationStatus::valid) throw std::invalid_argument("Invalid HMC initial density/gradient");
+    }
+    HMCOptions options;
+    options.warmup=toml::find_or<int>(cfg,"warmup",options.warmup);
+    options.draws=toml::find_or<int>(cfg,"draws",options.draws);
+    options.leapfrog_steps=toml::find_or<int>(cfg,"leapfrog_steps",options.leapfrog_steps);
+    options.step_size=toml::find_or<double>(cfg,"step_size",options.step_size);
+    options.step_jitter=toml::find_or<double>(cfg,"step_jitter",options.step_jitter);
+    options.target_accept=toml::find_or<double>(cfg,"target_accept",options.target_accept);
+    options.adapt_step_size=toml::find_or<bool>(cfg,"adapt_step_size",options.adapt_step_size);
+    options.divergence_threshold=toml::find_or<double>(cfg,"divergence_threshold",options.divergence_threshold);
+    const auto seed=toml::find_or<std::int64_t>(cfg,"seed",2026);
+    if(seed<0) throw std::invalid_argument("HMC seed must be nonnegative");
+    options.seed=static_cast<std::uint64_t>(seed);
+    Eigen::MatrixXd mass=Eigen::MatrixXd::Identity(model.vs.size(),model.vs.size());
+    if(cfg.contains("mass")) {
+        const auto rows=toml::find<std::vector<std::vector<double>>>(cfg,"mass");
+        if(rows.size()!=static_cast<size_t>(mass.rows())) throw std::invalid_argument("Mass row count mismatch");
+        for(Eigen::Index i=0;i<mass.rows();++i) {
+            if(rows[i].size()!=rows.size()) throw std::invalid_argument("Mass column count mismatch");
+            for(Eigen::Index j=0;j<mass.cols();++j) mass(i,j)=rows[i][j];
+        }
+    }
+    const EuclideanMetric metric(mass);
+    std::filesystem::create_directories(output);
+    std::filesystem::copy_file(config_path,output/"config.toml"); save_data(output,data);
+    auto mass_file=output_file(output/"mass.txt");mass_file<<mass<<'\n';
+    auto summary=output_file(output/"chains.txt");
+    summary<<"# chain draws accepted divergences invalid_evaluations step_size\n";
+    bool issues=false;
+    for(size_t chain=0;chain<initial.size();++chain) {
+        options.chain_id=chain;
+        const auto r=sample_hmc(target,initial[chain],metric,options);
+        auto samples=output_file(output/("chain_"+std::to_string(chain)+"_vs.txt"));
+        auto positions=output_file(output/("chain_"+std::to_string(chain)+"_z.txt"));
+        samples<<"# Vs km/s; one retained state per row, layer order; excludes warmup\n";
+        positions<<"# unconstrained z; excludes warmup\n"<<r.draws<<'\n';
+        for(Eigen::Index i=0;i<r.draws.rows();++i) samples<<box.forward(r.draws.row(i).transpose()).q.array().exp().matrix().transpose()<<'\n';
+        auto trace=output_file(output/("chain_"+std::to_string(chain)+"_trace.txt"));
+        trace<<"# warmup accepted divergent step_size acceptance_probability energy_error status evaluations\n";
+        int accepted=0,divergences=0,invalid=0;
+        for(const auto& t:r.transitions) {
+            trace<<t.warmup<<' '<<t.accepted<<' '<<t.divergent<<' '<<t.step_size<<' '<<t.acceptance_probability<<' '<<t.energy_error<<' '<<status(t.status)<<' '<<t.evaluations<<'\n';
+            if(!t.warmup) {accepted+=t.accepted;divergences+=t.divergent;invalid+=t.status!=EvaluationStatus::valid;}
+        }
+        summary<<chain<<' '<<options.draws<<' '<<accepted<<' '<<divergences<<' '<<invalid<<' '<<r.step_size<<'\n';
+        issues=issues || divergences>0 || invalid>0 || accepted==0;
+    }
+    auto metadata=output_file(output/"metadata.txt");
+    metadata<<"version="<<DW_VERSION<<"\ncompiler="<<DW_COMPILER<<"\nbuild="<<DW_BUILD_TYPE
+            <<"\nbackend=invLM Dunkin\ninvlm_commit="<<DW_INVLM_COMMIT
+            <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nseed="<<options.seed
+            <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nleapfrog_steps="<<options.leapfrog_steps
+            <<"\ninitial_step_size="<<options.step_size<<"\nstep_jitter="<<options.step_jitter
+            <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept
+            <<"\ndivergence_threshold="<<options.divergence_threshold
+            <<"\nprior="<<prior_name<<"\nsensitivity="<<method_name
+            <<"\nparameterization=fixed layer tops/rho; log Vs; logistic box\nposterior=conditional on supplied parameterization\n"
+            <<"mass_convention=momentum covariance in z coordinates\n"
+            <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
+    std::cout<<"chains="<<initial.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';
+    return issues?5:0;
 }
 }

@@ -7,15 +7,15 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M4d：固定层数 LM 的边界步与停滞诊断。**
+**M5：自有固定维度 HMC 与频散后验采样。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
 Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、显式参数尺度和岭分辨矩阵。
-固定层数 LM 已改用有界阻尼子问题，分别报告收敛、停滞和失败；下一项为固定维度 HMC。
+固定层数 LM 已改用有界阻尼子问题；HMC 提供平滑边界变换、固定质量矩阵、预热步长适应及多链输出。
 LM 自适应分层暂缓。
 固定层数不等于固定层厚：当前固定层厚，若以后反演层厚，须先验证相应参数化和导数。
-已移除候选模型的 AIC/BIC、验证评分及排名实验；采样器尚未实现。
+已移除候选模型的 AIC/BIC、验证评分及排名实验；NUTS、完整多链诊断与 RJMCMC 尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -109,6 +109,24 @@ python scripts/run_inversion_example.py --output results/m3
 python scripts/benchmark_fixed_lm.py --extended --output results/fixed-lm
 ```
 
+## 固定层数 HMC
+
+```bash
+build/dispweave synthetic --config examples/hmc/synthetic.toml --output results/hmc-data
+build/dispweave hmc --config examples/hmc/synthetic.toml \
+  --data results/hmc-data/observations.txt --covariance results/hmc-data/covariance.txt \
+  --output results/hmc
+python scripts/plot_hmc.py results/hmc
+```
+
+同一 `hmc` 命令可读取实际观测。先验在配置中明确指定为物理 Vs 或 log Vs 均匀分布；
+当前固定层顶与密度，支持固定 Vp 或固定 Vp/Vs。质量矩阵是无约束坐标中**动量的协方差**。
+输出包含每条链样本、预热标记、接受率、能量异常和根/梯度失败；无效初值返回 1，
+正式采样出现异常或零接受返回 5。返回 0 不表示已经证明收敛。
+后验条件于给定参数化，不包含层数不确定性；ESS/R-hat、后验预测及 NUTS 留在 M6。
+数学定义、解析测试、独立 MCMCLib 对照与限制见 [M5 验收](docs/m5-validation.md)。
+生产构建不依赖 MCMCLib 或其他采样框架。
+
 ## 局部灵敏度与分辨诊断
 
 ```bash
@@ -134,6 +152,7 @@ python scripts/run_resolution_example.py --output results/m4a
 
 ## 文档
 
+- [M5 验收结果](docs/m5-validation.md)
 - [M4d 验收结果](docs/m4d-validation.md)
 - [M4a 验收结果](docs/m4a-validation.md)
 - [M3 验收结果](docs/m3-validation.md)
