@@ -7,13 +7,13 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M4b：四类模型的候选参数化与复杂度准则对照。**
+**M4a：固定参数化的白化灵敏度谱与局部岭分辨诊断。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
 Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、显式参数尺度和岭分辨矩阵。
-已增加 AIC/BIC 与独立验证预测评分，保留未收敛、触界和不完整比较状态。
-自适应分层尚未实现，下一项 M4c；采样器尚未实现。
+自适应分层尚未实现，下一步围绕核函数与灵敏度推进参数细化、合并及重新反演。
+已移除候选模型的 AIC/BIC、验证评分及排名实验；采样器尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -112,20 +112,6 @@ python scripts/run_resolution_example.py --output results/m4a
 数值秩不等于可辨识层数，分辨矩阵不等于后验协方差；本项未自动选取层数或正则化。
 见 [M4a 数学定义与验收](docs/m4a-validation.md)。
 
-## 候选参数化对照
-
-```bash
-python scripts/run_selection_study.py --output results/m4b
-python scripts/plot_selection_study.py results/m4b
-```
-
-四类模型、三组模态、三种频段/覆盖、两种噪声和两个种子，共 432 次候选拟合。
-`--smoke` 可运行 6 个拟合的小案例。优化与评分在 C++，Python 负责实验组织和绘图。
-有 `[assessment]` 配置时，`invert` 输出 AIC/BIC、局部信息量，并可通过
-`--validation-data`（可选 `--validation-covariance`）计算独立验证预测似然。
-训练与验证误差块必须独立。未收敛候选不排名，触界等非正规解不参与 AIC/BIC。
-各准则仅能在同数据场景内比较；详见 [M4b 验收及局限](docs/m4b-validation.md)。
-
 ## 已知边界
 
 支持全固体、各向同性、弹性的一维模型；允许低速层和高速夹层。
@@ -139,7 +125,6 @@ python scripts/plot_selection_study.py results/m4b
 
 ## 文档
 
-- [M4b 验收结果](docs/m4b-validation.md)
 - [M4a 验收结果](docs/m4a-validation.md)
 - [M3 验收结果](docs/m3-validation.md)
 - [M2 验收结果](docs/m2-validation.md)

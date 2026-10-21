@@ -1,8 +1,6 @@
 #include "dispweave/workflow.hpp"
 #include "dispweave/io.hpp"
 #include "dispweave/lm.hpp"
-#include "dispweave/selection.hpp"
-#include <optional>
 #include "version.hpp"
 #include <toml.hpp>
 #include <Eigen/Cholesky>
@@ -71,8 +69,7 @@ const char* status(EvaluationStatus s) {
 }
 }
 int run_inversion(const std::filesystem::path& config_path,const std::filesystem::path& output,
-                  bool synthetic,const std::filesystem::path& data_path,const std::filesystem::path& cov_path,
-                  const std::filesystem::path& validation_path,const std::filesystem::path& validation_cov_path) {
+                  bool synthetic,const std::filesystem::path& data_path,const std::filesystem::path& cov_path) {
     const auto begin=std::chrono::steady_clock::now();
     if(std::filesystem::exists(output) && (!std::filesystem::is_directory(output) || !std::filesystem::is_empty(output)))
         throw std::invalid_argument("Output directory must be new or empty: "+output.string());
@@ -92,17 +89,6 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     options.max_iterations=toml::find_or<int>(inv,"max_iterations",options.max_iterations);
     options.gradient_tolerance=toml::find_or<double>(inv,"gradient_tolerance",options.gradient_tolerance);
     options.initial_damping=toml::find_or<double>(inv,"initial_damping",options.initial_damping);
-    if(!validation_path.empty() && !document.contains("assessment"))
-        throw std::invalid_argument("Validation scoring requires an [assessment] table");
-    Eigen::VectorXd assessment_scale; double assessment_ridge=1;
-    if(document.contains("assessment")) {
-        const auto settings=toml::find(document,"assessment");
-        assessment_scale=vector(settings,"scale_log_vs"); assessment_ridge=toml::find<double>(settings,"ridge");
-        // Validate even when every initial model fails.
-        local_resolution(Eigen::MatrixXd::Zero(1,model.vs.size()),assessment_scale,assessment_ridge);
-    }
-    std::optional<DispersionObservations> validation;
-    if(!validation_path.empty()) validation=read_observations(validation_path,validation_cov_path);
     InvLMForward backend; DispersionObservations data;
     int seed=0; bool noise=false;
     if(synthetic) {
@@ -167,35 +153,6 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
             write_forward_result(output/(prefix+"_prediction.txt"),{parameters.decode(r.q),data.queries},r.evaluation.forward);
         auto diag=output_file(output/(prefix+"_diagnostic.txt"));
         diag<<"status="<<status(r.evaluation.status)<<"\nmessage="<<r.evaluation.message<<'\n';
-    }
-    if(document.contains("assessment")) {
-        auto report=output_file(output/"assessment.txt");
-        report<<"best_training_run="<<best<<"\nobservations="<<data.queries.size()<<"\nparameters="<<model.vs.size()
-              <<"\nridge="<<assessment_ridge<<"\nscale_log_vs="<<assessment_scale.transpose()<<'\n';
-        if(best<0) report<<"fitted=0\nregular=0\nreason=fit_not_converged\n";
-        else {
-            const auto& fit=runs[best];
-            const auto score=assess_candidate(fit,parameters.lower(),parameters.upper(),assessment_scale,assessment_ridge);
-            report<<"fitted="<<score.fitted<<"\nregular="<<score.regular<<"\nreason="<<score.reason
-                  <<"\nlog_likelihood="<<score.log_likelihood<<"\naic="<<score.aic<<"\nbic="<<score.bic
-                  <<"\nnumerical_rank="<<score.local.numerical_rank<<"\neffective_dimension="<<score.local.effective_dimension<<'\n';
-            auto spectrum=output_file(output/"assessment_spectrum.txt");
-            spectrum<<"# singular_value filter_factor\n";
-            for(Eigen::Index i=0;i<score.local.singular_values.size();++i)
-                spectrum<<score.local.singular_values[i]<<' '<<score.local.filter_factors[i]<<'\n';
-            auto matrix=output_file(output/"assessment_resolution.txt"); matrix<<score.local.resolution<<'\n';
-            if(validation) {
-                DispersionProblem heldout(backend,parameters,*validation,method);
-                const auto prediction=heldout.evaluate(fit.q,false);
-                report<<"validation_status="<<status(prediction.status)<<"\nvalidation_log_likelihood="<<prediction.log_likelihood
-                      <<"\nvalidation_observations="<<validation->queries.size()
-                      <<"\nvalidation_assumption=independent errors between training and validation blocks\n";
-                write_forward_result(output/"validation_prediction.txt",{parameters.decode(fit.q),validation->queries},prediction.forward);
-            }
-        }
-        if(validation) {
-            std::filesystem::create_directory(output/"validation"); save_data(output/"validation",*validation);
-        }
     }
     const double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
     auto metadata=output_file(output/"metadata.txt");
