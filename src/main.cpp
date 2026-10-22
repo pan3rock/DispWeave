@@ -21,6 +21,12 @@ int main(int argc,char** argv) {
     }
     invert->add_option("--data",data)->required()->check(CLI::ExistingFile);
     invert->add_option("--covariance",covariance)->check(CLI::ExistingFile);
+    std::string predictive_run; int predictive_draws=200; unsigned long long predictive_seed=2026;
+    auto predictive=app.add_subcommand("predict","Posterior predictive draws from saved fixed-layer chains");
+    predictive->add_option("--run",predictive_run)->required()->check(CLI::ExistingDirectory);
+    predictive->add_option("--output",inv_output)->required();
+    predictive->add_option("--draws-per-chain",predictive_draws)->check(CLI::PositiveNumber);
+    predictive->add_option("--seed",predictive_seed);
     auto hmc=app.add_subcommand("hmc","Sample fixed-layer Vs posterior with static HMC");
     hmc->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
     hmc->add_option("--output",inv_output)->required();
@@ -31,6 +37,7 @@ int main(int argc,char** argv) {
     resolution->add_option("--output",inv_output)->required();
     CLI11_PARSE(app,argc,argv);
     try {
+        if(*predictive) return dw::run_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
         if(*hmc) return dw::run_hmc(inv_config,inv_output,data,covariance);
         if(*resolution) return dw::run_resolution(inv_config,inv_output);
         if(*synthetic || *invert) return dw::run_inversion(inv_config,inv_output,static_cast<bool>(*synthetic),data,covariance);

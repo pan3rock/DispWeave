@@ -40,6 +40,16 @@ with tempfile.TemporaryDirectory() as tmp:
     for name in ('observations.txt', 'covariance.txt'):
         assert (a / name).read_bytes() == (data / name).read_bytes()
     assert 'conditional on supplied parameterization' in (a / 'metadata.txt').read_text()
+    for dest in ('predictive-a', 'predictive-b'):
+        run('predict', '--run', a, '--output', work / dest, '--draws-per-chain', 8, '--seed', 17)
+    for name in ('latent.txt', 'replicated.txt', 'draws.txt', 'selected_log_vs.txt'):
+        assert (work / 'predictive-a' / name).read_bytes() == (work / 'predictive-b' / name).read_bytes()
+    predicted_rows = [r.split() for r in (work / 'predictive-a/latent.txt').read_text().splitlines() if not r.startswith('#')]
+    assert len(predicted_rows) == 24 and all(len(r) == 14 for r in predicted_rows)
+    selection = [r.split() for r in (work / 'predictive-a/draws.txt').read_text().splitlines() if not r.startswith('#')]
+    assert [(int(r[1]), int(r[2])) for r in selection] == [(c, j*10) for c in range(3) for j in range(8)]
+    run('predict', '--run', a, '--output', work / 'predictive-a', codes=(1,))
+    run('predict', '--run', a, '--output', work / 'too-many', '--draws-per-chain', 81, codes=(1,))
     sample(a, codes=(1,))
     invalid = work / 'invalid.toml'
     invalid.write_text(content.replace('[1.1, 1.8, 2.8]', '[0.7, 1.8, 2.8]'))
@@ -54,4 +64,8 @@ with tempfile.TemporaryDirectory() as tmp:
             row = line.split(); row[2] = '100'; rows.append(' '.join(row))
     missing.write_text('\n'.join(rows) + '\n')
     sample(work / 'missing', observations=missing, codes=(1,))
+    (a / 'observations.txt').write_bytes(missing.read_bytes())
+    run('predict', '--run', a, '--output', work / 'failed-predictive', '--draws-per-chain', 2, codes=(5,))
+    failed = [r.split() for r in (work / 'failed-predictive/draws.txt').read_text().splitlines() if not r.startswith('#')]
+    assert len(failed) == 6 and all(r[3] == 'forward_failure' for r in failed)
 print('HMC workflow: replay, chain streams, retained draws, bounds, covariance, failures passed')

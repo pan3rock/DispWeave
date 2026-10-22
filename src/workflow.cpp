@@ -2,6 +2,8 @@
 #include "dispweave/io.hpp"
 #include "dispweave/lm.hpp"
 #include "dispweave/hmc.hpp"
+#include "dispweave/predictive.hpp"
+#include <regex>
 #include "version.hpp"
 #include <toml.hpp>
 #include <Eigen/Cholesky>
@@ -254,5 +256,56 @@ int run_hmc(const std::filesystem::path& config_path,const std::filesystem::path
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
     std::cout<<"chains="<<initial.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';
     return issues?5:0;
+}
+int run_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed) {
+    if(per_chain<1) throw std::invalid_argument("Predictive draw count must be positive");
+    if(std::filesystem::exists(output) && (!std::filesystem::is_directory(output) || !std::filesystem::is_empty(output)))
+        throw std::invalid_argument("Output directory must be new or empty");
+    const auto document=toml::parse((run/"config.toml").string());
+    const auto table=toml::find(document,"model"),inv=toml::find(document,"inversion");
+    LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
+    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
+    const auto data=read_observations(run/"observations.txt",run/"covariance.txt");
+    InvLMForward backend;DispersionProblem problem(backend,parameters,data);
+    std::vector<std::pair<int,std::filesystem::path>> files;
+    const std::regex pattern("chain_([0-9]+)_vs\\.txt");
+    for(const auto& entry:std::filesystem::directory_iterator(run)) {
+        std::smatch match;const auto name=entry.path().filename().string();
+        if(std::regex_match(name,match,pattern)) files.emplace_back(std::stoi(match[1]),entry.path());
+    }
+    std::sort(files.begin(),files.end());
+    if(files.empty()) throw std::invalid_argument("No saved chain Vs samples");
+    std::vector<Eigen::VectorXd> samples;std::vector<std::pair<int,size_t>> indices;
+    for(const auto& file:files) {
+        const auto rows=read_table(file.second);
+        if(static_cast<size_t>(per_chain)>rows.size()) throw std::invalid_argument("Predictive count exceeds available draws per chain");
+        for(int j=0;j<per_chain;++j) {
+            const size_t index=static_cast<size_t>(j)*rows.size()/per_chain;
+            if(rows[index].size()!=static_cast<size_t>(model.vs.size())) throw std::invalid_argument("Predictive Vs dimensions mismatch");
+            const Eigen::VectorXd q=Eigen::Map<const Eigen::VectorXd>(rows[index].data(),rows[index].size()).array().log();
+            if(!q.allFinite()) throw std::invalid_argument("Nonpositive predictive Vs");
+            samples.push_back(q);indices.emplace_back(file.first,index);
+        }
+    }
+    Eigen::MatrixXd q(samples.size(),model.vs.size());
+    for(size_t i=0;i<samples.size();++i) q.row(i)=samples[i].transpose();
+    const auto result=posterior_predictive(problem,q,seed);
+    std::filesystem::create_directories(output);save_data(output,data);
+    std::filesystem::copy_file(run/"config.toml",output/"config.toml");
+    auto latent=output_file(output/"latent.txt");latent<<"# rows=selected draws; columns=observation order; km/s\n"<<result.latent<<'\n';
+    auto replicated=output_file(output/"replicated.txt");replicated<<"# latent + correlated Gaussian observation noise; km/s\n"<<result.replicated<<'\n';
+    auto selected=output_file(output/"selected_log_vs.txt");selected<<q<<'\n';
+    auto status_file=output_file(output/"draws.txt");status_file<<"# row chain source_draw_zero_based status observed_chi2 replicated_chi2\n";
+    size_t failures=0;
+    for(size_t i=0;i<samples.size();++i) {
+        failures+=result.status[i]!=EvaluationStatus::valid;
+        status_file<<i<<' '<<indices[i].first<<' '<<indices[i].second<<' '<<status(result.status[i])<<' '
+                   <<result.observed_discrepancy[i]<<' '<<result.replicated_discrepancy[i]<<'\n';
+    }
+    auto metadata=output_file(output/"metadata.txt");
+    metadata<<"version="<<DW_VERSION<<"\nseed="<<seed<<"\nsource_run="<<std::filesystem::absolute(run).string()
+            <<"\nselected_per_chain="<<per_chain<<"\nselection=floor(j * chain_draws / per_chain); j starts at 0"
+            <<"\nfailures="<<failures<<"\nposterior=conditional on supplied parameterization; fixed observed covariance\n";
+    std::cout<<"predictive_draws="<<samples.size()<<" failures="<<failures<<'\n';return failures?5:0;
 }
 }
