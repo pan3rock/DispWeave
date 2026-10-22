@@ -16,6 +16,9 @@ int main(int argc,char** argv) {
     ellipticity->add_option("--config",config)->required()->check(CLI::ExistingFile);
     ellipticity->add_option("--output",output)->required();
     std::string inv_config,inv_output,data,covariance;
+    auto receiver=app.add_subcommand("receiver","Compute incident-P receiver function with declared filtering and deconvolution");
+    receiver->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
+    receiver->add_option("--output",inv_output)->required();
     auto synthetic=app.add_subcommand("synthetic","Generate data and run multistart fixed-layer LM");
     auto invert=app.add_subcommand("invert","Invert observed phase velocities using fixed-layer LM");
     for(auto* cmd:{synthetic,invert}) {
@@ -47,6 +50,7 @@ int main(int argc,char** argv) {
     resolution->add_option("--output",inv_output)->required();
     CLI11_PARSE(app,argc,argv);
     try {
+        if(*receiver) return dw::run_receiver(inv_config,inv_output);
         if(*rj_predictive) return dw::run_rj_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
         if(*predictive) return dw::run_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
         if(*rjmcmc) return dw::run_rjmcmc(inv_config,inv_output,data,covariance);

@@ -1,0 +1,21 @@
+--- rmat_sub.f90
++++ rmat_sub.f90
+@@ -109,14 +109,14 @@
+           reverb = ximat - MATMUL(rds,ru)
+           CALL xinv3(reverb,reverbi)
+ !     tusw = tu * reverbi * tus
+-          tusw = MATMUL(tu,MATMUL(reverb,tus))
++          tusw = MATMUL(tu,MATMUL(reverbi,tus))
+ !     rdsw = rd + tu * reverbi * rds * td
+-          rdsw = rd + MATMUL(MATMUL(tu,MATMUL(reverb,rds)),td)
++          rdsw = rd + MATMUL(MATMUL(tu,MATMUL(reverbi,rds)),td)
+ !     rusw = rus + tds * ru * reverbi * tus
+-          rusw = rus + MATMUL(MATMUL(tds,ru),MATMUL(reverb,tus))
++          rusw = rus + MATMUL(MATMUL(tds,ru),MATMUL(reverbi,tus))
+ !     tdsw = tds * [ ximat + ru*reverbi*rds ] * td
+           tdsw = MATMUL(MATMUL(tds,(ximat + &
+-            MATMUL(ru,MATMUL(reverb,rds)))),td)
++            MATMUL(ru,MATMUL(reverbi,rds)))),td)
+ !
+ ! copy over
+ !

@@ -1,0 +1,16 @@
+[model]
+depth = [0.0, 20.0]
+vs = [3.5, 4.5]
+vp = [6.3, 8.1]
+rho = [2.7, 3.3]
+[receiver]
+incident = "P"
+slowness_s_km = 0.06
+samples = 1024
+dt = 0.1
+gaussian_width = 2.5 # rad/s; exp(-omega^2/(4*a^2))
+water_level = 0.01  # fraction of maximum vertical spectral power
+deconvolution = "waterlevel"
+pre_arrival = 5.0
+time_shift = 0.0
+# Optional source = [...] has exactly 'samples' real entries; default unit impulse.

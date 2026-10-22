@@ -8,6 +8,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 ## 当前状态
 
 **M7 已完成：独立 RJMCMC 与跨维频散结果分析，版本 0.9.0。**
+M8 进行中：已完成 M8a 模态椭圆率和 M8b 接收函数正演；组合似然与联合反演仍待验收。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -258,4 +259,22 @@ python scripts/plot_ellipticity.py build/ellipticity.txt --output build/elliptic
 输出地表无量纲 `|ur|/|uz|`，使用精细根收敛；**不是原始背景噪声 H/V**，
 不含旋转方向，不提供解析梯度。缺根、特征函数失败或近极点时返回 2，仍保存所有行。
 `examples/ellipticity/pole.toml` 提供故意含极点与零点的诊断示例。
-详见 [M8a 验收](docs/m8a-validation.md)。M8 的接收函数、组合目标和联合反演仍在开发中。
+详见 [M8a 验收](docs/m8a-validation.md)。
+
+## P 接收函数正演（M8b）
+
+```bash
+build/dispweave receiver --config examples/receiver/layered.toml --output results/receiver-layered
+python scripts/plot_receiver.py results/receiver-layered --time-max 25 --output results/receiver-layered.png
+build/dispweave receiver --config examples/receiver/low_velocity.toml --output results/receiver-low-velocity
+python scripts/plot_receiver.py results/receiver-low-velocity --time-max 25 --output results/receiver-low-velocity.png
+```
+
+一维弹性 P-SV 完整边界求解，包含转换和多次波；入射 P 在半空间顶面定义，
+水平沿传播方向、垂直向上。慢度 s/km，采样间隔/时移为秒，Gaussian 宽度为 rad/s。
+`source` 可提供与输出等长的实数时间样点，默认单位脉冲；水位反褶积后按垂直自反褶积峰值归一化。
+输出保存完整频谱、波形、处理参数和失败诊断；输出目录必须新建或为空。
+返回 0 表示计算有效，2 表示有数值失败且结果行已保留，1 表示输入或 I/O 错误。
+需要检查时间窗与采样收敛；默认 1024×0.1 s 仅是示例设置，不保证适合全部实测资料。
+当前没有接收函数梯度或联合反演入口。算法、独立验证、参考程序问题和限制见
+[M8b 验收](docs/m8b-validation.md)；下一项是 M8c 的组合观测与目标函数。

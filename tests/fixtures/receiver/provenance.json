@@ -1,0 +1,54 @@
+{
+  "reference": "State-space ODE matrix exponential (SciPy)",
+  "scipy": "1.16.3",
+  "external_audit": {
+    "package": "Telewavesim",
+    "version": "0.2.1",
+    "source": "https://pypi.org/project/telewavesim/0.2.1/",
+    "license": "MIT, Copyright 2019 Pascal Audet",
+    "source_hashes": {
+      "rmat.f90": "80cb1ee8f7728f476b02b59b66496330d4f6ecea3322bff768d7cca0d9ca5930",
+      "rmat_sub.f90": "f8863df1b70b89a104d1d774307423944b78167bd4c9b43a34a241372e1cdb98"
+    },
+    "archive_sha256": "4dd1e1a81a55ab6193736b50ee76fe277c06c518d8a90a49e20edccd91db0da6",
+    "errors": {
+      "homogeneous_cap": {
+        "unmodified": 2.1371793224034263e-15,
+        "addit-corrected": 2.1371793224034263e-15
+      },
+      "layered": {
+        "unmodified": 7.127631818093505e-14,
+        "addit-corrected": 7.127631818093505e-14
+      },
+      "low_velocity": {
+        "unmodified": 0.4868066123377891,
+        "addit-corrected": 7.37188088351104e-14
+      }
+    }
+  },
+  "convention": "Incident upgoing P, x along horizontal propagation, Z positive up, exp(-i*omega*t). Real omega: no plane_land 0.001i attenuation.",
+  "production_dependency": false,
+  "limitations": "Matrix exponentials are only validated at moderate optical thickness. Telewavesim 0.2.1 returns zero transmission for one layer and its addit uses reverb instead of reverbi in four products. Unmodified multi-interface results are not an acceptance oracle; original and explicitly patched audit outputs are preserved. Its isotropic real-q routine cannot validate evanescent layers.",
+  "generator_hashes": {
+    "generate_receiver_reference.py": "8a1fa7fbed42105d9594feabdf68ce519217a7980c6a92513a30bd880f626727",
+    "receiver_state_reference.py": "968fff240b6be38317e728785c6418a3709dd5e163ba6f6acc0fe95737edd9ba",
+    "receiver_reference_driver.f90": "b72dec47e2f81ba96e60f960ae114fa7b3bc52dcabdc6a35b28e912da35da174"
+  },
+  "fixture_hashes": {
+    "evanescent-input.txt": "745f8b7253f48be5260b9e6996112532288ee1423a5fec2a108df114ec2aebd8",
+    "evanescent.txt": "4aa7ede161ad946725f9eb12d7f5f17b13eb273eb255b8b46a9e78ac546005ac",
+    "homogeneous_cap-input.txt": "da578469894b6275cbcbae51ae5dd923ef7c7341bb809abd6f344da8f5dfc460",
+    "homogeneous_cap.txt": "283d87542901f218c80f1dcbb8ef5bdf1e9556a423b8c680f4ff8d8a9c1f451e",
+    "layered-input.txt": "115ec9bbb4f7546f78b4e65b44f56b57d59fa9b8a940a708205153e46a4b39b0",
+    "layered.txt": "f6fdd775d73bd328d1121dd4f3e4809fe8a7ef6a8790abfd7dc7ed5b827514a3",
+    "low_velocity-input.txt": "9ccc9d69e49c90a9caa06bfaeae03b214a3ec0de9a321028cd086a829c4d758c",
+    "low_velocity.txt": "9faea48f2005b00c84657a5e3d377a4de5ae3f96382728760af5a58d619f1c54",
+    "telewavesim-audit/addit.patch": "717b74ebe9e5845ac4f40679812acf62389113ec4c60da19a167189ee04f4f0a",
+    "telewavesim-audit/homogeneous_cap-addit-corrected.txt": "7ed8f71b1ef75f5d10f843506462bb462b33babbbdd61a6a6bfc978ce756ff15",
+    "telewavesim-audit/homogeneous_cap-unmodified.txt": "7ed8f71b1ef75f5d10f843506462bb462b33babbbdd61a6a6bfc978ce756ff15",
+    "telewavesim-audit/layered-addit-corrected.txt": "68585f65977e7e0189586f7f175cd8c4ad5c3e242ab46f7395c7931c7fec1d2a",
+    "telewavesim-audit/layered-unmodified.txt": "68585f65977e7e0189586f7f175cd8c4ad5c3e242ab46f7395c7931c7fec1d2a",
+    "telewavesim-audit/low_velocity-addit-corrected.txt": "a38b6a0b928a7637f8cc6ce161142c3d03e8212ba766d91e146b9f3ed6c28a27",
+    "telewavesim-audit/low_velocity-unmodified.txt": "85acb748130ae48da1b0946cf6bb63232085e766e418e8b40515e895de0fbc96"
+  }
+}
