@@ -247,3 +247,15 @@ python scripts/build_rj_demo_page.py
 
 M7 后续已修复受俘获 Rayleigh 搜索域外采样污染；独立核查与后验重跑见
 [搜索域修复验收](docs/forward-domain-validation.md)。一般层状介质的无根性仍未认证。
+
+## Rayleigh 模态椭圆率（M8a）
+
+```bash
+build/dispweave ellipticity --config examples/ellipticity/layered.toml --output build/ellipticity.txt
+python scripts/plot_ellipticity.py build/ellipticity.txt --output build/ellipticity.png
+```
+
+输出地表无量纲 `|ur|/|uz|`，使用精细根收敛；**不是原始背景噪声 H/V**，
+不含旋转方向，不提供解析梯度。缺根、特征函数失败或近极点时返回 2，仍保存所有行。
+`examples/ellipticity/pole.toml` 提供故意含极点与零点的诊断示例。
+详见 [M8a 验收](docs/m8a-validation.md)。M8 的接收函数、组合目标和联合反演仍在开发中。

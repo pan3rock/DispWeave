@@ -1,7 +1,8 @@
 # DispWeave local changes to invLM
 
 Base commit: `86ad6fa5aaec3f44c6ddcac3d69b27a2f13c2e88`.
-All files except `src/dispersion.cpp` are copied without modification.
+The DispWeave local modifications described here affect `src/dispersion.cpp`
+and `include/dispersion.hpp`; other imported physics files are unchanged by these patches.
 `provenance.json` preserves both original and local file hashes.
 The original invLM working tree is unchanged.
 
@@ -49,3 +50,14 @@ interior sampling, root refinement, kernels and Love search are unchanged.
 Saved RJ regression models cover an unresolved fast cap and an independently
 bracketed near-cutoff trapped root, using Dunkin and fast-scalar backends.
 See `docs/forward-domain-validation.md` for the broader audit and chain replay.
+
+## M8a optional root refinement
+
+`Dispersion::search` now accepts absolute and relative refinement tolerances,
+with the existing defaults 1e-12 and 1e-14. The mode search, coarse brackets,
+ordering and deduplication are unchanged. TOMS748 error status is checked for
+Rayleigh as well as Love; a failed refinement is not an accepted phase.
+`InvLMForward(method, RootAccuracy::refined)` uses zero absolute tolerance and relative
+8*double_epsilon for modal ellipticity, whose ratio can amplify tiny phase errors.
+The default forward/inversion path retains its old tolerances. No kernel changes.
+See `docs/m8a-validation.md` for pole-side independent verification and limitations.

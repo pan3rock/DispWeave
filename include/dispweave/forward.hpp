@@ -42,12 +42,16 @@ public:
                                    SensitivityMethod=SensitivityMethod::none) const=0;
 };
 enum class SecularMethod { dunkin, fast_scalar };
+// Refined brackets use relative 8*epsilon and zero absolute tolerance.
+enum class RootAccuracy { standard, refined };
 class InvLMForward final : public Forward {
 public:
-    explicit InvLMForward(SecularMethod method=SecularMethod::dunkin):method_(method) {}
+    explicit InvLMForward(SecularMethod method=SecularMethod::dunkin,RootAccuracy accuracy=RootAccuracy::standard)
+        :method_(method),accuracy_(accuracy) {}
     ForwardResult evaluate(const LayeredModel&,const std::vector<DispersionQuery>&,
                            SensitivityMethod=SensitivityMethod::none) const override;
 private:
     SecularMethod method_;
+    RootAccuracy accuracy_;
 };
 }

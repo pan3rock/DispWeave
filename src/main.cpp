@@ -12,6 +12,9 @@ int main(int argc,char** argv) {
     command->add_option("--config",config)->required()->check(CLI::ExistingFile);
     command->add_option("--output",output)->required();
     command->add_option("--sensitivity",sensitivity)->check(CLI::IsMember({"none","energy","implicit"}));
+    auto ellipticity=app.add_subcommand("ellipticity","Evaluate modal Rayleigh surface displacement ratios; not ambient H/V");
+    ellipticity->add_option("--config",config)->required()->check(CLI::ExistingFile);
+    ellipticity->add_option("--output",output)->required();
     std::string inv_config,inv_output,data,covariance;
     auto synthetic=app.add_subcommand("synthetic","Generate data and run multistart fixed-layer LM");
     auto invert=app.add_subcommand("invert","Invert observed phase velocities using fixed-layer LM");
@@ -54,6 +57,13 @@ int main(int argc,char** argv) {
         if(std::filesystem::weakly_canonical(config)==std::filesystem::weakly_canonical(output))
             throw std::invalid_argument("Output must not overwrite input configuration");
         const auto c=dw::read_forward_config(config);
+        if(*ellipticity) {
+            const auto rows=dw::rayleigh_ellipticity(c.model,c.queries);
+            dw::write_ellipticity_result(output,c,rows);
+            size_t invalid=0;for(const auto& row:rows) invalid+=row.status!=dw::EllipticityStatus::valid;
+            std::cout<<"ellipticity_rows="<<rows.size()<<" invalid="<<invalid<<" output="<<output<<'\n';
+            return invalid?2:0;
+        }
         const auto method=sensitivity=="none"?dw::SensitivityMethod::none:(sensitivity=="energy"?dw::SensitivityMethod::energy:dw::SensitivityMethod::implicit);
         const auto r=dw::InvLMForward().evaluate(c.model,c.queries,method);
         dw::write_forward_result(output,c,r);

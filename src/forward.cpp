@@ -51,7 +51,10 @@ ForwardResult InvLMForward::evaluate(const LayeredModel& m,const std::vector<Dis
                     *(1/static_cast<long double>(m.vs[layer])+1/static_cast<long double>(m.vp[layer]));
             if(!std::isfinite(sample_bound) || sample_bound>INT_MAX-2)
                 throw std::runtime_error("Frequency/thickness scale exceeds backend sample-count range");
-            roots=dispersion.search(frequency,wanted); // Never search_mode: it may synthesize a fallback.
+            // Same root enumeration and brackets; only refinement tolerance changes.
+            roots=accuracy_==RootAccuracy::refined
+                ?dispersion.search(frequency,wanted,0.,8*std::numeric_limits<double>::epsilon())
+                :dispersion.search(frequency,wanted); // Never synthesize a fallback.
             issue=dispersion.search_diagnostics().numerical_issue;
             for(size_t i=0;i<roots.size();++i)
                 if(!std::isfinite(roots[i]) || roots[i]<=0 || roots[i]>=m.vs.tail(1)[0] || (i && roots[i]<=roots[i-1])) issue=true;

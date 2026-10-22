@@ -3,11 +3,11 @@
   "commit": "86ad6fa5aaec3f44c6ddcac3d69b27a2f13c2e88",
   "modified": true,
   "sha256": {
-    "src/dispersion.cpp": "fbab677b19d5dc70e805823f360fc95aa683f8c295a2751c5dae3daaa697b0ca",
+    "src/dispersion.cpp": "887a9d40476df08c68f8041af7b5000af200219b1df8dca122e2e1a7340cc838",
     "src/secfunc.cpp": "e97b53c3ada9a7708c49b1e3a5faed43a6f66da308d417b762d5ed19ea55ac26",
     "src/secfunc_fast_scalar.cpp": "7edb594fca6e9c231888d9e3d03f31344bbfc9b43717076ef5421b200840def9",
     "src/toms748.cpp": "d79a6720a831fab8429b21f3aac3fb943e17a211404319f86f35fe059abb4fbf",
-    "include/dispersion.hpp": "01ddca0eaa3f2b39f292cf999abbd9063577ddac1bd5ca0ed99c798f3920f9a9",
+    "include/dispersion.hpp": "ed08127a6ab30dbfaf3fb0b5260ed46f1c1834a7ddd50fa235e709436be2401e",
     "include/secfunc.hpp": "9aef0a63c7741bdd06a79276d5ad8ec4ecf0b5045c98a217c4809d84ca5078ea",
     "include/secfunc_fast_scalar.hpp": "e66cc093145e7e01e6d90e7724e858601934b5d165a31e6ef2e4a795cf6c8611",
     "include/toms748.h": "ab9d8065a244984ab00a8bb7ffbfbc0bded1fb1fee1e2b61601ae10203396e1a",

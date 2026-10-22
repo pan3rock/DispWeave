@@ -50,4 +50,22 @@ void write_forward_result(const std::filesystem::path& path,const ForwardConfig&
     }
     f.close();
 }
+void write_ellipticity_result(const std::filesystem::path& path,const ForwardConfig& c,const std::vector<EllipticityRow>& rows) {
+    if(rows.size()!=c.queries.size()) throw std::invalid_argument("Ellipticity output dimensions disagree");
+    std::ofstream f(path);if(!f) throw std::runtime_error("Cannot write "+path.string());
+    f.exceptions(std::ios::badbit|std::ios::failbit);f<<std::setprecision(17);
+    f<<"# DispWeave "<<DW_VERSION<<"; invLM "<<DW_INVLM_COMMIT
+     <<"\n# observable=rayleigh_modal_ellipticity; |ur(surface)|/|uz(surface)|; dimensionless; NOT ambient-noise H/V"
+     <<"\n# root refinement: atol=0, rtol=8*double_epsilon; near_pole: |uz| <= 1e-7 * max(|ur|,|uz|); no analytic gradient"
+     <<"\n# row frequency_hz mode phase_km_s root_status ellipticity ellipticity_status energy_residual stabilized message roots_found root_message\n";
+    for(Eigen::Index i=0;i<c.model.vs.size();++i)
+        f<<"# model depth_km vs_km_s vp_km_s rho_g_cm3: "<<c.model.depth[i]<<' '<<c.model.vs[i]<<' '<<c.model.vp[i]<<' '<<c.model.rho[i]<<'\n';
+    for(size_t i=0;i<rows.size();++i) {
+        const auto& r=rows[i];f<<i<<' '<<c.queries[i].frequency_hz<<' '<<c.queries[i].mode<<' '
+            <<r.root.phase_velocity<<' '<<to_string(r.root.status)<<' '<<r.ratio<<' '<<to_string(r.status)<<' '
+            <<r.energy_residual<<' '<<r.stabilized<<' '<<std::quoted(r.message)<<' '<<r.root.roots_found<<' '<<std::quoted(r.root.message)<<'\n';
+    }
+    f.close();
+}
+
 }

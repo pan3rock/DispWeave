@@ -20,7 +20,8 @@ public:
              DispMethod method = DispMethod::DUNKIN);
   ~Dispersion();
 
-  std::vector<double> search(double f, int num_mode) const;
+  std::vector<double> search(double f, int num_mode, double absolute_tolerance=1e-12,
+                             double relative_tolerance=1e-14) const;
   double search_mode(double f, int mode, bool* from_fallback = nullptr) const;
   bool search_mode_near(double f, int mode, double guess, double& root) const;
   RootSearchDiagnostics search_diagnostics() const { return search_diagnostics_; }

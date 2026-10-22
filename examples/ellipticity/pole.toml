@@ -1,0 +1,9 @@
+# Deliberate pole: exit code 2, preserving all requested rows and phase roots.
+[model]
+depth = [0.0, 0.1]
+vs = [0.4, 2.5]
+vp = [0.8, 4.5]
+rho = [2.0, 2.5]
+[queries]
+frequency_hz = [1.0174, 1.0175858928204988, 1.0178, 1.8137044387655514]
+mode = [0, 0, 0, 0]

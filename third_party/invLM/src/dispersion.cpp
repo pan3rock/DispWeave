@@ -298,7 +298,7 @@ std::vector<std::pair<double,double>> Dispersion::certify_love_intervals(
   return certified;
 }
 
-std::vector<double> Dispersion::search(double f, int num_mode) const {
+std::vector<double> Dispersion::search(double f, int num_mode, double absolute_tolerance, double relative_tolerance) const {
   search_diagnostics_ = {};
   auto func = [&](double c) { return evaluate_secular(f, c); };
   auto find_intv = find_coarse_intv(f, num_mode);
@@ -310,8 +310,9 @@ std::vector<double> Dispersion::search(double f, int num_mode) const {
     double c1 = it->first;
     double c2 = it->second;
     Toms748ResultStatus status{};
-    double root = c1 == c2 ? c1 : toms748(func, c1, c2, sh_ ? &status : nullptr, 1e-12, 1e-14, 100, 2);
-    if(sh_ && (status.errorCode!=TOMS748_NO_ERROR || !std::isfinite(root)
+    double root = c1 == c2 ? c1 : toms748(func, c1, c2, &status, absolute_tolerance, relative_tolerance, 100, 2);
+    if(status.errorCode!=TOMS748_NO_ERROR) {search_diagnostics_.numerical_issue=true;return {};}
+    if(sh_ && (!std::isfinite(root)
         || (!find.empty() && root<=find.back()))) {
       // Counted intervals each own a different mode. Never merge a close pair
       // using the legacy 1e-7 dedup threshold and silently renumber later roots.
