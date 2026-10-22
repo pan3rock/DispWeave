@@ -204,6 +204,9 @@ int run_hmc(const std::filesystem::path& config_path,const std::filesystem::path
     options.step_jitter=toml::find_or<double>(cfg,"step_jitter",options.step_jitter);
     options.target_accept=toml::find_or<double>(cfg,"target_accept",options.target_accept);
     options.adapt_step_size=toml::find_or<bool>(cfg,"adapt_step_size",options.adapt_step_size);
+    const auto adaptation_name=toml::find_or<std::string>(cfg,"metric_adaptation","none");
+    if(adaptation_name!="none" && adaptation_name!="diagonal" && adaptation_name!="dense") throw std::invalid_argument("Unknown metric adaptation");
+    options.metric_adaptation=adaptation_name=="none"?MetricAdaptation::none:(adaptation_name=="diagonal"?MetricAdaptation::diagonal:MetricAdaptation::dense);
     options.divergence_threshold=toml::find_or<double>(cfg,"divergence_threshold",options.divergence_threshold);
     const auto seed=toml::find_or<std::int64_t>(cfg,"seed",2026);
     if(seed<0) throw std::invalid_argument("HMC seed must be nonnegative");
@@ -227,6 +230,10 @@ int run_hmc(const std::filesystem::path& config_path,const std::filesystem::path
     for(size_t chain=0;chain<initial.size();++chain) {
         options.chain_id=chain;
         const auto r=sample_hmc(target,initial[chain],metric,options);
+        auto final_mass=output_file(output/("chain_"+std::to_string(chain)+"_mass.txt"));final_mass<<r.mass<<'\n';
+        auto updates=output_file(output/("chain_"+std::to_string(chain)+"_metric_updates.txt"));
+        updates<<"# each block: warmup_iteration samples; then mass matrix\n";
+        for(const auto& u:r.metric_updates) updates<<"# "<<u.warmup_iteration<<' '<<u.samples<<'\n'<<u.mass<<'\n';
         auto samples=output_file(output/("chain_"+std::to_string(chain)+"_vs.txt"));
         auto positions=output_file(output/("chain_"+std::to_string(chain)+"_z.txt"));
         samples<<"# Vs km/s; one retained state per row, layer order; excludes warmup\n";
@@ -250,7 +257,7 @@ int run_hmc(const std::filesystem::path& config_path,const std::filesystem::path
             <<"\ninitial_step_size="<<options.step_size<<"\nstep_jitter="<<options.step_jitter
             <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept
             <<"\ndivergence_threshold="<<options.divergence_threshold
-            <<"\nprior="<<prior_name<<"\nsensitivity="<<method_name
+            <<"\nmetric_adaptation="<<adaptation_name<<"\nprior="<<prior_name<<"\nsensitivity="<<method_name
             <<"\nparameterization=fixed layer tops/rho; log Vs; logistic box\nposterior=conditional on supplied parameterization\n"
             <<"mass_convention=momentum covariance in z coordinates\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';

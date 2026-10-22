@@ -7,7 +7,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M6a：多链诊断与后验预测，M6 整体进行中。**
+**M6b：预热质量矩阵适应，M6 整体进行中。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -16,7 +16,7 @@ Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、
 LM 自适应分层暂缓。
 固定层数不等于固定层厚：当前固定层厚，若以后反演层厚，须先验证相应参数化和导数。
 已移除候选模型的 AIC/BIC、验证评分及排名实验。M6a 已补齐 ESS/R-hat、相关性和后验预测；
-NUTS、质量矩阵适应与 RJMCMC 尚未实现。
+M6b 已增加对角/稠密质量矩阵适应；NUTS 与 RJMCMC 尚未实现。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -124,9 +124,13 @@ python scripts/plot_hmc.py results/hmc
 当前固定层顶与密度，支持固定 Vp 或固定 Vp/Vs。质量矩阵是无约束坐标中**动量的协方差**。
 输出包含每条链样本、预热标记、接受率、能量异常和根/梯度失败；无效初值返回 1，
 正式采样出现异常或零接受返回 5。返回 0 不表示已经证明收敛。
-后验条件于给定参数化，不包含层数不确定性；ESS/R-hat 与后验预测已在 M6a 接入；NUTS 和质量矩阵适应仍待后续子项。
+后验条件于给定参数化，不包含层数不确定性；ESS/R-hat 与后验预测已在 M6a 接入；质量矩阵适应已在 M6b 接入；NUTS 仍待后续子项。
 数学定义、解析测试、独立 MCMCLib 对照与限制见 [M5 验收](docs/m5-validation.md)。
 生产构建不依赖 MCMCLib 或其他采样框架。
+
+`[hmc].metric_adaptation` 可选 `none`（默认）、`diagonal`、`dense`。
+适应仅发生在预热窗口，正式采样冻结质量矩阵和 nominal step。
+示例见 `examples/hmc-adaptive/synthetic.toml`，算法和效率对照见 [M6b 验收](docs/m6b-validation.md)。
 
 ## 多链诊断与后验预测
 
@@ -166,6 +170,7 @@ python scripts/run_resolution_example.py --output results/m4a
 
 ## 文档
 
+- [M6b 验收结果](docs/m6b-validation.md)
 - [M6a 验收结果](docs/m6a-validation.md)
 - [M5 验收结果](docs/m5-validation.md)
 - [M4d 验收结果](docs/m4d-validation.md)

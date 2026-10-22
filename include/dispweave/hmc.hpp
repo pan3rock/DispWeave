@@ -33,6 +33,7 @@ public:
     Eigen::VectorXd velocity(const Eigen::VectorXd& p) const;
     Eigen::VectorXd momentum(std::mt19937_64&) const;
     double kinetic(const Eigen::VectorXd& p) const;
+    Eigen::MatrixXd mass() const {return cholesky_*cholesky_.transpose();}
     Eigen::Index size() const {return cholesky_.rows();}
 private:
     Eigen::MatrixXd cholesky_;
@@ -45,11 +46,14 @@ struct IntegrationResult {
 };
 // Signed step supports reversibility checks. No clipping, reflection or root-search AD.
 IntegrationResult leapfrog(const LogDensity&,HamiltonianState,const EuclideanMetric&,double step,int steps);
+enum class MetricAdaptation { none,diagonal,dense };
+struct MetricUpdate { int warmup_iteration,samples; Eigen::MatrixXd mass; };
 struct HMCOptions {
     int warmup=500,draws=1000,leapfrog_steps=10;
     double step_size=.1,target_accept=.8,divergence_threshold=1000;
     double step_jitter=.1; // State-independent uniform multiplicative jitter in [1-j,1+j].
     bool adapt_step_size=true;
+    MetricAdaptation metric_adaptation=MetricAdaptation::none;
     std::uint64_t seed=2026,chain_id=0;
 };
 struct HMCTransition {
@@ -62,6 +66,8 @@ struct HMCResult {
     Eigen::MatrixXd draws; // Retains repeated states on rejection; no thinning.
     std::vector<HMCTransition> transitions; // Includes warmup, explicitly marked.
     double step_size;
+    Eigen::MatrixXd mass; // Final frozen momentum covariance.
+    std::vector<MetricUpdate> metric_updates;
 };
 HMCResult sample_hmc(const LogDensity&,const Eigen::VectorXd& initial,const EuclideanMetric&,const HMCOptions& = {});
 }

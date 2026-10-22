@@ -1,4 +1,5 @@
 #include "dispweave/hmc.hpp"
+#include "../src/sampler_adaptation.hpp"
 #include <Eigen/Cholesky>
 #include <iostream>
 #include <stdexcept>
@@ -83,6 +84,40 @@ int main(int argc,char** argv) {try {
             for(int k=0;k<2;++k) {moment(x.col(k),0);moment(x.col(k).array().square().matrix(),kind==2 && k==1?1.5:1.);}
             moment((x.col(0).array()*x.col(1).array()).matrix(),0); std::cout<<'\n';
         }
+    } else if(test=="adaptation") {
+        const auto windows=dw::detail::warmup_windows(1000);
+        check(windows.front().begin==75 && windows.back().end==950,"warmup fast buffers");
+        for(size_t i=1;i<windows.size();++i) check(windows[i].begin==windows[i-1].end,"contiguous covariance windows");
+        dw::detail::CovarianceAccumulator accumulator(2);
+        for(auto x:{v({1,2}),v({3,4}),v({5,8})}) accumulator.add(x);
+        MatrixXd points(3,2);points<<1,2,3,4,5,8;
+        points.rowwise()-=points.colwise().mean().eval();
+        MatrixXd covariance=3./8.*points.transpose()*points/2;
+        covariance.diagonal().array()+=5./8.*1e-3;
+        check((accumulator.mass(dw::MetricAdaptation::dense)*covariance-identity).norm()<1e-11,"Welford covariance and mass orientation");
+        for(int kind=0;kind<2;++kind) for(auto seed:{17,2026,99173}) {
+            MatrixXd cov=MatrixXd::Zero(2,2);cov.diagonal()=v({.01,100});
+            if(kind==1) {MatrixXd rotation(2,2);rotation<<.8,-.6,.6,.8;cov=(rotation*cov*rotation.transpose()).eval();}
+            const MatrixXd precision=cov.llt().solve(identity);
+            dw::HMCOptions o;o.seed=seed;o.warmup=2000;o.draws=12000;o.leapfrog_steps=7;o.target_accept=.95;
+            o.metric_adaptation=kind==0?dw::MetricAdaptation::diagonal:dw::MetricAdaptation::dense;
+            const auto r=dw::sample_hmc(gaussian(precision),v({0,0}),metric,o);
+            check(!r.metric_updates.empty() && r.metric_updates.back().warmup_iteration==1950,"metric frozen before final buffer");
+            check(r.mass.isApprox(r.metric_updates.back().mass,1e-12),"final mass frozen");
+            int divergent=0;for(auto t:r.transitions) if(!t.warmup) divergent+=t.divergent;
+            check(divergent==0,"adapted Gaussian divergences");
+            MatrixXd x=cov.llt().matrixL().solve(r.draws.transpose()).transpose();
+            std::cout<<"adapt kind="<<kind<<" seed="<<seed<<" step="<<r.step_size;
+            for(int k=0;k<2;++k) {moment(x.col(k),0);moment(x.col(k).array().square().matrix(),1);}
+            moment((x.col(0).array()*x.col(1).array()).matrix(),0);std::cout<<'\n';
+        }
+        dw::HMCOptions short_run;short_run.warmup=200;short_run.draws=20;short_run.metric_adaptation=dw::MetricAdaptation::diagonal;
+        const auto first=dw::sample_hmc(target,v({0,0}),metric,short_run);
+        short_run.draws=40;const auto second=dw::sample_hmc(target,v({0,0}),metric,short_run);
+        check(first.mass==second.mass && first.draws==second.draws.topRows(20),"draw budget cannot change warmup or mass");
+        short_run.warmup=10;bool rejected=false;
+        try {dw::sample_hmc(target,v({0,0}),metric,short_run);} catch(const std::invalid_argument&) {rejected=true;}
+        check(rejected,"too short metric adaptation rejected");
     } else if(test=="physical") {
         // Independent homogeneous Rayleigh cubic, not an invLM golden value.
         const double beta=1/(1.8*1.8);

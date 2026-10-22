@@ -50,6 +50,14 @@ with tempfile.TemporaryDirectory() as tmp:
     assert [(int(r[1]), int(r[2])) for r in selection] == [(c, j*10) for c in range(3) for j in range(8)]
     run('predict', '--run', a, '--output', work / 'predictive-a', codes=(1,))
     run('predict', '--run', a, '--output', work / 'too-many', '--draws-per-chain', 81, codes=(1,))
+    adaptive = work / 'adaptive.toml'
+    adaptive.write_text(content.replace('prior = "uniform_vs"', 'prior = "uniform_vs"\nmetric_adaptation = "diagonal"'))
+    sample(work / 'adaptive', cfg=adaptive)
+    for chain in range(3):
+        mass = [list(map(float, row.split())) for row in (work / f'adaptive/chain_{chain}_mass.txt').read_text().splitlines()]
+        assert len(mass) == 3 and all(mass[i][i] > 0 for i in range(3))
+        assert all(mass[i][j] == 0 for i in range(3) for j in range(3) if i != j)
+        assert '# 90 75' in (work / f'adaptive/chain_{chain}_metric_updates.txt').read_text()
     sample(a, codes=(1,))
     invalid = work / 'invalid.toml'
     invalid.write_text(content.replace('[1.1, 1.8, 2.8]', '[0.7, 1.8, 2.8]'))

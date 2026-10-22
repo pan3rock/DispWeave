@@ -1,4 +1,5 @@
 #include "dispweave/hmc.hpp"
+#include "sampler_adaptation.hpp"
 #include <Eigen/Cholesky>
 #include <algorithm>
 #include <limits>
@@ -95,20 +96,26 @@ IntegrationResult leapfrog(const LogDensity& target,HamiltonianState state,const
     }
     return r;
 }
-HMCResult sample_hmc(const LogDensity& target,const Eigen::VectorXd& initial,const EuclideanMetric& metric,const HMCOptions& o) {
+HMCResult sample_hmc(const LogDensity& target,const Eigen::VectorXd& initial,const EuclideanMetric& initial_metric,const HMCOptions& o) {
     if(o.warmup<0 || o.draws<1 || o.warmup>std::numeric_limits<int>::max()-o.draws || o.leapfrog_steps<1
        || !std::isfinite(o.step_size) || o.step_size<=0 || !std::isfinite(o.target_accept) || o.target_accept<=0 || o.target_accept>=1
        || !std::isfinite(o.step_jitter) || o.step_jitter<0 || o.step_jitter>=1
-       || !std::isfinite(o.divergence_threshold) || o.divergence_threshold<=0 || initial.size()!=metric.size())
+       || !std::isfinite(o.divergence_threshold) || o.divergence_threshold<=0 || initial.size()!=initial_metric.size())
         throw std::invalid_argument("Invalid HMC options or dimensions");
+    EuclideanMetric metric=initial_metric;
+    const bool adapt_metric=o.metric_adaptation!=MetricAdaptation::none;
+    if(adapt_metric && !o.adapt_step_size) throw std::invalid_argument("Metric adaptation requires step adaptation");
+    const auto windows=adapt_metric?detail::warmup_windows(o.warmup):std::vector<detail::WarmupWindow>{};
+    size_t window=0;
+    detail::CovarianceAccumulator covariance(initial.size());
     auto current=evaluate(target,initial);
     if(!valid(current,initial.size())) throw std::invalid_argument("Invalid initial HMC density or gradient");
     // Explicit per-chain seed material; no shared/global engine or scheduling dependence.
     std::seed_seq seeds{std::uint32_t(o.seed),std::uint32_t(o.seed>>32),std::uint32_t(o.chain_id),std::uint32_t(o.chain_id>>32)};
     std::mt19937_64 rng(seeds); std::uniform_real_distribution<double> uniform(0,1);
     Eigen::VectorXd q=initial; HMCResult out; out.draws.resize(o.draws,q.size());
-    double step=o.step_size, average=std::log(step), hbar=0;
-    const double mu=std::log(10.)+std::log(step);
+    double step=o.step_size;
+    detail::DualAveraging adaptation(step,o.target_accept);
     for(int i=0;i<o.warmup+o.draws;++i) {
         const auto p=metric.momentum(rng); const double initial_energy=-current.value+metric.kinetic(p);
         const double used_step=step*(1+o.step_jitter*(2*uniform(rng)-1));
@@ -124,16 +131,23 @@ HMCResult sample_hmc(const LogDensity& target,const Eigen::VectorXd& initial,con
         out.transitions.push_back({i<o.warmup,accepted,divergent,used_step,probability,error,proposal.status,proposal.evaluations});
         if(accepted) {q=std::move(proposal.state.position); current=std::move(proposal.state.density);}
         if(i<o.warmup && o.adapt_step_size) {
-            const double t=i+1.,eta=1/(t+10.);
-            hbar=(1-eta)*hbar+eta*(o.target_accept-probability);
-            const double log_step=mu-std::sqrt(t)*hbar/.05;
-            const double weight=std::pow(t,-.75);
-            average=weight*log_step+(1-weight)*average;
-            step=std::exp(i+1==o.warmup?average:log_step);
-            if(!std::isfinite(step) || step<=0) throw std::runtime_error("HMC step adaptation overflow/underflow");
+            step=adaptation.update(probability,i+1==o.warmup);
+            if(window<windows.size() && i>=windows[window].begin) {
+                covariance.add(q);
+                if(i+1==windows[window].end) {
+                    const auto mass=covariance.mass(o.metric_adaptation);
+                    metric=EuclideanMetric(mass);
+                    out.metric_updates.push_back({i+1,covariance.count(),mass});
+                    covariance=detail::CovarianceAccumulator(initial.size());
+                    ++window;
+                    // Restart dual averaging after each metric update; final fast
+                    // buffer tunes the new metric before sampling freezes it.
+                    adaptation=detail::DualAveraging(step,o.target_accept);
+                }
+            }
         }
         if(i>=o.warmup) out.draws.row(i-o.warmup)=q.transpose();
     }
-    out.step_size=step; return out;
+    out.step_size=step;out.mass=metric.mass();return out;
 }
 }
