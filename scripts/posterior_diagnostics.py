@@ -127,6 +127,13 @@ def main():
                             divergences=int(np.sum(retained[:, columns.index('divergent')].astype(int))),
                             invalid_evaluations=int(np.sum(retained[:, columns.index('status')] != 'valid')),
                             mean_acceptance_probability=float(retained[:, columns.index('acceptance_probability')].astype(float).mean())))
+        if 'max_depth_reached' in columns:
+            sampler[-1].update(
+                max_depth_reached=int(retained[:, columns.index('max_depth_reached')].astype(int).sum()),
+                maximum_tree_depth=int(retained[:, columns.index('depth')].astype(int).max()),
+                mean_tree_depth=float(retained[:, columns.index('depth')].astype(int).mean()))
+        if 'evaluations' in columns:
+            sampler[-1]['gradient_evaluations'] = int(retained[:, columns.index('evaluations')].astype(int).sum())
     output = dict(sampler=sampler, chains=[p.name for p in paths], draws_per_chain=draws.shape[1], parameters=summaries,
                   correlation=np.atleast_2d(correlation).tolist(),
                   interpretation='Conditional on supplied parameterization. No flag is not proof of convergence or global mixing.')

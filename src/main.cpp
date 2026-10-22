@@ -28,16 +28,20 @@ int main(int argc,char** argv) {
     predictive->add_option("--draws-per-chain",predictive_draws)->check(CLI::PositiveNumber);
     predictive->add_option("--seed",predictive_seed);
     auto hmc=app.add_subcommand("hmc","Sample fixed-layer Vs posterior with static HMC");
-    hmc->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
-    hmc->add_option("--output",inv_output)->required();
-    hmc->add_option("--data",data)->required()->check(CLI::ExistingFile);
-    hmc->add_option("--covariance",covariance)->check(CLI::ExistingFile);
+    auto nuts=app.add_subcommand("nuts","Sample fixed-layer Vs posterior with slice NUTS");
+    for(auto* cmd:{hmc,nuts}) {
+        cmd->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
+        cmd->add_option("--output",inv_output)->required();
+        cmd->add_option("--data",data)->required()->check(CLI::ExistingFile);
+        cmd->add_option("--covariance",covariance)->check(CLI::ExistingFile);
+    }
     auto resolution=app.add_subcommand("resolution","Local scaled sensitivity and ridge resolution at a reference model");
     resolution->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
     resolution->add_option("--output",inv_output)->required();
     CLI11_PARSE(app,argc,argv);
     try {
         if(*predictive) return dw::run_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
+        if(*nuts) return dw::run_nuts(inv_config,inv_output,data,covariance);
         if(*hmc) return dw::run_hmc(inv_config,inv_output,data,covariance);
         if(*resolution) return dw::run_resolution(inv_config,inv_output);
         if(*synthetic || *invert) return dw::run_inversion(inv_config,inv_output,static_cast<bool>(*synthetic),data,covariance);
