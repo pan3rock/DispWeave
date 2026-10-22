@@ -3,7 +3,7 @@
   "commit": "86ad6fa5aaec3f44c6ddcac3d69b27a2f13c2e88",
   "modified": true,
   "sha256": {
-    "src/dispersion.cpp": "9fbe449f5f829cb00fc82d325aba8d6649fb3ecf318fab7f1027077832a0136e",
+    "src/dispersion.cpp": "fbab677b19d5dc70e805823f360fc95aa683f8c295a2751c5dae3daaa697b0ca",
     "src/secfunc.cpp": "e97b53c3ada9a7708c49b1e3a5faed43a6f66da308d417b762d5ed19ea55ac26",
     "src/secfunc_fast_scalar.cpp": "7edb594fca6e9c231888d9e3d03f31344bbfc9b43717076ef5421b200840def9",
     "src/toms748.cpp": "d79a6720a831fab8429b21f3aac3fb943e17a211404319f86f35fe059abb4fbf",

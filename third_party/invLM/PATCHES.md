@@ -33,3 +33,19 @@ The original `dispersion_kernel.cpp`, `dunkin_derivative.cpp`, their headers and
 `model.hpp` are now imported from the same base commit without modifications.
 Validation and separate root/gradient status handling live in DispWeave adapters.
 No upstream kernel tolerance or root algorithm was changed in M2.
+
+## Trapped Rayleigh search domain (2026-10-22)
+
+For a fast surface layer over a slower halfspace, the surface-layer Newton
+estimate and the samples around minimum Vs can lie at or above halfspace Vs.
+The upstream real secular continuation can then produce candidates outside
+its trapped-wave domain. The DispWeave adapter rejected these candidates,
+but they could contaminate a search that also requested higher modes.
+
+Rayleigh sampling now removes nonfinite/nonpositive points and points at or
+above halfspace Vs before secular evaluation. This is a domain restriction,
+not an absence certificate or a substitute phase velocity. The lower bracket,
+interior sampling, root refinement, kernels and Love search are unchanged.
+Saved RJ regression models cover an unresolved fast cap and an independently
+bracketed near-cutoff trapped root, using Dunkin and fast-scalar backends.
+See `docs/forward-domain-validation.md` for the broader audit and chain replay.

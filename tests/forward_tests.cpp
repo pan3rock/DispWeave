@@ -120,8 +120,34 @@ void numerical() {
     check(r.rows[2].status==dw::RootStatus::numerical_failure,"Upstream sampling-cap diagnostic");
     check(std::isnan(r.rows[0].phase_velocity)&&std::isnan(r.rows[2].phase_velocity),"Failure cannot return a phase");
 }
+// Saved RJ failures: a fast cap above a slow halfspace, and a near-cutoff
+// trapped root. Absence is deliberately not certified by this regression.
+void trapped_domain() {
+    dw::LayeredModel cap{v({0,3.5846558879346531}),v({1.8,1.0219876911644241}),
+        v({3.24,1.8*1.0219876911644241}),v({2.3,2.3})};
+    for(auto method:{dw::SecularMethod::dunkin,dw::SecularMethod::fast_scalar}) {
+        dw::InvLMForward backend(method);
+        for(double f:{.15,.2,.3,.4,.6,.9}) {
+            auto r=backend.evaluate(cap,modes(f,3));
+            for(const auto& row:r.rows) {
+                check(row.status==dw::RootStatus::missing_or_unresolved,"Out-of-domain candidate contaminated search");
+                check(row.roots_found==0 && std::isnan(row.phase_velocity),"Spurious trapped root");
+            }
+        }
+        dw::LayeredModel near_cutoff{v({0,.48868227440428891,1.6165500687171335}),
+            v({1.7715572106514081,1.4904606532961371,1.1436030468024461}),v({1,1,1}),v({2.3,2.3,2.3})};
+        near_cutoff.vp=1.8*near_cutoff.vs;
+        const double independent=reference_root(near_cutoff,.15,1.14343,1.14344);
+        const auto one=backend.evaluate(near_cutoff,modes(.15,1));
+        const auto many=backend.evaluate(near_cutoff,modes(.15,4));
+        near(one.rows[0].phase_velocity,independent,2e-9);
+        near(many.rows[0].phase_velocity,independent,2e-9);
+        for(size_t i=1;i<many.rows.size();++i)
+            check(many.rows[i].status==dw::RootStatus::missing_or_unresolved,"Unresolved overtone fabricated");
+    }
+}
 int main(int argc,char** argv) {
-    const std::map<std::string,std::function<void()>> tests={{"validation",validation},{"halfspace",halfspace},{"golden",golden},{"independent",independent},{"scenarios",scenarios},{"ordering",ordering},{"subdivision",subdivision},{"cutoff",cutoff},{"numerical",numerical}};
+    const std::map<std::string,std::function<void()>> tests={{"validation",validation},{"halfspace",halfspace},{"golden",golden},{"independent",independent},{"scenarios",scenarios},{"ordering",ordering},{"subdivision",subdivision},{"cutoff",cutoff},{"numerical",numerical},{"trapped_domain",trapped_domain}};
     try { if(argc!=2 || !tests.count(argv[1])) throw std::invalid_argument("Choose test name"); tests.at(argv[1])(); std::cout<<"PASS "<<argv[1]<<'\n'; return 0; }
     catch(const std::exception& e) {std::cerr<<"FAIL: "<<e.what()<<'\n'; return 1;}
 }

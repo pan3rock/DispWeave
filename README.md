@@ -244,3 +244,6 @@ python scripts/build_rj_demo_page.py
 ```
 
 直接打开 `web/m7-demo/dist/index.html`。页面内嵌全部图表，不需要服务器或发布。
+
+M7 后续已修复受俘获 Rayleigh 搜索域外采样污染；独立核查与后验重跑见
+[搜索域修复验收](docs/forward-domain-validation.md)。一般层状介质的无根性仍未认证。

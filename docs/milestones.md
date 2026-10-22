@@ -143,6 +143,9 @@ M7c（频散集成与跨维结果）分项提交。完整定义见 [M7 设计](m
 M7a 已完成，见 [验收记录](m7a-validation.md)；M7b 已完成，见 [验收记录](m7b-validation.md)。
 M7c 已完成，见 [验收记录与物理限制](m7c-validation.md)。M7 整体完成，版本 0.9.0。
 
+M7 后续修复：已完成受俘获 Rayleigh 搜索域检查与长链对照，
+见 [修复验收](forward-domain-validation.md)，不作为 M8 或新增算法里程碑。
+
 对应 Phase 4。定义层数先验、界面/物性先验、最小层厚及深度支持域，
 实现 birth/death、界面移动和固定维度更新。
 

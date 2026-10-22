@@ -1,4 +1,4 @@
-// DispWeave modification (2026-10-21): bracket auxetic solid Rayleigh roots.
+// DispWeave modifications: auxetic Rayleigh brackets and trapped-wave search domain.
 // See third_party/invLM/PATCHES.md; remaining implementation is from invLM.
 #include "dispersion.hpp"
 #include "secfunc.hpp"
@@ -184,6 +184,13 @@ const std::vector<double>& Dispersion::get_samples(double f) const {
 
   if (!sh_) {
     insert_sorted(fine, rayv_);
+    // Trapped Rayleigh waves require decaying S waves in the halfspace.
+    // The top-layer estimate and Vs-neighbour samples can exceed this limit
+    // in velocity inversions. Do not evaluate their real secular continuation
+    // and mistake a root outside the trapped-wave domain for a physical mode.
+    fine.erase(std::remove_if(fine.begin(), fine.end(), [&](double c) {
+      return !std::isfinite(c) || c <= 0 || c >= vs_hf_;
+    }), fine.end());
   }
 
   return fine;
