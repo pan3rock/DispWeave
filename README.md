@@ -16,8 +16,9 @@ Phase 1 最小可运行版本已完成；新增参考模型处的灵敏度谱、
 LM 自适应分层暂缓。
 固定层数不等于固定层厚：当前固定层厚，若以后反演层厚，须先验证相应参数化和导数。
 已移除候选模型的 AIC/BIC、验证评分及排名实验。M6a 已补齐 ESS/R-hat、相关性和后验预测；
-M6b 已增加对角/稠密质量矩阵适应；M6c 已接入 slice NUTS，RJMCMC 尚未实现。
-M7a 已完成跨维状态、归一化先验和可逆增删层提议；独立 RJMCMC 采样器与频散集成仍在后续子项。
+M6b 已增加对角/稠密质量矩阵适应；M6c 已接入 slice NUTS。
+M7a/M7b 已完成跨维状态、归一化先验、可逆增删层提议及独立 RJMCMC 核心；
+解析跨维验证已通过，频散 CLI 和结果分析仍待 M7c。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -195,6 +196,7 @@ python scripts/run_resolution_example.py --output results/m4a
 
 - [M7 设计](docs/m7-design.md)
 - [M7a 验收结果](docs/m7a-validation.md)
+- [M7b 验收结果](docs/m7b-validation.md)
 
 - [M6c 验收记录](docs/m6c-validation.md)
 - [M6b 验收结果](docs/m6b-validation.md)
