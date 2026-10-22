@@ -1,5 +1,6 @@
 #pragma once
 #include "parameterization.hpp"
+#include "gaussian.hpp"
 #include <functional>
 #include <cmath>
 namespace dw {
@@ -9,19 +10,12 @@ struct DispersionObservations {
     Eigen::MatrixXd covariance;
     void validate() const;
 };
-class GaussianLikelihood {
+class GaussianLikelihood : public GaussianDataLikelihood {
 public:
     explicit GaussianLikelihood(DispersionObservations);
-    // C(scale)=exp(2*log_scale)*C0; all normalization terms retained.
-    double log_likelihood(const Eigen::VectorXd& prediction,double log_scale=0) const;
-    double log_scale_gradient(const Eigen::VectorXd& prediction,double log_scale=0) const;
-    Eigen::VectorXd whiten(const Eigen::VectorXd& residual,double log_scale=0) const;
-    Eigen::MatrixXd whiten_jacobian(const Eigen::MatrixXd&,double log_scale=0) const;
     const DispersionObservations& data() const { return data_; }
 private:
     DispersionObservations data_;
-    Eigen::MatrixXd cholesky_;
-    double log_normalization_;
 };
 enum class EvaluationStatus { valid, outside_support, forward_failure, gradient_failure, numerical_failure };
 struct DataEvaluation {
@@ -62,7 +56,8 @@ struct PosteriorEvaluation {
     DataEvaluation data;
 };
 // q-gradient and optional Gaussian noise log-scale likelihood derivative.
-// The latter excludes a noise prior: noise inference itself is not implemented.
+// This legacy overload keeps noise external and adds no noise prior. Use
+// joint_log_posterior (joint.hpp) for explicit noise-scale inference.
 PosteriorEvaluation log_posterior(const DispersionProblem&,const Eigen::VectorXd& q,
                                  const Prior&,bool gradient=true,double log_scale=0);
 }

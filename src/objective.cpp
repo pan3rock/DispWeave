@@ -1,13 +1,8 @@
 #include "dispweave/objective.hpp"
-#include <Eigen/Cholesky>
 #include <cmath>
 #include <stdexcept>
 namespace dw {
 namespace {
-void check_scale(double s) {
-    if(!std::isfinite(s) || !std::isfinite(std::exp(-s)) || std::exp(-s)==0)
-        throw std::invalid_argument("Noise log scale outside numerical range");
-}
 void check_vectors(const Eigen::VectorXd& a,const Eigen::VectorXd& b) {
     if(a.size()==0 || a.size()!=b.size() || !a.allFinite() || !b.allFinite())
         throw std::invalid_argument("Prior vectors must be finite, nonempty and equal-sized");
@@ -15,49 +10,16 @@ void check_vectors(const Eigen::VectorXd& a,const Eigen::VectorXd& b) {
 }
 void DispersionObservations::validate() const {
     const auto n=static_cast<Eigen::Index>(queries.size());
-    if(n==0 || phase_velocity.size()!=n || covariance.rows()!=n || covariance.cols()!=n ||
-       !phase_velocity.allFinite() || (phase_velocity.array()<=0).any() || !covariance.allFinite() ||
-       !covariance.isApprox(covariance.transpose(),1e-12)) throw std::invalid_argument("Malformed observations/covariance");
+    GaussianData{phase_velocity,covariance}.validate();
+    if(phase_velocity.size()!=n || (phase_velocity.array()<=0).any()) throw std::invalid_argument("Malformed dispersion observations");
     for(const auto& q:queries)
         if(!std::isfinite(q.frequency_hz) || q.frequency_hz<=0 || q.mode<0 || q.mode>1023)
             throw std::invalid_argument("Invalid observation query");
-    Eigen::LLT<Eigen::MatrixXd> factor(covariance);
-    if(factor.info()!=Eigen::Success) throw std::invalid_argument("Covariance must be positive definite");
 }
-GaussianLikelihood::GaussianLikelihood(DispersionObservations data):data_(std::move(data)) {
+GaussianLikelihood::GaussianLikelihood(DispersionObservations data)
+    :GaussianDataLikelihood({data.phase_velocity,data.covariance}),data_(std::move(data)) {
     data_.validate();
-    // Symmetrize only within the validated relative roundoff tolerance.
-    data_.covariance=(0.5*(data_.covariance+data_.covariance.transpose())).eval();
-    cholesky_=data_.covariance.llt().matrixL();
-    log_normalization_=data_.phase_velocity.size()*std::log(2*std::acos(-1.))+
-        2*cholesky_.diagonal().array().log().sum();
-    if(!std::isfinite(log_normalization_)) throw std::invalid_argument("Covariance normalization not finite");
-}
-Eigen::VectorXd GaussianLikelihood::whiten(const Eigen::VectorXd& r,double scale) const {
-    check_scale(scale);
-    if(r.size()!=data_.phase_velocity.size() || !r.allFinite()) throw std::invalid_argument("Malformed residual");
-    Eigen::VectorXd out=cholesky_.triangularView<Eigen::Lower>().solve(r)*std::exp(-scale);
-    if(!out.allFinite()) throw std::runtime_error("Whitened residual overflow");
-    return out;
-}
-Eigen::MatrixXd GaussianLikelihood::whiten_jacobian(const Eigen::MatrixXd& j,double scale) const {
-    check_scale(scale);
-    if(j.rows()!=data_.phase_velocity.size() || !j.allFinite()) throw std::invalid_argument("Malformed Jacobian");
-    Eigen::MatrixXd out=cholesky_.triangularView<Eigen::Lower>().solve(j)*std::exp(-scale);
-    if(!out.allFinite()) throw std::runtime_error("Whitened Jacobian overflow");
-    return out;
-}
-double GaussianLikelihood::log_likelihood(const Eigen::VectorXd& prediction,double scale) const {
-    if(prediction.size()!=data_.phase_velocity.size()) throw std::invalid_argument("Prediction size mismatch");
-    const double value=-0.5*(whiten(prediction-data_.phase_velocity,scale).squaredNorm()+log_normalization_+2*prediction.size()*scale);
-    if(!std::isfinite(value)) throw std::runtime_error("Likelihood overflow");
-    return value;
-}
-double GaussianLikelihood::log_scale_gradient(const Eigen::VectorXd& prediction,double scale) const {
-    if(prediction.size()!=data_.phase_velocity.size()) throw std::invalid_argument("Prediction size mismatch");
-    const double value=whiten(prediction-data_.phase_velocity,scale).squaredNorm()-prediction.size();
-    if(!std::isfinite(value)) throw std::runtime_error("Scale derivative overflow");
-    return value;
+    data_.covariance=observations().covariance;
 }
 DispersionProblem::DispersionProblem(const Forward& f,FixedVs p,DispersionObservations o,SensitivityMethod method)
     :forward_(f),parameters_(std::move(p)),likelihood_(std::move(o)),derivative_(method) {
@@ -68,7 +30,7 @@ DataEvaluation DispersionProblem::evaluate(const Eigen::VectorXd& q,bool gradien
     DataEvaluation e;
     if(q.size()!=parameters_.lower().size() || !q.allFinite()) {e.message="Malformed q"; return e;}
     if(!parameters_.contains(q)) {e.status=EvaluationStatus::outside_support; e.log_likelihood=-INFINITY; return e;}
-    check_scale(scale);
+    validate_log_scale(scale);
     e.forward=forward_.evaluate(parameters_.decode(q),likelihood_.data().queries,gradient?derivative_:SensitivityMethod::none);
     if(e.forward.rows.size()!=likelihood_.data().queries.size() || !e.forward.all_valid()) {
         e.status=EvaluationStatus::forward_failure; e.message="Unresolved forward rows; no observations discarded"; return e;

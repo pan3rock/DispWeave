@@ -32,20 +32,26 @@ Eigen::VectorXd FixedVs::encode(const LayeredModel& m) const {
     Eigen::VectorXd q=m.vs.array().log(); if(!contains(q)) throw std::invalid_argument("Model outside bounds"); return q;
 }
 Eigen::MatrixXd FixedVs::phase_jacobian(const Eigen::VectorXd& q,const ForwardResult& f) const {
-    const auto m=decode(q);
     if(!f.all_sensitivities_valid()) throw std::invalid_argument("Unavailable sensitivity");
-    Eigen::MatrixXd j(f.rows.size(),q.size());
+    Eigen::MatrixXd d_vs(f.rows.size(),q.size()),d_vp(f.rows.size(),q.size());
     for(size_t i=0;i<f.rows.size();++i) {
         const auto& s=f.rows[i].sensitivity;
         if(s.dc_dvs.size()!=q.size() || s.dc_dvp.size()!=q.size() || !s.dc_dvs.allFinite() || !s.dc_dvp.allFinite())
             throw std::invalid_argument("Malformed sensitivity");
-        j.row(i)=((s.dc_dvs+ratio_*s.dc_dvp).array()*m.vs.array()).matrix().transpose();
+        d_vs.row(i)=s.dc_dvs.transpose();d_vp.row(i)=s.dc_dvp.transpose();
     }
-    return j;
+    return model_jacobian(q,d_vs,d_vp);
 }
 double FixedVs::log_abs_det_jacobian(const Eigen::VectorXd& q) const {
     if(!contains(q)) throw std::invalid_argument("Parameters outside bounds");
     return q.sum();
+}
+Eigen::MatrixXd FixedVs::model_jacobian(const Eigen::VectorXd& q,const Eigen::MatrixXd& d_vs,
+                                       const Eigen::MatrixXd& d_vp) const {
+    const auto m=decode(q);
+    if(d_vs.cols()!=q.size() || d_vp.cols()!=q.size() || d_vs.rows()!=d_vp.rows() ||
+       !d_vs.allFinite() || !d_vp.allFinite()) throw std::invalid_argument("Malformed model sensitivity");
+    return (d_vs+ratio_*d_vp)*m.vs.asDiagonal();
 }
 Eigen::VectorXd FixedVs::log_abs_det_gradient(const Eigen::VectorXd& q) const {
     if(!contains(q)) throw std::invalid_argument("Parameters outside bounds");
