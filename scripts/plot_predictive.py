@@ -35,7 +35,9 @@ for ax, mode in zip(axes[0], modes):
     ax.set(xlabel='Frequency (Hz)', ylabel='Phase velocity (km/s)', title=f'Rayleigh mode {mode}')
     ax.legend(fontsize=8)
     ax.grid(alpha=.2)
-fig.suptitle('Posterior predictive check conditional on fixed parameterization\nPointwise intervals, not simultaneous bands; covariance retained when generating replicas')
+metadata = (a.directory / 'metadata.txt').read_text()
+kind = 'Transdimensional posterior predictive check' if 'posterior=transdimensional' in metadata else 'Posterior predictive check conditional on fixed parameterization'
+fig.suptitle(kind + '\nPointwise intervals, not simultaneous bands\nCovariance retained when generating replicas', fontsize=10)
 fig.tight_layout()
 output = a.output or a.directory / 'predictive.png'
 output.parent.mkdir(parents=True, exist_ok=True)

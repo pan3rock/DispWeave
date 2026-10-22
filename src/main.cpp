@@ -23,13 +23,17 @@ int main(int argc,char** argv) {
     invert->add_option("--covariance",covariance)->check(CLI::ExistingFile);
     std::string predictive_run; int predictive_draws=200; unsigned long long predictive_seed=2026;
     auto predictive=app.add_subcommand("predict","Posterior predictive draws from saved fixed-layer chains");
-    predictive->add_option("--run",predictive_run)->required()->check(CLI::ExistingDirectory);
-    predictive->add_option("--output",inv_output)->required();
-    predictive->add_option("--draws-per-chain",predictive_draws)->check(CLI::PositiveNumber);
-    predictive->add_option("--seed",predictive_seed);
+    auto rj_predictive=app.add_subcommand("rj-predict","Posterior predictions from saved variable-layer chains");
+    for(auto* cmd:{predictive,rj_predictive}) {
+        cmd->add_option("--run",predictive_run)->required()->check(CLI::ExistingDirectory);
+        cmd->add_option("--output",inv_output)->required();
+        cmd->add_option("--draws-per-chain",predictive_draws)->check(CLI::PositiveNumber);
+        cmd->add_option("--seed",predictive_seed);
+    }
     auto hmc=app.add_subcommand("hmc","Sample fixed-layer Vs posterior with static HMC");
     auto nuts=app.add_subcommand("nuts","Sample fixed-layer Vs posterior with slice NUTS");
-    for(auto* cmd:{hmc,nuts}) {
+    auto rjmcmc=app.add_subcommand("rjmcmc","Sample layer count, interfaces and Vs with independent RJMCMC");
+    for(auto* cmd:{hmc,nuts,rjmcmc}) {
         cmd->add_option("--config",inv_config)->required()->check(CLI::ExistingFile);
         cmd->add_option("--output",inv_output)->required();
         cmd->add_option("--data",data)->required()->check(CLI::ExistingFile);
@@ -40,7 +44,9 @@ int main(int argc,char** argv) {
     resolution->add_option("--output",inv_output)->required();
     CLI11_PARSE(app,argc,argv);
     try {
+        if(*rj_predictive) return dw::run_rj_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
         if(*predictive) return dw::run_predictive(predictive_run,inv_output,predictive_draws,predictive_seed);
+        if(*rjmcmc) return dw::run_rjmcmc(inv_config,inv_output,data,covariance);
         if(*nuts) return dw::run_nuts(inv_config,inv_output,data,covariance);
         if(*hmc) return dw::run_hmc(inv_config,inv_output,data,covariance);
         if(*resolution) return dw::run_resolution(inv_config,inv_output);

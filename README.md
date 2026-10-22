@@ -7,7 +7,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M6 已完成：固定维度 NUTS 与完整后验诊断，版本 0.8.0。**
+**M7 已完成：独立 RJMCMC 与跨维频散结果分析，版本 0.9.0。**
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -18,7 +18,7 @@ LM 自适应分层暂缓。
 已移除候选模型的 AIC/BIC、验证评分及排名实验。M6a 已补齐 ESS/R-hat、相关性和后验预测；
 M6b 已增加对角/稠密质量矩阵适应；M6c 已接入 slice NUTS。
 M7a/M7b 已完成跨维状态、归一化先验、可逆增删层提议及独立 RJMCMC 核心；
-解析跨维验证已通过，频散 CLI 和结果分析仍待 M7c。
+解析跨维验证已通过。M7c 已完成频散 CLI、跨维诊断、后验预测和先验对照；正演支持域仍有明确数值限制。
 每个里程碑完成验收后单独 commit，不提前铺开全部算法。
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
@@ -214,3 +214,33 @@ python scripts/run_resolution_example.py --output results/m4a
 - [第三方源码及授权](third_party/README.md)
 
 DispWeave 自有代码使用 Apache-2.0；第三方代码保留其各自许可证和来源声明。
+
+## RJMCMC 频散示例
+
+Python 分析需要 Python >=3.11、NumPy；绘图另外需要 Matplotlib。
+C++ 采样器无新增外部依赖。初版固定 Vp/Vs 和密度，允许层数、界面及 Vs 变化。
+
+```bash
+build/dispweave synthetic --config examples/rjmcmc/synthetic.toml --output results/rj-data
+build/dispweave rjmcmc --config examples/rjmcmc/synthetic.toml --data results/rj-data/observations.txt --covariance results/rj-data/covariance.txt --output results/rj-run
+python scripts/rj_diagnostics.py results/rj-run --output results/rj-diagnostics.json
+build/dispweave rj-predict --run results/rj-run --output results/rj-predictive --draws-per-chain 300 --seed 2026
+python scripts/plot_rjmcmc.py results/rj-diagnostics.json --output results/rj-summary.png --truth-config examples/rjmcmc/synthetic.toml
+python scripts/plot_predictive.py results/rj-predictive
+```
+
+输出目录必须尚不存在。采样返回 5 表示存在正演/数值失败或整链无接受；
+样本、失败模型和逐行根诊断仍会保存，分析命令可以单独运行，不能据此宣称后验已获认证。
+后验预测返回 5 时同样保留失败行，绘图拒绝静默丢弃这些行。
+`rj_starts` 每项对应一条链；`rjmcmc.warmup` 仅丢弃预热样本，不自适应提议尺度。
+层数包含半空间，深度支持 `depth_limit` 限制界面先验，而非截断半空间。
+
+详见 [M7c 当前验收记录及数值限制](docs/m7c-validation.md)。
+
+本地 M7 结果页（需先生成验收实验与图表）：
+
+```bash
+python scripts/build_rj_demo_page.py
+```
+
+直接打开 `web/m7-demo/dist/index.html`。页面内嵌全部图表，不需要服务器或发布。

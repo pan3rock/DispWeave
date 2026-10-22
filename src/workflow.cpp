@@ -3,6 +3,7 @@
 #include "dispweave/lm.hpp"
 #include "dispweave/hmc.hpp"
 #include "dispweave/nuts.hpp"
+#include "dispweave/rj_dispersion.hpp"
 #include <type_traits>
 #include "dispweave/predictive.hpp"
 #include <regex>
@@ -20,6 +21,13 @@ namespace {
 Eigen::VectorXd vector(const toml::value& table,const char* key) {
     const auto a=toml::find<std::vector<double>>(table,key);
     return Eigen::Map<const Eigen::VectorXd>(a.data(),a.size());
+}
+RJPrior read_rj_prior(const toml::value& p) {
+    RJPrior prior;prior.min_layers=toml::find<int>(p,"min_layers");prior.max_layers=toml::find<int>(p,"max_layers");
+    prior.depth_limit=toml::find<double>(p,"depth_limit");prior.min_spacing=toml::find<double>(p,"min_spacing");
+    prior.vs_lower=toml::find<double>(p,"vs_lower");prior.vs_upper=toml::find<double>(p,"vs_upper");
+    prior.layer_weights=vector(p,"layer_weights");prior.validate();
+    return prior;
 }
 std::ofstream output_file(const std::filesystem::path& path) {
     std::ofstream f(path); if(!f) throw std::runtime_error("Cannot write "+path.string());
@@ -298,6 +306,144 @@ int run_hmc(const std::filesystem::path& config,const std::filesystem::path& out
 int run_nuts(const std::filesystem::path& config,const std::filesystem::path& output,
              const std::filesystem::path& data,const std::filesystem::path& covariance) {
     return run_sampler<NUTSOptions>(config,output,data,covariance);
+}
+int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::path& output,
+              const std::filesystem::path& data_path,const std::filesystem::path& cov_path) {
+    const auto begin=std::chrono::steady_clock::now();
+    if(std::filesystem::exists(output) && (!std::filesystem::is_directory(output) || !std::filesystem::is_empty(output)))
+        throw std::invalid_argument("Output directory must be new or empty");
+    const auto document=toml::parse(config_path.string());
+    const auto p=toml::find(document,"rj_prior"),physics=toml::find(document,"rj_physics"),cfg=toml::find(document,"rjmcmc");
+    const auto prior=read_rj_prior(p);
+    const double ratio=toml::find<double>(physics,"vp_vs_ratio"),rho=toml::find<double>(physics,"density");
+    RJOptions options;
+    options.warmup=toml::find_or<int>(cfg,"warmup",options.warmup);options.draws=toml::find_or<int>(cfg,"draws",options.draws);
+    options.vs_step=toml::find_or<double>(cfg,"vs_step",options.vs_step);
+    options.interface_step=toml::find_or<double>(cfg,"interface_step",options.interface_step);
+    const auto seed=toml::find_or<std::int64_t>(cfg,"seed",2026);
+    if(seed<0) throw std::invalid_argument("RJ seed must be nonnegative");
+    options.seed=static_cast<std::uint64_t>(seed);
+    InvLMForward backend;const auto data=read_observations(data_path,cov_path);
+    RJDispersionProblem problem(backend,prior,data,ratio,rho);
+    const RJLikelihood target=[&](const RJState& state) {return problem.evaluate(state).likelihood;};
+    std::vector<RJState> starts;
+    const auto start_table=toml::find(document,"rj_starts");
+    for(const auto& item:start_table.as_array()) {
+        starts.push_back({vector(item,"interfaces"),vector(item,"vs")});
+        if(target(starts.back()).status!=EvaluationStatus::valid) throw std::invalid_argument("Invalid RJ initial model or forward prediction");
+    }
+    if(starts.empty()) throw std::invalid_argument("Need at least one RJ start");
+    std::filesystem::create_directories(output);std::filesystem::copy_file(config_path,output/"config.toml");save_data(output,data);
+    auto summary=output_file(output/"chains.txt");summary<<"# chain draws accepted dimension_changes forward_failures numerical_failures\n";
+    bool issues=false;
+    for(size_t chain=0;chain<starts.size();++chain) {
+        auto failed_models=output_file(output/("chain_"+std::to_string(chain)+"_failed_models.txt"));
+        auto failed_rows=output_file(output/("chain_"+std::to_string(chain)+"_failed_rows.txt"));
+        failed_models<<"# evaluation status K interfaces[K-1] vs[K]; includes warmup; initial evaluation=0\n";
+        failed_rows<<"# evaluation query_index root_status roots_found phase_velocity\n";
+        int evaluation_index=0;
+        const RJLikelihood recorded_target=[&](const RJState& state) {
+            const int id=evaluation_index++;const auto e=problem.evaluate(state);
+            if(e.likelihood.status!=EvaluationStatus::valid) {
+                failed_models<<id<<' '<<status(e.likelihood.status)<<' '<<state.vs.size();
+                for(double z:state.interfaces) failed_models<<' '<<z;
+                for(double vs:state.vs) failed_models<<' '<<vs;
+                failed_models<<'\n';
+                for(size_t j=0;j<e.forward.rows.size();++j) {
+                    const auto& row=e.forward.rows[j];
+                    failed_rows<<id<<' '<<j<<' '<<to_string(row.status)<<' '<<row.roots_found<<' '<<row.phase_velocity<<'\n';
+                }
+            }
+            return e.likelihood;
+        };
+        options.chain_id=chain;const auto result=sample_rjmcmc(recorded_target,prior,starts[chain],options);
+        auto models=output_file(output/("chain_"+std::to_string(chain)+"_models.txt"));
+        models<<"# draw K log_likelihood log_prior interfaces[K-1] vs[K]; km and km/s; excludes warmup\n";
+        for(size_t i=0;i<result.draws.size();++i) {
+            const auto& d=result.draws[i];models<<i<<' '<<d.state.vs.size()<<' '<<d.log_likelihood<<' '<<d.log_prior;
+            for(double z:d.state.interfaces) models<<' '<<z;
+            for(double vs:d.state.vs) models<<' '<<vs;
+            models<<'\n';
+        }
+        auto trace=output_file(output/("chain_"+std::to_string(chain)+"_trace.txt"));
+        trace<<"# warmup move proposal_status evaluated evaluation_status accepted layers_before layers_after log_accept_ratio evaluation_index\n";
+        int accepted=0,changes=0,forward_failures=0,numerical_failures=0,trace_evaluation=0;
+        for(const auto& t:result.transitions) {
+            const char* move=t.move==RJMove::birth?"birth":t.move==RJMove::death?"death":t.move==RJMove::interface?"interface":"velocity";
+            const char* proposal=t.proposal_status==RJProposalStatus::valid?"valid":t.proposal_status==RJProposalStatus::unavailable?"unavailable":"outside_support";
+            trace<<t.warmup<<' '<<move<<' '<<proposal<<' '<<t.evaluated<<' '<<(t.evaluated?status(t.evaluation_status):"not_evaluated")<<' '<<t.accepted<<' '
+                 <<t.layers_before<<' '<<t.layers_after<<' '<<t.log_accept_ratio<<' '<<(t.evaluated?++trace_evaluation:-1)<<'\n';
+            if(!t.warmup) {
+                accepted+=t.accepted;changes+=t.layers_before!=t.layers_after;
+                forward_failures+=t.evaluated && t.evaluation_status==EvaluationStatus::forward_failure;
+                numerical_failures+=t.evaluated && t.evaluation_status==EvaluationStatus::numerical_failure;
+            }
+        }
+        summary<<chain<<' '<<options.draws<<' '<<accepted<<' '<<changes<<' '<<forward_failures<<' '<<numerical_failures<<'\n';
+        issues=issues || forward_failures>0 || numerical_failures>0 || accepted==0;
+    }
+    auto metadata=output_file(output/"metadata.txt");
+    metadata<<"version="<<DW_VERSION<<"\ncompiler="<<DW_COMPILER<<"\nbuild="<<DW_BUILD_TYPE
+            <<"\nsampler=independent_birth_death_rjmcmc\nbackend=invLM Dunkin\ninvlm_commit="<<DW_INVLM_COMMIT
+            <<"\nseed="<<options.seed<<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws
+            <<"\nvs_step="<<options.vs_step<<"\ninterface_step="<<options.interface_step
+            <<"\nvp_vs_ratio="<<ratio<<"\ndensity="<<rho
+            <<"\nstate_measure=physical Vs and ordered internal interface depths\nlayer_count=includes halfspace\n"
+            <<"depth_limit=interface prior support; not halfspace bottom\nmove_probabilities=.25 .25 .25 .25\n"
+            <<"posterior=transdimensional, conditional on declared support and fixed Vp/Vs and density\n"
+            <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
+    std::cout<<"RJ chains="<<starts.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';return issues?5:0;
+}
+int run_rj_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed) {
+    if(per_chain<1) throw std::invalid_argument("Predictive draw count must be positive");
+    if(std::filesystem::exists(output) && (!std::filesystem::is_directory(output) || !std::filesystem::is_empty(output)))
+        throw std::invalid_argument("Output directory must be new or empty");
+    const auto document=toml::parse((run/"config.toml").string());
+    const auto prior=read_rj_prior(toml::find(document,"rj_prior"));const auto physics=toml::find(document,"rj_physics");
+    const auto data=read_observations(run/"observations.txt",run/"covariance.txt");
+    InvLMForward backend;RJDispersionProblem problem(backend,prior,data,toml::find<double>(physics,"vp_vs_ratio"),toml::find<double>(physics,"density"));
+    std::vector<std::pair<int,std::filesystem::path>> files;
+    const std::regex pattern("chain_([0-9]+)_models\\.txt");
+    for(const auto& entry:std::filesystem::directory_iterator(run)) {
+        std::smatch match;const auto name=entry.path().filename().string();
+        if(std::regex_match(name,match,pattern)) files.emplace_back(std::stoi(match[1]),entry.path());
+    }
+    std::sort(files.begin(),files.end());if(files.empty()) throw std::invalid_argument("No saved RJ models");
+    std::vector<RJState> samples;std::vector<std::pair<int,size_t>> indices;
+    std::vector<std::vector<double>> selected_rows;
+    for(const auto& file:files) {
+        const auto rows=read_table(file.second);
+        if(static_cast<size_t>(per_chain)>rows.size()) throw std::invalid_argument("Predictive count exceeds available RJ draws");
+        for(size_t i=0;i<rows.size();++i) {
+            const auto& row=rows[i];
+            if(row.size()<5 || row[0]!=static_cast<double>(i) || row[1]<prior.min_layers || row[1]>prior.max_layers
+               || row[1]!=std::floor(row[1]) || row.size()!=static_cast<size_t>(2*row[1]+3))
+                throw std::invalid_argument("Malformed saved RJ model");
+        }
+        for(int j=0;j<per_chain;++j) {
+            const size_t index=static_cast<size_t>(j)*rows.size()/per_chain;const auto& row=rows[index];const int k=static_cast<int>(row[1]);
+            samples.push_back({Eigen::Map<const Eigen::VectorXd>(row.data()+4,k-1),Eigen::Map<const Eigen::VectorXd>(row.data()+3+k,k)});
+            indices.emplace_back(file.first,index);selected_rows.push_back(row);
+        }
+    }
+    const auto result=posterior_predictive(problem,samples,seed);
+    std::filesystem::create_directories(output);save_data(output,data);std::filesystem::copy_file(run/"config.toml",output/"config.toml");
+    auto latent=output_file(output/"latent.txt");latent<<"# rows=selected draws; columns=observation order; km/s\n"<<result.latent<<'\n';
+    auto replicated=output_file(output/"replicated.txt");replicated<<"# latent + full-covariance Gaussian noise; km/s\n"<<result.replicated<<'\n';
+    auto selected=output_file(output/"selected_models.txt");selected<<"# row K log_likelihood log_prior interfaces[K-1] vs[K]\n";
+    auto status_file=output_file(output/"draws.txt");status_file<<"# row chain source_draw_zero_based status observed_chi2 replicated_chi2\n";
+    size_t failures=0;
+    for(size_t i=0;i<samples.size();++i) {
+        selected<<i;for(size_t j=1;j<selected_rows[i].size();++j) selected<<' '<<selected_rows[i][j];selected<<'\n';
+        failures+=result.status[i]!=EvaluationStatus::valid;
+        status_file<<i<<' '<<indices[i].first<<' '<<indices[i].second<<' '<<status(result.status[i])<<' '
+                   <<result.observed_discrepancy[i]<<' '<<result.replicated_discrepancy[i]<<'\n';
+    }
+    auto metadata=output_file(output/"metadata.txt");
+    metadata<<"version="<<DW_VERSION<<"\nseed="<<seed<<"\nsource_run="<<std::filesystem::absolute(run).string()
+            <<"\nselected_per_chain="<<per_chain<<"\nselection=floor(j * chain_draws / per_chain); j starts at 0"
+            <<"\nfailures="<<failures<<"\nposterior=transdimensional, conditional on declared prior/support/physics; fixed observed covariance\n";
+    std::cout<<"RJ predictive_draws="<<samples.size()<<" failures="<<failures<<'\n';return failures?5:0;
 }
 int run_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed) {
     if(per_chain<1) throw std::invalid_argument("Predictive draw count must be positive");
