@@ -1,0 +1,22 @@
+# Fixed interfaces; halfspace Vs remains free. Units: km, km/s, g/cm^3.
+# Used by scripts/check_halfspace_depth.py with a separate synthetic truth.
+[model]
+depth = [0.0, 2.0, 4.0]
+vs = [1.2, 1.8, 2.8]
+# Recomputed by Brocher05 in inversion; these values only need to be physical.
+vp = [2.5, 3.5, 5.0]
+rho = [2.1, 2.3, 2.5]
+
+[inversion]
+vs_min = 0.6
+vs_max = 3.6
+vs_width = 1.2
+vs2model = "brocher05"
+starts_vs = [[1.2, 1.8, 2.8], [1.1, 1.9, 3.0], [1.3, 2.0, 2.9]]
+sensitivity = "implicit"
+max_iterations = 150
+gradient_tolerance = 0.00001
+
+[inversion.regularization]
+type = "reference_damping"
+lambda = 10.0

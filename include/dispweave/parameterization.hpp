@@ -3,6 +3,10 @@
 #include <memory>
 namespace fwd { class ModelBuilder; }
 namespace dw {
+struct VsBounds { Eigen::VectorXd lower,upper; }; // physical km/s
+// Intersection of a global interval with a full-width reference window.
+// All layers, including the halfspace, use the same rule; no observation floor.
+VsBounds reference_vs_bounds(const Eigen::VectorXd& reference,double vs_min,double vs_max,double vs_width);
 struct ElasticRelation {
     std::string kind="fixvprho";
     double vp_vs_ratio=1.7321, gardner_alpha=.31, gardner_beta=.25, density=2.;

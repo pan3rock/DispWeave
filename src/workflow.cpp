@@ -22,6 +22,21 @@ Eigen::VectorXd vector(const toml::value& table,const char* key) {
     const auto a=toml::find<std::vector<double>>(table,key);
     return Eigen::Map<const Eigen::VectorXd>(a.data(),a.size());
 }
+VsBounds read_bounds(const toml::value& inv,const Eigen::VectorXd& reference) {
+    const bool window=inv.contains("vs_min") || inv.contains("vs_max") || inv.contains("vs_width");
+    const bool explicit_bounds=inv.contains("lower_vs") || inv.contains("upper_vs");
+    if(window && explicit_bounds)
+        throw std::invalid_argument("Specify vs_min/vs_max/vs_width OR lower_vs/upper_vs, not both");
+    if(window) {
+        if(!inv.contains("vs_min") || !inv.contains("vs_max") || !inv.contains("vs_width"))
+            throw std::invalid_argument("Reference-window bounds require all of vs_min, vs_max and vs_width");
+        return reference_vs_bounds(reference,toml::find<double>(inv,"vs_min"),
+                                   toml::find<double>(inv,"vs_max"),toml::find<double>(inv,"vs_width"));
+    }
+    if(!inv.contains("lower_vs") || !inv.contains("upper_vs"))
+        throw std::invalid_argument("Provide vs_min/vs_max/vs_width or both lower_vs and upper_vs");
+    return {vector(inv,"lower_vs"),vector(inv,"upper_vs")};
+}
 ElasticRelation read_relation(const toml::value& inv) {
     ElasticRelation r;
     const double legacy_ratio=toml::find_or<double>(inv,"vp_vs_ratio",0.);
@@ -59,6 +74,23 @@ RJPrior read_rj_prior(const toml::value& p) {
 std::ofstream output_file(const std::filesystem::path& path) {
     std::ofstream f(path); if(!f) throw std::runtime_error("Cannot write "+path.string());
     f.exceptions(std::ios::badbit|std::ios::failbit); f<<std::setprecision(17); return f;
+}
+void save_bounds(const std::filesystem::path& output,std::ostream& metadata,const toml::value& inv,
+                 const FixedVs& parameters,const VsBounds& bounds,const std::vector<int>& fixed={}) {
+    const auto& m=parameters.reference_model();
+    const auto n=m.vs.size();std::vector<bool> is_fixed(n,false);
+    for(int i:fixed) is_fixed.at(i)=true;
+    auto f=output_file(output/"parameter_bounds.txt");
+    f<<"# layer top_km reference_vs lower_vs upper_vs fixed halfspace; km/s; fixed means Vs=reference_vs\n";
+    for(Eigen::Index i=0;i<n;++i)
+        f<<i<<' '<<m.depth[i]<<' '<<m.vs[i]<<' '<<bounds.lower[i]<<' '<<bounds.upper[i]<<' '
+         <<is_fixed[i]<<' '<<(i==n-1)<<'\n';
+    metadata<<"bounds_mode="<<(inv.contains("vs_width")?"global_intersection_reference_window":"explicit_per_layer")<<'\n';
+    if(inv.contains("vs_width"))
+        metadata<<"vs_min="<<toml::find<double>(inv,"vs_min")<<"\nvs_max="<<toml::find<double>(inv,"vs_max")
+                <<"\nvs_width="<<toml::find<double>(inv,"vs_width")<<'\n';
+    metadata<<"halfspace_top_km="<<m.depth[n-1]<<"\nhalfspace_vs="<<(is_fixed[n-1]?"fixed":"free")
+            <<"\nhalfspace_observation_floor=none\n";
 }
 std::vector<std::vector<double>> read_table(const std::filesystem::path& path) {
     std::ifstream f(path); if(!f) throw std::invalid_argument("Cannot read "+path.string());
@@ -117,7 +149,8 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     const auto table=toml::find(document,"model");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")}; model.validate();
     const auto inv=toml::find(document,"inversion");
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
+    const auto bounds=read_bounds(inv,model.vs);
+    FixedVs parameters(model,bounds.lower,bounds.upper,read_relation(inv));
     model=parameters.reference_model();
     const auto regularization=read_regularization(inv,model);
     const auto starts=toml::find<std::vector<std::vector<double>>>(inv,"starts_vs");
@@ -224,6 +257,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
             <<"\nroot_accuracy=refined\nsynthetic="<<synthetic<<"\nseed="<<seed<<"\nadd_noise="<<noise<<"\nbest_run="<<best
             <<"\nseconds="<<seconds<<"\nparameterization=fixed depths; log Vs; bounded penalized least squares\n";
     save_relation(metadata,parameters.relation());
+    save_bounds(output,metadata,inv,parameters,bounds,fixed);
     metadata<<"regularization_type="<<regularization.type()<<"\nregularization_lambda="<<regularization.weight()
             <<"\nobjective=data_cost+regularization_cost; Gaussian log likelihood excludes regularization\n";
     metadata<<"free_vs_parameters="<<model.vs.size()-fixed.size()<<"\nfixed_vs_layers=";
@@ -245,7 +279,8 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     if(!toml::find_or<std::vector<int>>(inv,"fixed_vs_layers",{}).empty())
         throw std::invalid_argument("fixed_vs_layers currently supported only by invert/synthetic");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
+    const auto bounds=read_bounds(inv,model.vs);
+    FixedVs parameters(model,bounds.lower,bounds.upper,read_relation(inv));
     model=parameters.reference_model();
     if(read_regularization(inv,model).active())
         throw std::invalid_argument("LM regularization is not a sampler prior; declare the posterior prior explicitly");
@@ -256,7 +291,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     const auto prior_name=toml::find<std::string>(cfg,"prior");
     if(prior_name!="uniform_vs" && prior_name!="uniform_log_vs") throw std::invalid_argument("Sampler prior must be uniform_vs or uniform_log_vs");
     const auto prior=prior_name=="uniform_vs"?
-        uniform_prior(vector(inv,"lower_vs"),vector(inv,"upper_vs"),PriorMeasure::physical_vs):
+        uniform_prior(bounds.lower,bounds.upper,PriorMeasure::physical_vs):
         uniform_prior(parameters.lower(),parameters.upper(),PriorMeasure::log_vs);
     LogisticBox box(parameters.lower(),parameters.upper());
     const auto target=transform_density(dispersion_density(problem,prior),box);
@@ -357,6 +392,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"mass_convention=momentum covariance in z coordinates\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
     save_relation(metadata,parameters.relation());
+    save_bounds(output,metadata,inv,parameters,bounds);
     std::cout<<"chains="<<initial.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';
     return issues?5:0;
 }
@@ -513,7 +549,8 @@ int run_predictive(const std::filesystem::path& run,const std::filesystem::path&
     const auto document=toml::parse((run/"config.toml").string());
     const auto table=toml::find(document,"model"),inv=toml::find(document,"inversion");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
+    const auto bounds=read_bounds(inv,model.vs);
+    FixedVs parameters(model,bounds.lower,bounds.upper,read_relation(inv));
     const auto data=read_observations(run/"observations.txt",run/"covariance.txt");
     InvLMForward backend;DispersionProblem problem(backend,parameters,data);
     std::vector<std::pair<int,std::filesystem::path>> files;
@@ -556,6 +593,7 @@ int run_predictive(const std::filesystem::path& run,const std::filesystem::path&
             <<"\nselected_per_chain="<<per_chain<<"\nselection=floor(j * chain_draws / per_chain); j starts at 0"
             <<"\nfailures="<<failures<<"\nposterior=conditional on supplied parameterization; fixed observed covariance\n";
     save_relation(metadata,parameters.relation());
+    save_bounds(output,metadata,inv,parameters,bounds);
     std::cout<<"predictive_draws="<<samples.size()<<" failures="<<failures<<'\n';return failures?5:0;
 }
 }

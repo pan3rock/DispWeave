@@ -43,6 +43,16 @@ void covariance() {
     rejects([&]{l.log_likelihood(predicted,NAN);});
 }
 void parameterization() {
+    const auto bounds=dw::reference_vs_bounds(v({.7,3.,4.6}),.5,5.,1.2);
+    check(bounds.lower.isApprox(v({.5,2.4,4.0}),1e-14) &&
+          bounds.upper.isApprox(v({1.3,3.6,5.0}),1e-14),"Global/window intersection, including halfspace");
+    for(const auto& values:std::vector<std::vector<double>>{{0,5,1},{1,1,1},{2,1,1},{.5,5,0},{.5,5,-1},
+                                                        {NAN,5,1},{.5,INFINITY,1},{.5,5,NAN}})
+        rejects([&]{dw::reference_vs_bounds(v({1,3}),values[0],values[1],values[2]);});
+    rejects([&]{dw::reference_vs_bounds(v({1,6}),.5,5,1);}); // empty intersection
+    rejects([&]{dw::reference_vs_bounds(v({1,5.2}),.5,5,1);}); // reference outside intersection
+    rejects([&]{dw::reference_vs_bounds(v({1,NAN}),.5,5,1);});
+    rejects([&]{dw::reference_vs_bounds(Eigen::VectorXd(),.5,5,1);});
     dw::InvLMForward backend; const std::vector<dw::DispersionQuery> query{{.5,0},{.5,1},{.2,0}};
     for(double ratio:{0.,1.8}) {
         auto m=normal(); if(ratio>0)m.vp=ratio*m.vs;

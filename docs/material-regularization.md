@@ -64,7 +64,7 @@ lambda 是代价权重，不是残差倍率；平方根进入残差。
 
 ```toml
 [inversion]
-# 仍需原有 lower_vs、upper_vs、starts_vs 等字段
+# 仍需速度边界与 starts_vs；边界支持逐层数组或 vs_min/vs_max/vs_width
 vs2model = "brocher05"
 
 [inversion.regularization]

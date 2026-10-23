@@ -3,6 +3,23 @@
 #include <cmath>
 #include <stdexcept>
 namespace dw {
+VsBounds reference_vs_bounds(const Eigen::VectorXd& reference,double vs_min,double vs_max,double vs_width) {
+    if(!std::isfinite(vs_min) || !std::isfinite(vs_max) || !std::isfinite(vs_width) ||
+       vs_min<=0 || vs_min>=vs_max || vs_width<=0)
+        throw std::invalid_argument("Require finite 0 < vs_min < vs_max and vs_width > 0 (full width, km/s)");
+    if(reference.size()==0 || !reference.allFinite() || (reference.array()<=0).any())
+        throw std::invalid_argument("Reference Vs must be nonempty, finite and positive");
+    VsBounds bounds{reference,reference};
+    for(Eigen::Index i=0;i<reference.size();++i) {
+        bounds.lower[i]=std::max(vs_min,reference[i]-.5*vs_width);
+        bounds.upper[i]=std::min(vs_max,reference[i]+.5*vs_width);
+        if(bounds.lower[i]>=bounds.upper[i])
+            throw std::invalid_argument("Empty or zero-width Vs intersection at layer "+std::to_string(i));
+        if(reference[i]<bounds.lower[i] || reference[i]>bounds.upper[i])
+            throw std::invalid_argument("Reference Vs outside global bounds at layer "+std::to_string(i));
+    }
+    return bounds;
+}
 FixedVs::FixedVs(LayeredModel m,Eigen::VectorXd lo,Eigen::VectorXd hi,double ratio)
     :FixedVs(std::move(m),std::move(lo),std::move(hi),ElasticRelation{ratio==0?"fixvprho":"constant_ratio",ratio}) {}
 FixedVs::FixedVs(LayeredModel m,Eigen::VectorXd lo,Eigen::VectorXd hi,ElasticRelation relation)
@@ -29,8 +46,10 @@ FixedVs::FixedVs(LayeredModel m,Eigen::VectorXd lo,Eigen::VectorXd hi,ElasticRel
        !lower_.allFinite() || !upper_.allFinite() || (lower_.array()<=0).any() ||
        (upper_.array()<=lower_.array()).any() || !std::isfinite(ratio_) ||
        (ratio_!=0 && ratio_<=std::sqrt(4./3.))) throw std::invalid_argument("Invalid parameter bounds or Vp/Vs ratio");
-    if(!builder_ && ratio_==0 && (upper_.array()*std::sqrt(4./3.)>=reference_.vp.array()).any())
-        throw std::invalid_argument("Vs bounds violate fixed-Vp elastic stability");
+    if(!builder_ && ratio_==0)
+        for(Eigen::Index i=0;i<upper_.size();++i)
+            if(upper_[i]*std::sqrt(4./3.)>=reference_.vp[i])
+                throw std::invalid_argument("Vs bounds violate fixed-Vp elastic stability at layer "+std::to_string(i));
     if(ratio_>0 && !reference_.vp.isApprox(ratio_*reference_.vs,1e-12))
         throw std::invalid_argument("Reference Vp inconsistent with ratio");
     lower_=lower_.array().log(); upper_=upper_.array().log();

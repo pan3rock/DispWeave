@@ -112,6 +112,17 @@ python scripts/plot_inversion.py results/synthetic
 NearSurface 等 invLM 经验关系及完整链式导数。`inversion.regularization` 显式指定类型和 lambda，
 支持参考阻尼、扰动平滑、Vs 平滑；默认关闭，数据/正则化代价分别输出。
 可运行示例为 `examples/inversion/brocher_regularized.toml`，定义与验收见上述物性/正则化报告。
+速度边界推荐用 `[inversion] vs_min / vs_max / vs_width`：每层取全局区间与
+`model.vs ± vs_width/2` 的交集，width 是 km/s 的完整宽度。也兼容逐层 `lower_vs / upper_vs`，
+两种配置不可混用。LM、HMC/NUTS 和后验预测共用生成规则，输出 `parameter_bounds.txt`。
+半空间顶深固定、Vs 默认自由，使用同样边界；不以含噪观测的最大相速度自动抬高速度下限。
+配置与独立真值的顶深对照见 [边界与半空间验收](docs/velocity-bounds.md)：
+
+```bash
+MPLCONFIGDIR=/tmp/dw-mpl python scripts/check_halfspace_depth.py --demo \
+  --exe build/dispweave --output results/halfspace-window-demo
+```
+
 `[inversion] fixed_vs_layers = [2]` 可将零基第 2 层的 Vs 固定为 `model.vs[2]`；
 对应的每个 `starts_vs` 分量必须匹配。输出保留全部层，梯度终止条件仅针对自由参数。
 该选项目前用于 `invert/synthetic`，HMC/NUTS 会显式拒绝，见上述地壳对照报告。

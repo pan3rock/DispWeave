@@ -35,6 +35,8 @@ if(BUILD_TESTING)
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy" RESULT_VARIABLE DW_NUMPY_STATUS OUTPUT_QUIET ERROR_QUIET)
     if(DW_NUMPY_STATUS EQUAL 0)
       if(Python3_VERSION VERSION_GREATER_EQUAL 3.11)
+        add_test(NAME bounds_workflow COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tests/bounds_workflow_tests.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME material_workflow COMMAND ${Python3_EXECUTABLE}
           ${PROJECT_SOURCE_DIR}/tests/material_workflow_tests.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME qedisp_example_contracts COMMAND ${Python3_EXECUTABLE}
