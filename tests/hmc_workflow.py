@@ -83,6 +83,24 @@ with tempfile.TemporaryDirectory() as tmp:
                 assert record['maximum_tree_depth'] == max(int(r['depth']) for r in retained)
     sample(a, codes=(1,))
     if algorithm == 'nuts':
+        modern = work / 'modern.toml'
+        modern.write_text(content.replace('[nuts]', '[nuts]\nkernel = "multinomial"\nfind_initial_step_size = true'))
+        sample(work / 'modern-a', cfg=modern)
+        sample(work / 'modern-b', cfg=modern)
+        assert 'sampler=multinomial_nuts' in (work / 'modern-a/metadata.txt').read_text()
+        for chain in range(3):
+            prefix = f'chain_{chain}_'
+            for suffix in ('vs', 'z', 'trace', 'cost', 'step_size_searches'):
+                assert (work / f'modern-a/{prefix}{suffix}.txt').read_bytes() == (work / f'modern-b/{prefix}{suffix}.txt').read_bytes()
+            costs = dict(line.split('=') for line in (work / f'modern-a/{prefix}cost.txt').read_text().splitlines())
+            searches = [line.split() for line in (work / f'modern-a/{prefix}step_size_searches.txt').read_text().splitlines() if not line.startswith('#')]
+            updates = [line.split()[1] for line in (work / f'modern-a/{prefix}metric_updates.txt').read_text().splitlines() if line.startswith('# ') and not line.startswith('# each')]
+            assert [s[0] for s in searches] == ['0'] + updates
+            assert int(costs['step_search_evaluations']) == sum(int(s[1]) for s in searches)
+            assert int(costs['target_evaluations']) == 1 + int(costs['transition_evaluations']) + int(costs['step_search_evaluations'])
+        bad_kernel = work / 'bad-kernel.toml'
+        bad_kernel.write_text(content.replace('[nuts]', '[nuts]\nkernel = "unknown"'))
+        assert 'Unknown NUTS kernel' in sample(work / 'bad-kernel', cfg=bad_kernel, codes=(1,)).stderr
         capped = work / 'capped.toml'
         capped.write_text(content.replace('max_depth = 10', 'max_depth = 1').replace('step_size = 0.03', 'step_size = 0.000001').replace('adapt_step_size = true', 'adapt_step_size = false').replace('metric_adaptation = "diagonal"', 'metric_adaptation = "none"'))
         sample(work / 'capped', cfg=capped, codes=(5,))

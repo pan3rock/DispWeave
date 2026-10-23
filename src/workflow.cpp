@@ -321,6 +321,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     if constexpr(nuts) {
         if(cfg.contains("leapfrog_steps") || cfg.contains("step_jitter")) throw std::invalid_argument("NUTS has no leapfrog_steps or step_jitter option");
         options.max_depth=toml::find_or<int>(cfg,"max_depth",options.max_depth);
+        const auto kernel=toml::find_or<std::string>(cfg,"kernel","slice");
+        if(kernel!="slice" && kernel!="multinomial") throw std::invalid_argument("Unknown NUTS kernel");
+        options.kernel=kernel=="slice"?NUTSKernel::slice:NUTSKernel::multinomial;
+        options.find_initial_step_size=toml::find_or<bool>(cfg,"find_initial_step_size",false);
     } else {
         options.leapfrog_steps=toml::find_or<int>(cfg,"leapfrog_steps",options.leapfrog_steps);
         options.step_jitter=toml::find_or<double>(cfg,"step_jitter",options.step_jitter);
@@ -404,6 +408,19 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             if constexpr(nuts) return sample_nuts(recorded_target,initial[chain],chain_metric,options);
             else return sample_hmc(recorded_target,initial[chain],chain_metric,options);
         }();
+        if constexpr(nuts) {
+            auto searches=output_file(output/("chain_"+std::to_string(chain)+"_step_size_searches.txt"));
+            searches<<"# warmup_iteration evaluations step_size last_status; 0=before first transition\n";
+            int probes=0;std::uint64_t transitions=0;
+            for(const auto& s:r.step_size_searches) {
+                searches<<s.warmup_iteration<<' '<<s.evaluations<<' '<<s.step_size<<' '<<status(s.last_status)<<'\n';probes+=s.evaluations;
+            }
+            for(const auto& t:r.transitions) transitions+=t.evaluations;
+            auto cost=output_file(output/("chain_"+std::to_string(chain)+"_cost.txt"));
+            cost<<"target_evaluations="<<evaluation_index<<"\ntransition_evaluations="<<transitions
+                <<"\nstep_search_evaluations="<<probes<<"\ninitial_evaluations=1\npreflight_evaluations=1\nmetric_evaluations="
+                <<(initial_metric_name=="start_gauss_newton"?1:0)<<'\n';
+        }
         auto final_mass=output_file(output/("chain_"+std::to_string(chain)+"_mass.txt"));final_mass<<r.mass<<'\n';
         auto updates=output_file(output/("chain_"+std::to_string(chain)+"_metric_updates.txt"));
         updates<<"# each block: warmup_iteration samples; then mass matrix\n";
@@ -442,7 +459,8 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"\nmode_support="<<support_name
             <<"\ninitial_metric="<<initial_metric_name
             <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws;
-    if constexpr(nuts) metadata<<"\nsampler=slice_nuts_hoffman_gelman_2014\nmax_depth="<<options.max_depth;
+    if constexpr(nuts) metadata<<"\nsampler="<<(options.kernel==NUTSKernel::slice?"slice_nuts_hoffman_gelman_2014":"multinomial_nuts")
+        <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmax_depth="<<options.max_depth;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;
     metadata<<"\ninitial_step_size="<<options.step_size
             <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept

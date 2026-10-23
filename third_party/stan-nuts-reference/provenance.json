@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/stan-dev/stan",
+  "commit": "c3db9b995dae2f2f9e785cc55c6e96ab1127cdab",
+  "files": {
+    "src/stan/mcmc/hmc/nuts/base_nuts.hpp": "eb646717d8c90bf73ed00cc250c34060ca0e3aadcce4d7150235e727106776c7",
+    "src/stan/mcmc/hmc/base_hmc.hpp": "4c3636c191a31e7354c8d5b5591036aafe55d73b1764df1bb878d9d819c1e4e6",
+    "src/stan/mcmc/hmc/nuts/adapt_dense_e_nuts.hpp": "a14cacc74f4e043a0d3bac5799cf0348075b43895edad5b8de02e19ae9f549b1",
+    "LICENSE.md": "aa2930f0a281e429c72f79a4189a188fcf20b0f2bbd4c7d030f1d5060ea649dc"
+  }
+}

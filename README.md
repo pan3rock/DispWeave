@@ -195,7 +195,10 @@ build/dispweave predict --run results/nuts --output results/nuts-predictive --dr
 python scripts/plot_predictive.py results/nuts-predictive
 ```
 
-采用 Hoffman–Gelman 2014 的 slice NUTS；与静态 HMC 共享目标密度、边界变换、
+默认采用 Hoffman–Gelman 2014 的 slice NUTS；可选 Stan 风格现代内核，见
+[实现与效率对照](docs/nuts-modernization.md)。在 `[nuts]` 中设置
+`kernel = "multinomial"`、`find_initial_step_size = true`，启用加权候选、广义掉头检查和
+warmup/质量更新后的步长搜索；旧配置默认不变。与静态 HMC 共享目标密度、边界变换、
 步长和分窗口质量适应。配置使用 `[nuts]`，`max_depth` 默认 10、范围 1–20。
 NUTS 不接受 `leapfrog_steps` 或 `step_jitter`。默认质量适应仍为 `none`，示例显式选择 `diagonal`。
 输出保留全部正式状态，trace 同时包含预热标记、树深、树深截断、最大绝对能量误差与失败类型。

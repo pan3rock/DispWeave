@@ -14,12 +14,13 @@ void moment(const Eigen::VectorXd& values,double truth) {
     require(se<.1,"Moment MCSE too large");
     require(std::abs(values.mean()-truth)<std::max(.04,6*se),"Moment outside statistical tolerance");
 }
-int main() {
+int main(int argc,char** argv) {
     try {
+        const auto kernel=argc==2 && std::string(argv[1])=="multinomial"?NUTSKernel::multinomial:NUTSKernel::slice;
         LogDensity normal=[](const Eigen::VectorXd& q) {return DensityEvaluation{EvaluationStatus::valid,-.5*q.squaredNorm(),-q};};
         EuclideanMetric identity(Eigen::MatrixXd::Identity(2,2));
         for(auto seed:{17,2026,99173}) {
-            NUTSOptions o;o.seed=seed;o.warmup=1000;o.draws=20000;
+            NUTSOptions o;o.kernel=kernel;o.seed=seed;o.warmup=1000;o.draws=20000;
             auto r=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,o);
             const Eigen::VectorXd mean=r.draws.colwise().mean();
             const Eigen::MatrixXd covariance=r.draws.transpose()*r.draws/o.draws;
@@ -45,7 +46,7 @@ int main() {
                 Eigen::VectorXd g(2);g<<-q[0]+q[0]*y,-y;
                 return DensityEvaluation{EvaluationStatus::valid,-.5*(q[0]*q[0]+y*y),g};
             };
-            NUTSOptions o;o.seed=seed;o.warmup=2000;o.draws=12000;o.target_accept=.95;
+            NUTSOptions o;o.kernel=kernel;o.seed=seed;o.warmup=2000;o.draws=12000;o.target_accept=kind==2?.99:.95;
             if(kind==1) o.metric_adaptation=MetricAdaptation::dense;
             const auto r=sample_nuts(target,Eigen::VectorXd::Zero(2),kind==0?EuclideanMetric(precision):identity,o);
             Eigen::MatrixXd x=r.draws;
@@ -65,7 +66,7 @@ int main() {
                 return DensityEvaluation{EvaluationStatus::valid,-.5*q.squaredNorm(),-q};
             };
             Eigen::VectorXd initial=Eigen::VectorXd::Zero(2);initial[0]=.5;
-            NUTSOptions o;o.seed=seed;o.warmup=1000;o.draws=16000;o.target_accept=.8;
+            NUTSOptions o;o.kernel=kernel;o.seed=seed;o.warmup=1000;o.draws=16000;o.target_accept=.8;
             const auto r=sample_nuts(bounded,initial,identity,o);int boundaries=0;
             for(int i=o.warmup;i<o.warmup+o.draws;++i) {
                 require(!r.transitions[i].divergent,"Known boundary marked divergent");
@@ -116,7 +117,7 @@ int main() {
             require(!stopped.go && stopped.divergent && stopped.evaluations==3 && stopped.count==2,"Mid-subtree failure did not stop");
             require(stopped.status!=EvaluationStatus::valid,"Mid-subtree failure hidden");
         }
-        NUTSOptions short_run;short_run.warmup=0;short_run.draws=20;short_run.max_depth=1;
+        NUTSOptions short_run;short_run.kernel=kernel;short_run.warmup=0;short_run.draws=20;short_run.max_depth=1;
         short_run.step_size=1e-6;short_run.adapt_step_size=false;
         const auto a=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,short_run);
         const auto b=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,short_run);
@@ -135,6 +136,27 @@ int main() {
         adaptive.draws=40;
         const auto extended=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,adaptive);
         require(prefix.mass==extended.mass && prefix.step_size==extended.step_size && prefix.draws==extended.draws.topRows(20),"Draw budget affects adaptation or prefix");
+        // Search overhead is accounted for, and re-search occurs after each mass update.
+        adaptive.find_initial_step_size=true;adaptive.draws=200;
+        for(double initial_step:{1e-6,100.}) {
+            adaptive.step_size=initial_step;int calls=0;
+            LogDensity counted=[&](const Eigen::VectorXd& x) {++calls;return normal(x);};
+            const auto searched=sample_nuts(counted,Eigen::VectorXd::Zero(2),identity,adaptive);
+            require(searched.step_size_searches.size()==1+searched.metric_updates.size(),"Missing metric step search");
+            int expected=1;
+            for(const auto& t:searched.transitions) expected+=t.evaluations;
+            for(size_t j=0;j<searched.step_size_searches.size();++j) {
+                const auto& search=searched.step_size_searches[j];expected+=search.evaluations;
+                require(search.evaluations>=2 && search.evaluations<=50,"Unbounded step search");
+                require(search.warmup_iteration==(j?searched.metric_updates[j-1].warmup_iteration:0),"Search schedule");
+            }
+            require(calls==expected,"Unaccounted target calls");
+            auto longer=adaptive;longer.draws+=20;
+            const auto extended_search=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,longer);
+            require(searched.draws==extended_search.draws.topRows(adaptive.draws),"Search changes draw prefix");
+            for(int i=adaptive.warmup;i<adaptive.warmup+adaptive.draws;++i)
+                require(searched.transitions[i].step_size==searched.step_size,"Search during production");
+        }
         auto reject=[&](NUTSOptions o) {
             bool rejected=false;
             try {sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,o);}
@@ -145,6 +167,9 @@ int main() {
         invalid=short_run;invalid.max_depth=21;reject(invalid);
         invalid=short_run;invalid.step_size=NAN;reject(invalid);
         invalid=short_run;invalid.draws=0;reject(invalid);
+        invalid=short_run;invalid.find_initial_step_size=true;reject(invalid);
+        invalid=adaptive;invalid.adapt_step_size=false;invalid.metric_adaptation=MetricAdaptation::none;reject(invalid);
+        invalid=short_run;invalid.kernel=static_cast<NUTSKernel>(42);reject(invalid);
         invalid=short_run;invalid.target_accept=1;reject(invalid);
         invalid=adaptive;invalid.warmup=10;reject(invalid);
         invalid=adaptive;invalid.adapt_step_size=false;reject(invalid);
@@ -155,6 +180,11 @@ int main() {
         const auto failed=sample_nuts(point,Eigen::VectorXd::Zero(2),identity,short_run);
         require(failed.draws.isZero(),"Invalid proposals changed state");
         for(const auto& t:failed.transitions) require(t.divergent && t.status!=EvaluationStatus::valid && !t.accepted,"Invalid evaluation hidden");
+        auto impossible=adaptive;impossible.step_size=.1;
+        bool search_failed=false;
+        try {sample_nuts(point,Eigen::VectorXd::Zero(2),identity,impossible);}
+        catch(const std::runtime_error& e) {search_failed=std::string(e.what()).find("50 probes")!=std::string::npos;}
+        require(search_failed,"Impossible step search did not fail explicitly");
         return 0;
     } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}
 }
