@@ -32,7 +32,7 @@ def predict(exe, output, name, model, data):
     return np.array([float(row[3]) for row in rows])
 
 
-def plots(output, target, reference, recovered, data, predictions, quantiles):
+def plots(output, target, reference, recovered, data, predictions, quantiles, chains=3, accepted=False):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -92,9 +92,9 @@ def plots(output, target, reference, recovered, data, predictions, quantiles):
     for ax, depth in zip(axes, [bottom, 45]):
         ax.fill_betweenx(z, np.r_[quantiles[0], quantiles[0, -1]],
                          np.r_[quantiles[2], quantiles[2, -1]], step='post',
-                         color='#4593bc', alpha=.23, label='3 completed chains: pointwise sample 95%')
+                         color='#4593bc', alpha=.23, label=f'{chains} chains: pointwise sample 95%')
         sample = dict(depth=reference['depth'], vs=quantiles[1])
-        stairs(ax, sample, 'Sample median (diagnostic only)', '#3481b1', width=1.4)
+        stairs(ax, sample, 'Posterior median' if accepted else 'Sample median (diagnostic only)', '#3481b1', width=1.4)
         stairs(ax, reference, 'Inversion reference (mref.txt)', reference_color, '--', 1.4)
         stairs(ax, recovered, 'Existing LM result (lambda=100)', lm_color, width=1.3)
         stairs(ax, target, 'Supplied synthetic target', target_color, width=2.1)
@@ -102,8 +102,11 @@ def plots(output, target, reference, recovered, data, predictions, quantiles):
                title='Full model / native interfaces' if depth == bottom else 'Shallow structure / native interfaces')
         ax.grid(alpha=.18)
     axes[0].legend(fontsize=8, loc='lower left')
-    fig.suptitle('NUTS VALIDATION FAILED (3/4 chains): target overlay for diagnosis only\n'
-                 'Fixed reference interfaces; the displayed intervals are not validated posterior uncertainty', fontsize=12)
+    label = ('NUTS: four-chain validation passed; supplied target and LM comparison\n'
+             'Pointwise intervals conditional on fixed interfaces, Brocher05, prior and assumed noise' if accepted else
+             f'NUTS VALIDATION FAILED ({chains}/4 chains): target overlay for diagnosis only\n'
+             'Fixed reference interfaces; the displayed intervals are not validated posterior uncertainty')
+    fig.suptitle(label, fontsize=12)
     finish(fig, 'target-nuts')
 
 
@@ -111,7 +114,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, required=True, help='Local QEDispInv checkout')
     parser.add_argument('--scan', type=Path, required=True)
-    parser.add_argument('--nuts', type=Path, required=True, help='Completed-chain diagnostic directory')
+    parser.add_argument('--nuts', type=Path, required=True, help='Analyzed NUTS result directory with acceptance.json')
     parser.add_argument('--exe', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -153,15 +156,15 @@ def main():
     recovered = dict(depth=lm[:, 0].tolist(), vs=lm[:, 3].tolist(),
                      vp=lm[:, 4].tolist(), rho=lm[:, 5].tolist())
     acceptance = json.loads((nuts/'acceptance.json').read_text())
-    if acceptance['accepted']:
-        raise ValueError('This diagnostic label is specific to the unvalidated three-chain subset')
-    sample_files = [nuts/f'nuts/chain_{c}_vs.txt' for c in range(3)]
+    chains = len(sample_config['inversion']['starts_vs'])
+    if acceptance['accepted'] and chains != 4:raise ValueError('Acceptance requires all four chains')
+    sample_files = [nuts/f'nuts/chain_{c}_vs.txt' for c in range(chains)]
     samples = np.stack([np.loadtxt(path) for path in sample_files])
-    if samples.shape != (3, 2000, len(reference['vs'])) or not np.isfinite(samples).all():
+    if samples.shape != (chains, sample_config['nuts']['draws'], len(reference['vs'])) or not np.isfinite(samples).all():
         raise ValueError('Unexpected retained sample dimensions or nonfinite values')
     quantiles = np.quantile(samples.reshape(-1, samples.shape[-1]), [.025, .5, .975], axis=0)
     np.savetxt(output/'sample-quantiles.txt', np.c_[reference['depth'], quantiles.T],
-               header='depth_km sample_q025_vs sample_q50_vs sample_q975_vs; diagnostic only', fmt='%.17g')
+               header='depth_km sample_q025_vs sample_q50_vs sample_q975_vs; '+('conditional posterior' if acceptance['accepted'] else 'diagnostic only'), fmt='%.17g')
     plan = dict(sources=sources, saved_lm=dict(path=str(model_file), sha256=digest(model_file)),
                 sample_files={str(path): digest(path) for path in sample_files},
                 source_commit=subprocess.check_output(['git','-C',str(source),'rev-parse','HEAD'],text=True).strip(),
@@ -187,9 +190,9 @@ def main():
                    target_brocher_max_rho_difference_g_cm3=float(np.max(abs(target_rho-target['rho']))),
                    rms_km_s={name: float(np.sqrt(np.mean((values-data[:, 1])**2))) for name, values in predictions.items()},
                    by_mode=[dict(mode=mode, count=int(np.sum(data[:, 2] == mode))) for mode in range(4)],
-                   saved_lm_replay_agrees=True, saved_sample_quantiles_agree=True, nuts_accepted=False)
+                   saved_lm_replay_agrees=True, saved_sample_quantiles_agree=True, nuts_accepted=acceptance['accepted'])
     save_json(output/'summary.json', metrics)
-    plots(output, target, reference, recovered, data, predictions, quantiles)
+    plots(output, target, reference, recovered, data, predictions, quantiles, chains, acceptance['accepted'])
     for name, record in sources.items():
         if digest(Path(record['path'])) != record['sha256']:
             raise ValueError(f'External source changed during comparison: {name}')

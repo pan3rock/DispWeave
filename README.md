@@ -210,6 +210,14 @@ HMC/NUTS 可显式设置 `prior = "reference_gaussian_vs"` 与逐层 `prior_sigm
 LM 正则化须关闭，避免重复计入约束。三层示例为 `examples/nuts/reference_gaussian.toml`；
 测度、测试与地壳四链实验见 [参考先验 NUTS 验证](docs/crust-nuts-validation.md)。
 可选 `record_failures=true` 保存失败试探点以便重放。
+可选 `mode_support="trapped_modes"` 显式要求观测的受俘获模态存在：只有完整受俘获域的
+独立计数收敛、与已找到根数一致并确认所需阶次缺失时，才按零似然的支持域拒绝处理；
+未解决的正演、病态截止端点和计数预算耗尽仍记为数值失败。默认 `strict_forward` 保留原行为。
+支持域拒绝单独统计，不算数值发散；其轨迹能量误差仍保留为无穷大。
+参考高斯先验下可选 `initial_metric="start_gauss_newton"`，在各链原初值处设置数据与先验的
+局部预条件矩阵，不能同时提供 `mass`。它不改变初值、先验或采样目标。
+NUTS 可选 `record_progress=true` 逐步刷盘预热和正式轨迹。
+详见 [地壳 NUTS 收尾验证](docs/crust-nuts-closeout.md)。
 
 ## 多链诊断与后验预测
 

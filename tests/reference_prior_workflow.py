@@ -34,6 +34,8 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
         cfg[algorithm] = dict(prior='reference_gaussian_vs', prior_sigma_vs=[.1,.2,.3],
             warmup=100, draws=40, step_size=.01, target_accept=.95, adapt_step_size=True, seed=8126)
         cfg[algorithm].update(dict(leapfrog_steps=4) if algorithm=='hmc' else dict(max_depth=7))
+        cfg[algorithm].update(initial_metric='start_gauss_newton',mode_support='trapped_modes')
+        if algorithm=='nuts':cfg[algorithm]['record_progress']=True
         path = work/f'{algorithm}.toml';write_config(path, cfg)
         outputs = [work/f'{algorithm}-{i}' for i in range(2)]
         for out in outputs:
@@ -43,6 +45,13 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
             np.testing.assert_array_equal(saved[:,2], [.1,.2,.3])
             np.testing.assert_array_equal(saved[:,3:5], np.loadtxt(out/'parameter_bounds.txt')[:,3:5])
             assert 'prior_measure=physical_vs' in (out/'metadata.txt').read_text()
+            assert 'initial_metric=start_gauss_newton' in (out/'metadata.txt').read_text()
+            for c in range(2):np.linalg.cholesky(np.loadtxt(out/f'chain_{c}_initial_mass.txt'))
+            assert not np.allclose(np.loadtxt(out/'chain_0_initial_mass.txt'),np.loadtxt(out/'chain_1_initial_mass.txt'))
+            if algorithm=='nuts':
+                progress=np.loadtxt(out/'chain_0_progress.txt',dtype=str,skiprows=1)
+                assert progress.shape==(140,11) and np.array_equal(progress[:,0].astype(int),np.arange(140))
+                np.testing.assert_array_equal(progress[100:,8:].astype(float),np.loadtxt(out/'chain_0_z.txt'))
         for chain in range(2):
             for suffix in ['vs','z','trace']:
                 name=f'chain_{chain}_{suffix}.txt'
@@ -121,4 +130,8 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
             path=work/f'{algorithm}-{name}.toml';write_config(path,invalid)
             p=run(algorithm,'--config',path,'--data',work/'data/observations.txt','--output',work/f'bad-{algorithm}-{name}',codes=(1,))
             assert ('not a sampler prior' if name=='penalty' else 'requires reference_gaussian_vs') in p.stderr
+        for field,value in [('mode_support','unknown'),('initial_metric','unknown'),('mass',np.eye(3).tolist())]:
+            invalid=copy.deepcopy(cfg);invalid[algorithm][field]=value
+            path=work/f'{algorithm}-bad-{field}.toml';write_config(path,invalid)
+            run(algorithm,'--config',path,'--data',work/'data/observations.txt','--output',work/f'bad-{algorithm}-{field}',codes=(1,))
 print('PASS reference Gaussian HMC/NUTS configuration, retained-state replay and empirical prediction')

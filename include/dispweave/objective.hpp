@@ -18,6 +18,9 @@ private:
     DispersionObservations data_;
 };
 enum class EvaluationStatus { valid, outside_support, forward_failure, gradient_failure, numerical_failure };
+// Explicit observation model: every labelled trapped mode must exist.
+// Default preserves unresolved-forward semantics for existing callers.
+enum class ModeSupportPolicy { strict_forward, trapped_modes };
 struct DataEvaluation {
     EvaluationStatus status=EvaluationStatus::numerical_failure;
     double log_likelihood=NAN, least_squares_cost=NAN;
@@ -30,7 +33,8 @@ struct DataEvaluation {
 class DispersionProblem {
 public:
     // Backend must outlive the problem; data and parameterization are owned copies.
-    DispersionProblem(const Forward&,FixedVs,DispersionObservations,SensitivityMethod=SensitivityMethod::energy);
+    DispersionProblem(const Forward&,FixedVs,DispersionObservations,SensitivityMethod=SensitivityMethod::energy,
+                      ModeSupportPolicy=ModeSupportPolicy::strict_forward);
     DataEvaluation evaluate(const Eigen::VectorXd& q,bool gradient=true,double log_scale=0) const;
     const FixedVs& parameters() const { return parameters_; }
     const GaussianLikelihood& likelihood() const { return likelihood_; }
@@ -39,6 +43,7 @@ private:
     FixedVs parameters_;
     GaussianLikelihood likelihood_;
     SensitivityMethod derivative_;
+    ModeSupportPolicy support_;
 };
 enum class PriorMeasure { physical_vs, log_vs };
 struct PriorEvaluation { double value; Eigen::VectorXd gradient; };

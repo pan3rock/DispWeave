@@ -156,6 +156,17 @@ int main(int argc,char** argv) {try {
         try {dw::sample_hmc(broken,v({1,0}),metric,o);} catch(const std::invalid_argument&) {++caught;}
         try {dw::sample_hmc([](const VectorXd&) {return dw::DensityEvaluation{dw::EvaluationStatus::valid,0,VectorXd()};},v({0,0}),metric,o);} catch(const std::invalid_argument&) {++caught;}
         check(caught==5,"invalid inputs rejected");
+        for(double outside_value:{-INFINITY,NAN}) {
+            auto bounded=[outside_value](const VectorXd& q) {
+                if(q.norm()>0) return dw::DensityEvaluation{dw::EvaluationStatus::outside_support,outside_value,{}};
+                return dw::DensityEvaluation{dw::EvaluationStatus::valid,0,VectorXd::Zero(q.size())};
+            };
+            const auto r=dw::sample_hmc(bounded,v({0,0}),metric,o);
+            for(const auto& t:r.transitions) {
+                check(!t.accepted,"Rejected boundary changed state");
+                check(t.divergent==std::isnan(outside_value),"Malformed support value hidden or known boundary divergent");
+            }
+        }
         dw::HMCOptions adapted;adapted.warmup=50;adapted.draws=20;adapted.step_jitter=0;
         auto frozen=dw::sample_hmc(target,v({0,0}),metric,adapted);
         for(auto t:frozen.transitions) if(!t.warmup) check(t.step_size==frozen.step_size,"no adaptation after warmup");

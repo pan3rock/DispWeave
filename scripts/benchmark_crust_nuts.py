@@ -28,7 +28,8 @@ PRIOR_SD = .1
 SEED = 20261023
 
 
-def prepare(case, exe, output, warmup, draws, chains, adaptation, target_accept=.95):
+def prepare(case, exe, output, warmup, draws, chains, adaptation, target_accept=.95,
+            mode_support='strict_forward', initial_metric='reference'):
     if warmup < 100 or draws < 8 or chains not in (1, 4):
         raise ValueError('Need warmup >=100, draws >=8 and one pilot or four production chains')
     if not np.isfinite(target_accept) or not 0<target_accept<1:raise ValueError('Target acceptance must be in (0,1)')
@@ -73,13 +74,18 @@ def prepare(case, exe, output, warmup, draws, chains, adaptation, target_accept=
     config['nuts']=dict(prior='reference_gaussian_vs',prior_sigma_vs=[PRIOR_SD]*n,
         warmup=warmup,draws=draws,max_depth=10,step_size=.1,target_accept=target_accept,
         adapt_step_size=True,metric_adaptation=adaptation,seed=SEED,mass=mass.tolist(),record_failures=True)
+    config['nuts'].update(mode_support=mode_support,record_progress=True)
+    if initial_metric=='start':
+        del config['nuts']['mass']
+        config['nuts']['initial_metric']='start_gauss_newton'
     write_config(output/'nuts.toml',config)
     provenance=dict(source=str(case),files={name:digest(output/name) for name in
         ['source-inversion.toml','observations.txt','covariance.txt','nuts.toml']},
         binary=str(exe),binary_sha256=digest(exe),script_sha256=digest(Path(__file__)),
         source_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
         prior_mean='model.vs',prior_sd_km_s=PRIOR_SD,
-        initial_metric='D * (J_vs.T C^-1 J_vs + prior_precision) * D at reference; D=dVs/dz',
+        initial_metric=f'D * (J_vs.T C^-1 J_vs + prior_precision) * D at {initial_metric}; D=dVs/dz',
+        mode_support=mode_support,
         initial_metric_eigenvalues=np.linalg.eigvalsh(mass).tolist(),
         warmup=warmup,draws=draws,chains=chains,metric_adaptation=adaptation,target_accept=target_accept,
         acceptance=dict(max_rhat=1.01,min_bulk_ess=400,min_tail_ess=400,
@@ -126,7 +132,8 @@ def diagnostics(config, samples, traces):
         record=dict(chain=c)
         for label,part in [('warmup',trace[:options['warmup']]),('production',trace[options['warmup']:])]:
             record[label]=dict(divergences=int(part[:,2].astype(int).sum()),
-                invalid_evaluations=int(np.count_nonzero(part[:,6]!='valid')),
+                invalid_evaluations=int(np.count_nonzero(~np.isin(part[:,6],['valid','outside_support']))),
+                support_rejections=int(np.count_nonzero(part[:,6]=='outside_support')),
                 depth_limits=int(part[:,9].astype(int).sum()),
                 accepted=int(part[:,1].astype(int).sum()),gradient_evaluations=int(part[:,7].astype(int).sum()),
                 mean_acceptance_probability=float(part[:,4].astype(float).mean()),
@@ -189,7 +196,8 @@ def analyze(output, exe, per_chain, make_plots=True):
         updates=[i for i,line in enumerate(lines) if line.startswith('# ') and line[2:].split()[0].isdigit()]
         if config['nuts']['metric_adaptation']=='none':
             if updates:raise ValueError('Unexpected metric updates')
-            np.testing.assert_allclose(mass,np.loadtxt(folder/'mass.txt'),rtol=1e-12,atol=1e-12)
+            initial=folder/f'chain_{c}_initial_mass.txt'
+            np.testing.assert_allclose(mass,np.loadtxt(initial if initial.exists() else folder/'mass.txt'),rtol=1e-12,atol=1e-12)
         else:
             if not updates:raise ValueError('Missing declared metric adaptation')
             for start in updates:
@@ -320,6 +328,9 @@ def sample_separate_chains(output,exe,workers,resume=False):
             raise ValueError('Executed chain configuration differs from prepared configuration')
         for suffix in ['vs','z','trace','mass','metric_updates']:
             shutil.copyfile(source/f'chain_0_{suffix}.txt',merged/f'chain_{c}_{suffix}.txt')
+        for suffix in ['initial_mass','progress']:
+            if (source/f'chain_0_{suffix}.txt').exists():
+                shutil.copyfile(source/f'chain_0_{suffix}.txt',merged/f'chain_{c}_{suffix}.txt')
         if (source/'chain_0_failed_evaluations.txt').exists():
             shutil.copyfile(source/'chain_0_failed_evaluations.txt',merged/f'chain_{c}_failed_evaluations.txt')
         row=(source/'chains.txt').read_text().splitlines()[1].split();row[0]=str(c);summaries.append(' '.join(row))
@@ -419,6 +430,8 @@ def main():
     parser.add_argument('--chains',type=int,choices=[1,4],default=4)
     parser.add_argument('--metric-adaptation',choices=['none','diagonal','dense'],default='dense')
     parser.add_argument('--target-accept',type=float,default=.95)
+    parser.add_argument('--mode-support',choices=['strict_forward','trapped_modes'],default='strict_forward')
+    parser.add_argument('--initial-metric',choices=['reference','start'],default='reference')
     parser.add_argument('--prepare-only',action='store_true')
     parser.add_argument('--analyze-only',action='store_true')
     parser.add_argument('--resume-sampling',action='store_true',help='Preserve completed chains and restart interrupted chains with the same streams')
@@ -432,7 +445,8 @@ def main():
         sample_separate_chains(output,exe,args.workers,resume=True)
         return analyze(output,exe,args.predictive_per_chain,not args.no_plot)
     if args.case is None:parser.error('--case is required for a new run')
-    prepare(args.case.resolve(),exe,output,args.warmup,args.draws,args.chains,args.metric_adaptation,args.target_accept)
+    prepare(args.case.resolve(),exe,output,args.warmup,args.draws,args.chains,args.metric_adaptation,args.target_accept,
+            args.mode_support,args.initial_metric)
     if args.prepare_only:return 0
     sample_separate_chains(output,exe,args.workers)
     return analyze(output,exe,args.predictive_per_chain,not args.no_plot)

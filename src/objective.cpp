@@ -1,4 +1,6 @@
 #include "dispweave/objective.hpp"
+#include "dispweave/mode_support.hpp"
+#include <map>
 #include <cmath>
 #include <stdexcept>
 namespace dw {
@@ -21,8 +23,8 @@ GaussianLikelihood::GaussianLikelihood(DispersionObservations data)
     data_.validate();
     data_.covariance=observations().covariance;
 }
-DispersionProblem::DispersionProblem(const Forward& f,FixedVs p,DispersionObservations o,SensitivityMethod method)
-    :forward_(f),parameters_(std::move(p)),likelihood_(std::move(o)),derivative_(method) {
+DispersionProblem::DispersionProblem(const Forward& f,FixedVs p,DispersionObservations o,SensitivityMethod method,ModeSupportPolicy support)
+    :forward_(f),parameters_(std::move(p)),likelihood_(std::move(o)),derivative_(method),support_(support) {
     if(method!=SensitivityMethod::energy && method!=SensitivityMethod::implicit)
         throw std::invalid_argument("Problem requires energy or implicit derivative policy");
 }
@@ -33,7 +35,26 @@ DataEvaluation DispersionProblem::evaluate(const Eigen::VectorXd& q,bool gradien
     validate_log_scale(scale);
     e.forward=forward_.evaluate(parameters_.decode(q),likelihood_.data().queries,gradient?derivative_:SensitivityMethod::none);
     if(e.forward.rows.size()!=likelihood_.data().queries.size() || !e.forward.all_valid()) {
-        e.status=EvaluationStatus::forward_failure; e.message="Unresolved forward rows; no observations discarded"; return e;
+        if(support_==ModeSupportPolicy::trapped_modes && e.forward.rows.size()==likelihood_.data().queries.size()) {
+            std::map<double,ModeCount> counts;
+            for(size_t i=0;i<e.forward.rows.size();++i) {
+                const auto& row=e.forward.rows[i];const auto query=likelihood_.data().queries[i];
+                // Backend numerical failures are not evidence of missing physics.
+                if(row.status!=RootStatus::missing_or_unresolved) continue;
+                auto found=counts.find(query.frequency_hz);
+                if(found==counts.end()) found=counts.emplace(query.frequency_hz,trapped_mode_count(parameters_.decode(q),query.frequency_hz)).first;
+                const auto& count=found->second;
+                // Require agreement with the backend's found prefix as an extra
+                // consistency check. A missed existing root stays a failure.
+                if(count.resolved && count.count==row.roots_found && count.count<=query.mode) {
+                    e.status=EvaluationStatus::outside_support;e.log_likelihood=-INFINITY;
+                    e.message="Trapped-mode presence: row "+std::to_string(i)+", checked count="+std::to_string(count.count);
+                    return e;
+                }
+                e.message="Mode-presence unresolved: "+count.message+"; ";
+            }
+        }
+        e.status=EvaluationStatus::forward_failure; e.message+="Unresolved forward rows; no observations discarded"; return e;
     }
     Eigen::VectorXd prediction(e.forward.rows.size());
     for(size_t i=0;i<e.forward.rows.size();++i) prediction[i]=e.forward.rows[i].phase_velocity;
@@ -130,6 +151,7 @@ PosteriorEvaluation log_posterior(const DispersionProblem& problem,const Eigen::
     out.log_likelihood=out.data.log_likelihood;
     out.log_transform=prior.measure==PriorMeasure::physical_vs?problem.parameters().log_abs_det_jacobian(q):0;
     if(out.status!=EvaluationStatus::valid) {
+        if(out.status==EvaluationStatus::outside_support && out.log_likelihood==-INFINITY) out.value=-INFINITY;
         out.message=out.data.message;
         return out;
     }

@@ -1,6 +1,7 @@
 #pragma once
 #include "hmc.hpp"
 namespace dw {
+struct NUTSTransition;
 // Slice NUTS: Hoffman & Gelman (2014), Algorithm 6, with a fixed
 // Euclidean metric and a finite tree-depth budget. No multinomial selection.
 struct NUTSOptions {
@@ -9,6 +10,8 @@ struct NUTSOptions {
     bool adapt_step_size=true;
     MetricAdaptation metric_adaptation=MetricAdaptation::none;
     std::uint64_t seed=2026,chain_id=0;
+    // Optional observation only; called after every transition, including warmup.
+    std::function<void(int,const Eigen::VectorXd&,const NUTSTransition&)> progress;
 };
 struct NUTSTransition {
     bool warmup,accepted,divergent,max_depth_reached;

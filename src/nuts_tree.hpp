@@ -26,6 +26,11 @@ public:
             auto integrated=leapfrog(target,start,metric,direction*step,1);
             Tree t; t.left=t.right=t.candidate=std::move(integrated.state);
             t.evaluations=integrated.evaluations;t.status=integrated.status;
+            if(t.status==EvaluationStatus::outside_support) {
+                // A known zero-density boundary stops this subtree. Its candidate
+                // cannot enter the slice; retain the earlier eligible state.
+                t.go=false;t.max_error=INFINITY;return t;
+            }
             const double joint=t.status==EvaluationStatus::valid?
                 t.candidate.density.value-metric.kinetic(t.candidate.momentum):-INFINITY;
             const double error=joint0-joint;

@@ -22,13 +22,15 @@ class BoundarySystem:
         self.half_h = np.diff(m[:, 1])/2
         self.cache = {}
 
-    def matrix(self, phase):
+    def matrix(self, phase, halfspace_s=None):
         if not np.isfinite(phase) or phase == 0:
             raise ValueError('Nonfinite or zero phase velocity')
         m = self.model; n = len(m); k = self.omega/phase; mu = self.mu
         d = 2*mu*k*k-m[:, 2]*self.omega**2
         p = np.sqrt((k*k-(self.omega/m[:, 4])**2).astype(complex))
         s = np.sqrt((k*k-(self.omega/m[:, 3])**2).astype(complex))
+        if halfspace_s is not None:
+            s[-1] = halfspace_s
         a = np.zeros((4*n-2, 4*n-2), complex)
         # State is [ux/i, uz, txz/i, tzz]; multiply SV potential amplitudes by i.
         # Thus the matrix is real on the trapped real-c axis, across layer speeds.
@@ -72,6 +74,50 @@ class BoundarySystem:
             value *= np.exp(-1j*complex(exponent).imag)
             self.cache[key] = complex(value), float(magnitude-complex(exponent).real)
         return self.cache[key]
+
+    def trapped_count(self, max_segments=2048):
+        """Full physical interval using the halfspace-S uniformizing variable.
+
+        Independent dense LAPACK determinant, for checking the native banded LU.
+        Numerical evidence, not an interval arithmetic certificate.
+        """
+        m = self.model
+        lambda_mu = m[:, 2]*(m[:, 4]**2-m[:, 3]**2)
+        lower = .95*np.sqrt((3-np.sqrt(5))*np.minimum(self.mu, lambda_mu).min()/m[:, 2].max())
+        high = np.sqrt(1-(lower/m[-1, 3])**2); cache = {}; records = []
+        def phase(t):
+            if t not in cache:
+                c = m[-1, 3]*np.sqrt(1-complex(t)**2); k = self.omega/c
+                a = self.matrix(c, halfspace_s=k*t)
+                sign, _ = np.linalg.slogdet(a)
+                if not np.isfinite(sign) or sign == 0: raise ValueError('Singular contour')
+                cache[t] = sign*np.exp(-1j*(2*k*m[-1, 1]).imag)
+            return cache[t]
+        for t in [0., high]:
+            c = m[-1, 3]*np.sqrt(1-t*t); k = self.omega/c
+            singular = np.linalg.svd(self.matrix(c, halfspace_s=k*t), compute_uv=False)
+            if singular[-1]/singular[0] < 1e-12: raise ValueError('Unresolved endpoint')
+        agreed = None
+        for height in [.02, .01]:
+            n = 64; previous = None
+            while n <= max_segments:
+                x = np.unique(np.r_[np.linspace(0, high, n+1), np.geomspace(1e-12, high, n//2+1)])
+                y = np.minimum(height, .25*x+1e-10); right = min(height, .25*high+1e-10)
+                points = np.r_[x-1j*y, high+1j*np.linspace(-right, right, n//2+1),
+                               x[::-1]+1j*y[::-1], 1j*np.linspace(1e-10, -1e-10, 17)]
+                values = np.array([phase(t) for t in points])
+                delta = np.angle(np.roll(values, -1)/values); winding = delta.sum()/(2*np.pi)
+                current = dict(count=int(round(winding)), maximum_phase_increment=float(abs(delta).max()),
+                               integer_error=float(abs(winding-round(winding))), height=height, segments=n)
+                records.append(current)
+                if (previous is not None and current['count'] == previous['count'] and current['count'] >= 0
+                        and max(current['maximum_phase_increment'], previous['maximum_phase_increment']) < np.pi/4
+                        and max(current['integer_error'], previous['integer_error']) < 1e-8):
+                    if agreed is not None and agreed != current['count']: raise ValueError('Contour heights disagree')
+                    agreed = current['count']; break
+                previous = current; n *= 2
+            else: raise ValueError('Full-interval count budget exhausted')
+        return dict(count=agreed, lower_speed=float(lower), evaluations=len(cache), contours=records)
 
     def sign(self, phase):
         value, _ = self.determinant(float(phase))

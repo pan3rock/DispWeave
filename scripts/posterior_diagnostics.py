@@ -125,7 +125,8 @@ def main():
             raise ValueError('Trace and retained draw counts differ')
         sampler.append(dict(chain=path.name, status='recorded',
                             divergences=int(np.sum(retained[:, columns.index('divergent')].astype(int))),
-                            invalid_evaluations=int(np.sum(retained[:, columns.index('status')] != 'valid')),
+                            invalid_evaluations=int(np.sum(~np.isin(retained[:, columns.index('status')], ['valid','outside_support']))),
+                            support_rejections=int(np.sum(retained[:, columns.index('status')] == 'outside_support')),
                             mean_acceptance_probability=float(retained[:, columns.index('acceptance_probability')].astype(float).mean())))
         if 'max_depth_reached' in columns:
             sampler[-1].update(

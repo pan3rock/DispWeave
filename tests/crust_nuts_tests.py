@@ -33,6 +33,10 @@ class CrustDiagnostics(unittest.TestCase):
         x=rng.normal(config['model']['vs'],.1,(4,2000,3));traces=self.traces()
         good=diagnostics(config,x,traces)
         self.assertTrue(good['accepted'])
+        traces[0][111,6]='outside_support'
+        boundary=diagnostics(config,x,traces)
+        self.assertTrue(boundary['accepted'])
+        self.assertEqual(boundary['sampler'][0]['production']['support_rejections'],1)
         # A warmup failure is retained but does not falsely label production as failed.
         traces[0][0,6]='forward_failure';warmup=diagnostics(config,x,traces)
         self.assertTrue(warmup['accepted'])

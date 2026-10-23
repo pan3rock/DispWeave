@@ -12,6 +12,7 @@ bool valid(const DensityEvaluation& e,Eigen::Index n) {
 DensityEvaluation evaluate(const LogDensity& target,const Eigen::VectorXd& q) {
     if(!q.allFinite()) return {};
     auto e=target(q);
+    if(e.status==EvaluationStatus::outside_support && e.value!=-INFINITY) e.status=EvaluationStatus::numerical_failure;
     if(e.status==EvaluationStatus::valid && !valid(e,q.size())) e.status=EvaluationStatus::numerical_failure;
     return e;
 }
@@ -127,7 +128,8 @@ HMCResult sample_hmc(const LogDensity& target,const Eigen::VectorXd& initial,con
             else probability=std::exp(std::min(0.,-error));
         }
         const bool accepted=uniform(rng)<probability;
-        const bool divergent=proposal.status!=EvaluationStatus::valid || std::abs(error)>o.divergence_threshold;
+        const bool divergent=proposal.status!=EvaluationStatus::outside_support &&
+            (proposal.status!=EvaluationStatus::valid || std::abs(error)>o.divergence_threshold);
         out.transitions.push_back({i<o.warmup,accepted,divergent,used_step,probability,error,proposal.status,proposal.evaluations});
         if(accepted) {q=std::move(proposal.state.position); current=std::move(proposal.state.density);}
         if(i<o.warmup && o.adapt_step_size) {

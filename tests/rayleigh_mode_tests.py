@@ -13,6 +13,15 @@ from rayleigh_boundary_reference import root as travelling_root, boundary_matrix
 
 
 class ModeAudit(unittest.TestCase):
+    def test_full_trapped_interval(self):
+        for name in ['formal', 'warmup']:
+            m = np.loadtxt(ROOT/f'tests/fixtures/rayleigh/crust-cutoff-{name}.txt')
+            self.assertEqual(BoundarySystem(m, .1612).trapped_count()['count'], 2)
+            m[-1, 3] += .025
+            self.assertEqual(BoundarySystem(m, .1612).trapped_count()['count'], 3)
+        m = np.array([[0., 0., 2.7, 3., 3*np.sqrt(2)]])
+        self.assertEqual(BoundarySystem(m, .1).trapped_count()['count'], 1)
+
     def test_homogeneous_cubic_and_subdivision(self):
         ratio = 1.8; b = ratio**-2
         roots = np.roots([1., -8., 24-16*b, -16*(1-b)])

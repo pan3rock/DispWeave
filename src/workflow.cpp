@@ -287,7 +287,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     const auto method_name=toml::find_or<std::string>(inv,"sensitivity","implicit");
     if(method_name!="energy" && method_name!="implicit") throw std::invalid_argument("Unknown sensitivity");
     InvLMForward backend; const auto data=read_observations(data_path,cov_path);
-    DispersionProblem problem(backend,parameters,data,method_name=="energy"?SensitivityMethod::energy:SensitivityMethod::implicit);
+    const auto support_name=toml::find_or<std::string>(cfg,"mode_support","strict_forward");
+    if(support_name!="strict_forward" && support_name!="trapped_modes") throw std::invalid_argument("Unknown mode_support policy");
+    DispersionProblem problem(backend,parameters,data,method_name=="energy"?SensitivityMethod::energy:SensitivityMethod::implicit,
+        support_name=="trapped_modes"?ModeSupportPolicy::trapped_modes:ModeSupportPolicy::strict_forward);
     const auto prior_name=toml::find<std::string>(cfg,"prior");
     if(prior_name!="uniform_vs" && prior_name!="uniform_log_vs" && prior_name!="reference_gaussian_vs")
         throw std::invalid_argument("Sampler prior must be uniform_vs, uniform_log_vs or reference_gaussian_vs");
@@ -335,6 +338,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     const auto chain_offset=toml::find_or<std::int64_t>(cfg,"chain_id_offset",0);
     if(chain_offset<0) throw std::invalid_argument("Sampler chain_id_offset must be nonnegative");
     const bool record_failures=toml::find_or<bool>(cfg,"record_failures",false);
+    const auto initial_metric_name=toml::find_or<std::string>(cfg,"initial_metric","supplied");
+    if(initial_metric_name!="supplied" && initial_metric_name!="start_gauss_newton") throw std::invalid_argument("Unknown initial_metric");
+    if(initial_metric_name=="start_gauss_newton" && (cfg.contains("mass") || prior_name!="reference_gaussian_vs"))
+        throw std::invalid_argument("start_gauss_newton needs reference Gaussian prior and no supplied mass");
     Eigen::MatrixXd mass=Eigen::MatrixXd::Identity(model.vs.size(),model.vs.size());
     if(cfg.contains("mass")) {
         const auto rows=toml::find<std::vector<std::vector<double>>>(cfg,"mass");
@@ -361,7 +368,27 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     bool issues=false;
     for(size_t chain=0;chain<initial.size();++chain) {
         options.chain_id=static_cast<std::uint64_t>(chain_offset)+chain;
+        const EuclideanMetric chain_metric=[&] {
+            if(initial_metric_name=="supplied") return metric;
+            const auto t=box.forward(initial[chain]);const auto e=problem.evaluate(t.q,true);
+            if(e.status!=EvaluationStatus::valid) throw std::runtime_error("Unresolved initial metric Jacobian");
+            const Eigen::MatrixXd j=e.jacobian*t.derivative.asDiagonal();
+            Eigen::MatrixXd m=j.transpose()*j;
+            m.diagonal().array()+=(t.q.array().exp()*t.derivative.array()/prior_sigma.array()).square();
+            return EuclideanMetric(m);
+        }();
+        auto initial_mass_file=output_file(output/("chain_"+std::to_string(chain)+"_initial_mass.txt"));
+        initial_mass_file<<chain_metric.mass()<<'\n';
         std::ofstream failed;
+        std::ofstream progress;
+        if constexpr(nuts) if(toml::find_or<bool>(cfg,"record_progress",false)) {
+            progress=output_file(output/("chain_"+std::to_string(chain)+"_progress.txt"));
+            progress<<"# iteration warmup status divergent depth evaluations step acceptance z[all parameters]\n";
+            options.progress=[&](int i,const Eigen::VectorXd& z,const NUTSTransition& t) {
+                progress<<i<<' '<<t.warmup<<' '<<status(t.status)<<' '<<t.divergent<<' '<<t.depth<<' '
+                        <<t.evaluations<<' '<<t.step_size<<' '<<t.acceptance_probability<<' '<<z.transpose()<<std::endl;
+            };
+        }
         if(record_failures) {
             failed=output_file(output/("chain_"+std::to_string(chain)+"_failed_evaluations.txt"));
             failed<<"# target_call status z[all parameters]; zero-based calls including initialization\n";
@@ -374,8 +401,8 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             ++evaluation_index;return e;
         };
         const auto r=[&] {
-            if constexpr(nuts) return sample_nuts(recorded_target,initial[chain],metric,options);
-            else return sample_hmc(recorded_target,initial[chain],metric,options);
+            if constexpr(nuts) return sample_nuts(recorded_target,initial[chain],chain_metric,options);
+            else return sample_hmc(recorded_target,initial[chain],chain_metric,options);
         }();
         auto final_mass=output_file(output/("chain_"+std::to_string(chain)+"_mass.txt"));final_mass<<r.mass<<'\n';
         auto updates=output_file(output/("chain_"+std::to_string(chain)+"_metric_updates.txt"));
@@ -400,7 +427,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
                 if(!t.warmup) depth_limits+=t.max_depth_reached;
             }
             trace<<'\n';
-            if(!t.warmup) {accepted+=t.accepted;divergences+=t.divergent;invalid+=t.status!=EvaluationStatus::valid;}
+            if(!t.warmup) {accepted+=t.accepted;divergences+=t.divergent;invalid+=t.status!=EvaluationStatus::valid && t.status!=EvaluationStatus::outside_support;}
         }
         summary<<chain<<' '<<options.draws<<' '<<accepted<<' '<<divergences<<' '<<invalid<<' '<<r.step_size;
         if constexpr(nuts) summary<<' '<<depth_limits;
@@ -412,6 +439,8 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"\nbackend=invLM Dunkin\ninvlm_commit="<<DW_INVLM_COMMIT
             <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nseed="<<options.seed
             <<"\nchain_id_offset="<<chain_offset<<"\nrecord_failures="<<record_failures
+            <<"\nmode_support="<<support_name
+            <<"\ninitial_metric="<<initial_metric_name
             <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws;
     if constexpr(nuts) metadata<<"\nsampler=slice_nuts_hoffman_gelman_2014\nmax_depth="<<options.max_depth;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;

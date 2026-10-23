@@ -56,6 +56,29 @@ int main() {
             for(int i=o.warmup;i<o.warmup+o.draws;++i) require(!r.transitions[i].divergent,"Distribution divergence");
             if(kind==1) require(r.mass.isApprox(r.metric_updates.back().mass,1e-12),"Final mass frozen");
         }
+        // Check the sampled law at a known hard boundary, with repeated states.
+        for(int kind:{0,1}) for(auto seed:{17,2026,99173}) {
+            LogDensity bounded=[kind](const Eigen::VectorXd& q) {
+                if(kind==0 && q[0]<=0) return DensityEvaluation{EvaluationStatus::outside_support,-INFINITY,{}};
+                if(kind==1 && q.squaredNorm()>=1) return DensityEvaluation{EvaluationStatus::outside_support,-INFINITY,{}};
+                if(kind==1) return DensityEvaluation{EvaluationStatus::valid,0,Eigen::VectorXd::Zero(2)};
+                return DensityEvaluation{EvaluationStatus::valid,-.5*q.squaredNorm(),-q};
+            };
+            Eigen::VectorXd initial=Eigen::VectorXd::Zero(2);initial[0]=.5;
+            NUTSOptions o;o.seed=seed;o.warmup=1000;o.draws=16000;o.target_accept=.8;
+            const auto r=sample_nuts(bounded,initial,identity,o);int boundaries=0;
+            for(int i=o.warmup;i<o.warmup+o.draws;++i) {
+                require(!r.transitions[i].divergent,"Known boundary marked divergent");
+                boundaries+=r.transitions[i].status==EvaluationStatus::outside_support;
+            }
+            require(boundaries>0,"Boundary test never exercised rejection");
+            moment(r.draws.col(0),kind==0?std::sqrt(2/std::acos(-1.)):0);
+            moment(r.draws.col(1),0);
+            moment(r.draws.col(0).array().square().matrix(),kind==0?1:.25);
+            moment(r.draws.col(1).array().square().matrix(),kind==0?1:.25);
+            if(kind==0) require(r.draws.col(0).minCoeff()>0,"Half-normal support violated");
+            else require(r.draws.rowwise().squaredNorm().maxCoeff()<1,"Disk support violated");
+        }
         // Exercise recursive tree counts, endpoints, and candidate selection directly.
         {
             std::mt19937_64 rng(91);
@@ -98,6 +121,13 @@ int main() {
         const auto a=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,short_run);
         const auto b=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,short_run);
         require(a.draws==b.draws,"Seed replay");
+        int observed=0;
+        short_run.progress=[&](int i,const Eigen::VectorXd& q,const NUTSTransition&) {
+            require(i==observed++ && q==a.draws.row(i).transpose(),"Progress callback state/order");
+        };
+        const auto observed_run=sample_nuts(normal,Eigen::VectorXd::Zero(2),identity,short_run);
+        require(observed==short_run.draws && observed_run.draws==a.draws,"Progress changes RNG stream");
+        short_run.progress={};
         for(const auto& t:a.transitions) require(t.max_depth_reached && t.evaluations==1,"Depth cap");
         auto adaptive=short_run;adaptive.warmup=200;adaptive.step_size=.1;adaptive.max_depth=8;
         adaptive.adapt_step_size=true;adaptive.metric_adaptation=MetricAdaptation::diagonal;

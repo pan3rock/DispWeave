@@ -55,6 +55,7 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
         }
         q=candidate.position;density=candidate.density;
         out.transitions.push_back({i<o.warmup,selected,divergent,go && depth==o.max_depth,depth,evaluations,step,acceptance,max_error,status});
+        if(o.progress) o.progress(i,q,out.transitions.back());
         if(i<o.warmup && o.adapt_step_size) {
             step=adaptation.update(acceptance,i+1==o.warmup);
             if(window<windows.size() && i>=windows[window].begin) {

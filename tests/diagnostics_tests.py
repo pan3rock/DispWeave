@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import sys
+import subprocess
+import tempfile
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from posterior_diagnostics import diagnose, rank_normalize, split
@@ -59,4 +61,14 @@ if __name__ == '__main__':
     z = rank_normalize(x)
     assert z[0, 0] == z[0, 1] == z[1, 0]
     assert split(np.arange(9)[None, :]).tolist() == [[0, 1, 2, 3], [5, 6, 7, 8]]
+    with tempfile.TemporaryDirectory() as directory:
+        folder=Path(directory);rng=np.random.default_rng(42)
+        for c in range(2):
+            np.savetxt(folder/f'chain_{c}_vs.txt',rng.normal(size=100))
+            trace=['0 0 valid .9']*100;trace[0]='0 0 outside_support 0';trace[1]='0 1 forward_failure 0'
+            (folder/f'chain_{c}_trace.txt').write_text('# warmup divergent status acceptance_probability\n'+'\n'.join(trace))
+        subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1]/'scripts/posterior_diagnostics.py'),
+                        str(folder),'--output',str(folder/'diagnostics.json')],check=True,capture_output=True)
+        for result in json.loads((folder/'diagnostics.json').read_text())['sampler']:
+            assert result['invalid_evaluations']==1 and result['support_rejections']==1 and result['divergences']==1
     print('diagnostics tests passed' + (' with independent ArviZ comparison' if reference else ''))

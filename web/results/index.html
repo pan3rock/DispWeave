@@ -19,7 +19,7 @@
     a:focus-visible, summary:focus-visible { outline: 3px solid #56896d; outline-offset: 4px; }
     header p, .note, footer { font-size: 13px; color: #5c685f; }
     nav { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 13px 0; font-size: 14px; }
-    .status { padding: 12px 16px; background: #fff4e2; border-left: 3px solid #b77d3a; font-size: 13px; margin: 8px 0 24px; }
+    .status { padding: 12px 16px; background: #edf5ed; border-left: 3px solid #4d805b; font-size: 13px; margin: 8px 0 24px; }
     figure { margin: 0 0 28px; border: 1px solid #dce2d9; border-radius: 6px; background: white; overflow: hidden; scroll-margin-top: 16px; }
     figcaption { padding: 16px 20px 12px; }
     .figure-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -62,7 +62,7 @@
 <main>
   <header>
     <h1>DispWeave · 反演结果</h1>
-    <p>地壳合成数据 · 125 个观测点 · 2026-10-23 结果快照。图直接展开，点击图片可打开原图。</p>
+    <p>地壳合成数据 · 125 个观测点 · 2026-10-24 结果快照。图直接展开，点击图片可打开原图。</p>
     <nav aria-label="结果导航">
       <a href="#nuts-model">NUTS 模型</a>
       <a href="#nuts-fit">频散拟合</a>
@@ -73,31 +73,31 @@
     </nav>
   </header>
 
-  <p class="status"><strong>NUTS 当前状态：3/4 条链完成，整组尚未通过验收。</strong>
-    以下 NUTS 图来自原链 1、2、3，共 6000 个正式状态；链 0 预热受阻，三条完成链正式期共记录 5 次正演失败。样本区间仅供诊断。</p>
+  <p class="status"><strong>NUTS：原四个初值全部完成，四链验收通过。</strong>
+    每链预热 1000、正式 2000，共 8000 个正式状态；正式期数值失败、发散、树深截断均为 0。另记录 4 次已核查的模态支持域拒绝。</p>
 
   <figure id="nuts-model">
     <figcaption>
-      <div class="figure-heading"><h2>1. NUTS 模型区间与目标模型</h2><div class="downloads"><a href="../../results/crust-target-comparison/target-nuts.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-target-comparison/target-nuts.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>蓝色：三条已完成链的样本 95% 区间与中位数；橙色：合成目标；灰虚线：参考模型；绿色：LM 解。右图放大浅部。</p>
+      <div class="figure-heading"><h2>1. NUTS 模型区间与目标模型</h2><div class="downloads"><a href="../../results/crust-target-final/target-nuts.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-target-final/target-nuts.pdf" target="_blank" rel="noopener">PDF</a></div></div>
+      <p>蓝色：四条链的逐点后验 95% 区间与中位数；橙色：合成目标；灰虚线：参考模型；绿色：LM 解。右图放大浅部。</p>
     </figcaption>
-    <a class="image-link" href="../../results/crust-target-comparison/target-nuts.png" target="_blank" rel="noopener" aria-label="打开 NUTS 模型区间原图"><img src="../../results/crust-target-comparison/target-nuts.png" alt="NUTS 样本区间与合成目标、参考模型和 LM 解的全深度及浅部对照；四链验收未通过。" fetchpriority="high"></a>
+    <a class="image-link" href="../../results/crust-target-final/target-nuts.png" target="_blank" rel="noopener" aria-label="打开 NUTS 模型区间原图"><img src="../../results/crust-target-final/target-nuts.png" alt="NUTS 样本区间与合成目标、参考模型和 LM 解的全深度及浅部对照；四链验收通过。" fetchpriority="high"></a>
   </figure>
 
   <figure id="nuts-fit">
     <figcaption>
-      <div class="figure-heading"><h2>2. NUTS 频散拟合与残差</h2><div class="downloads"><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.pdf" target="_blank" rel="noopener">PDF</a></div></div>
+      <div class="figure-heading"><h2>2. NUTS 频散拟合与残差</h2><div class="downloads"><a href="../../results/crust-nuts-final/predictive.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-final/predictive.pdf" target="_blank" rel="noopener">PDF</a></div></div>
       <p>上排：四个模态的观测和预测区间；下排：标准化残差。浅蓝色含观测噪声，深蓝色为潜在频散曲线区间；均为逐点区间。</p>
     </figcaption>
-    <a class="image-link" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.png" target="_blank" rel="noopener" aria-label="打开 NUTS 频散拟合原图"><img src="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.png" alt="三条已完成链的四模态预测区间与观测，以及标准化残差；仅供诊断。" loading="lazy"></a>
+    <a class="image-link" href="../../results/crust-nuts-final/predictive.png" target="_blank" rel="noopener" aria-label="打开 NUTS 频散拟合原图"><img src="../../results/crust-nuts-final/predictive.png" alt="四条链的四模态预测区间与观测，以及标准化残差。" loading="lazy"></a>
   </figure>
 
   <figure id="nuts-traces">
     <figcaption>
-      <div class="figure-heading"><h2>3. NUTS 采样轨迹</h2><div class="downloads"><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/traces.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/traces.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>仅包含三条完成链；没有包含受阻链的正式样本。其最大 R̂ = 1.00317、最低 bulk ESS ≈ 2593，但这些子集指标不能替代原四链验收。<a href="../../docs/crust-nuts-validation.md">完整采样记录</a></p>
+      <div class="figure-heading"><h2>3. NUTS 采样轨迹</h2><div class="downloads"><a href="../../results/crust-nuts-final/traces.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-final/traces.pdf" target="_blank" rel="noopener">PDF</a></div></div>
+      <p>包含全部四条链。最大 R̂ = 1.00156，最低 bulk ESS ≈ 4353、tail ESS ≈ 3766。区间以固定界面、Brocher05、参考先验和假设噪声为条件。<a href="../../docs/crust-nuts-closeout.md">完整验证记录</a></p>
     </figcaption>
-    <a class="image-link" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/traces.png" target="_blank" rel="noopener" aria-label="打开 NUTS 采样轨迹原图"><img src="../../results/crust-nuts-conservative/completed-chain-diagnostics/traces.png" alt="已完成三条链的指定参数及派生量轨迹；不含受阻链的正式样本。" loading="lazy"></a>
+    <a class="image-link" href="../../results/crust-nuts-final/traces.png" target="_blank" rel="noopener" aria-label="打开 NUTS 采样轨迹原图"><img src="../../results/crust-nuts-final/traces.png" alt="全部四条链的指定参数轨迹。" loading="lazy"></a>
   </figure>
 
   <div class="section-title"><h2>LM 与合成数据对照</h2><p>当前 λ=100 的 5 个初值收敛到基本相同的解，拟合 RMS ≈ 0.019 km/s。结合噪声、数据约束与固定参数化评估结构差异。</p></div>
@@ -121,14 +121,14 @@
   <details id="more">
     <summary>补充图与报告</summary>
     <ul class="supplement-list">
-      <li><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.png" target="_blank" rel="noopener">NUTS 先验 / 样本区间</a> · <a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.pdf" target="_blank" rel="noopener">PDF</a><span>仅供诊断</span></li>
-      <li><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/correlation.png" target="_blank" rel="noopener">NUTS 参数相关矩阵</a> · <a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/correlation.pdf" target="_blank" rel="noopener">PDF</a><span>仅供诊断</span></li>
+      <li><a href="../../results/crust-nuts-final/prior-posterior.png" target="_blank" rel="noopener">NUTS 先验 / 后验区间</a> · <a href="../../results/crust-nuts-final/prior-posterior.pdf" target="_blank" rel="noopener">PDF</a><span>固定参数化下的条件后验</span></li>
+      <li><a href="../../results/crust-nuts-final/correlation.png" target="_blank" rel="noopener">NUTS 参数相关矩阵</a> · <a href="../../results/crust-nuts-final/correlation.pdf" target="_blank" rel="noopener">PDF</a><span>固定参数化下的条件后验</span></li>
       <li><a href="../../results/crust-regularization-scan/structure.png" target="_blank" rel="noopener">不同正则化权重的模型</a> · <a href="../../results/crust-regularization-scan/structure.pdf" target="_blank" rel="noopener">PDF</a></li>
       <li><a href="../../results/crust-regularization-scan/lambda-comparison.png" target="_blank" rel="noopener">正则化权重敏感性</a> · <a href="../../results/crust-regularization-scan/lambda-comparison.pdf" target="_blank" rel="noopener">PDF</a></li>
       <li><a href="../../results/crust-regularization-scan/residuals.png" target="_blank" rel="noopener">正则化分模态残差</a> · <a href="../../results/crust-regularization-scan/residuals.pdf" target="_blank" rel="noopener">PDF</a></li>
       <li><a href="../../results/crust-mode-audit-refined/cutoff-continuation.png" target="_blank" rel="noopener">模态截止核查</a> · <a href="../../results/crust-mode-audit-refined/cutoff-continuation.pdf" target="_blank" rel="noopener">PDF</a><span>有限域数值证据，非通用无根证明</span></li>
     </ul>
-    <p class="note"><a href="../../docs/crust-reference-validation.md">LM 参考模型验证</a> · <a href="../../docs/crust-regularization-validation.md">正则化对照</a> · <a href="../../docs/crust-nuts-validation.md">NUTS 验证记录</a> · <a href="../../docs/crust-mode-domain.md">模态截止核查</a> · <a href="../../docs/crust-target-comparison.md">目标模型对照说明</a></p>
+    <p class="note"><a href="../../docs/crust-reference-validation.md">LM 参考模型验证</a> · <a href="../../docs/crust-regularization-validation.md">正则化对照</a> · <a href="../../docs/crust-nuts-closeout.md">NUTS 四链验证记录</a> · <a href="../../docs/crust-mode-domain.md">模态截止核查</a> · <a href="../../docs/crust-target-comparison.md">目标模型对照说明</a></p>
   </details>
 
   <div class="sources">
