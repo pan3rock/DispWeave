@@ -117,3 +117,7 @@ chain 1 的前 109 次从 12,135 降到 5,513。首次更新之后两条路径�
 结果：`results/nuts-metric-pilot/{protocol,summary,comparison,compatibility}.json`。
 Release CTest **76/76**，NUTS UBSan **4/4**。k=0 时 slice 和 multinomial 各三条链的
 样本、轨迹、矩阵、更新、搜索与调用成本共 **42 个文件**与修改前冻结二进制逐字节一致。
+
+随后完成 [第 150 次更新的固定状态核查](nuts-window150-audit.md)：48 个短转移显示
+chain 0 主要是步长重启过冲，chain 1 同时出现局部矩阵估计恶化；
+因此后续需要分别验证步长重启策略和矩阵更新可靠性。
