@@ -414,8 +414,9 @@ void Dispersion::locate_extremum(double f,
       double f1 = pts[i].second;
       double f2 = pts[i + 1].second;
       double f3 = pts[i + 2].second;
-      if (!((f2 > f1 && f2 > f3) || (f2 < f1 && f2 < f3)))
-        continue;
+      // As in QEDispInv, try the parabolic vertex of every adjacent triple.
+      // Monotone sampled values can still hide an interior extremum and two
+      // nearby zeros; requiring the middle sample to be an extremum misses it.
       double xe_i = find_extremum(x1, x2, x3, f1, f2, f3);
       if (xe_i < x3 && xe_i > x1) {
         new_pts.push_back({xe_i, evaluate_secular(f, xe_i)});

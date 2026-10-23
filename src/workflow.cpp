@@ -103,7 +103,10 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     options.gradient_tolerance=toml::find_or<double>(inv,"gradient_tolerance",options.gradient_tolerance);
     options.step_tolerance=toml::find_or<double>(inv,"step_tolerance",options.step_tolerance);
     options.initial_damping=toml::find_or<double>(inv,"initial_damping",options.initial_damping);
-    InvLMForward backend; DispersionObservations data;
+    // Extra root brackets can change the final rounding of an otherwise
+    // identical phase. Refine LM evaluations to roundoff, as in joint LM,
+    // so cancellation in tiny trial reductions does not cause false stalls.
+    InvLMForward backend(SecularMethod::dunkin,RootAccuracy::refined); DispersionObservations data;
     int seed=0; bool noise=false;
     if(synthetic) {
         const auto fc=read_forward_config(config_path); data.queries=fc.queries;
@@ -172,7 +175,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     auto metadata=output_file(output/"metadata.txt");
     metadata<<"version="<<DW_VERSION<<"\ncompiler="<<DW_COMPILER<<"\nbuild="<<DW_BUILD_TYPE<<"\ninvlm="<<DW_INVLM_COMMIT
             <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nbackend=dunkin\nsensitivity="<<method_name
-            <<"\nsynthetic="<<synthetic<<"\nseed="<<seed<<"\nadd_noise="<<noise<<"\nbest_run="<<best
+            <<"\nroot_accuracy=refined\nsynthetic="<<synthetic<<"\nseed="<<seed<<"\nadd_noise="<<noise<<"\nbest_run="<<best
             <<"\nseconds="<<seconds<<"\nparameterization=fixed depths/rho; log Vs; bounded data least squares\n";
     std::cout<<"runs="<<runs.size()<<" best_run="<<best<<" seconds="<<seconds<<" output="<<output<<'\n';
     if(best>=0) std::cout<<"cost="<<runs[best].evaluation.least_squares_cost<<" reason="<<runs[best].reason<<'\n';

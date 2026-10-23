@@ -61,3 +61,19 @@ Rayleigh as well as Love; a failed refinement is not an accepted phase.
 8*double_epsilon for modal ellipticity, whose ratio can amplify tiny phase errors.
 The default forward/inversion path retains its old tolerances. No kernel changes.
 See `docs/m8a-validation.md` for pole-side independent verification and limitations.
+
+## Clustered Rayleigh candidate intervals (2026-10-23)
+
+As in QEDispInv, `locate_extremum` now attempts a parabolic vertex for every
+adjacent sample triple, retaining only vertices strictly inside the interval.
+The previous middle-sample-extremum precondition could skip an interior vertex
+even for a monotone triple, hiding a pair of sign changes. Accumulated extrema,
+zero samples, root tolerances and Love root counting are preserved.
+The same minimal change is applied to the local invLM repository.
+DispWeave's fixed-layer LM now opts into the existing refined root tolerances,
+matching joint LM; the backend's default tolerances are unchanged.
+
+A saved crustal model, independent P/SV boundary matching, modal-prefix and
+perturbation regressions demonstrate the repair for the default Dunkin backend.
+FAST_SCALAR still fails this fixture; this change is not a completeness proof.
+See `docs/clustered-root-repair.md` for validation, overhead and remaining issues.
