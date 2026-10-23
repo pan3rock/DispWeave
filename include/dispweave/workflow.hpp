@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 namespace dw {
+int run_joint(const std::filesystem::path& config,const std::filesystem::path& output,bool generate_data);
 int run_receiver(const std::filesystem::path& config,const std::filesystem::path& output);
 int run_rj_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed);
 int run_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed);

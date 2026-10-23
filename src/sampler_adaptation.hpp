@@ -44,13 +44,17 @@ public:
         sum_.noalias()+=delta*(x-mean_).transpose();
     }
     int count() const {return count_;}
-    Eigen::MatrixXd mass(MetricAdaptation type) const {
+    Eigen::MatrixXd covariance(MetricAdaptation type) const {
         if(count_<2) throw std::runtime_error("Insufficient covariance samples");
         Eigen::MatrixXd covariance=(sum_+sum_.transpose()).eval()/(2.*(count_-1));
         if(type==MetricAdaptation::diagonal) covariance=covariance.diagonal().asDiagonal().toDenseMatrix();
         const double weight=count_/(count_+5.);
         covariance*=weight;covariance.diagonal().array()+=(1-weight)*1e-3;
         if(!covariance.allFinite()) throw std::runtime_error("Nonfinite adapted covariance");
+        return covariance;
+    }
+    Eigen::MatrixXd mass(MetricAdaptation type) const {
+        const auto covariance=this->covariance(type);
         Eigen::LLT<Eigen::MatrixXd> factor(covariance);
         if(factor.info()!=Eigen::Success) throw std::runtime_error("Adapted covariance not positive definite");
         Eigen::MatrixXd mass=factor.solve(Eigen::MatrixXd::Identity(mean_.size(),mean_.size()));

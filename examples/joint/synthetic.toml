@@ -1,0 +1,77 @@
+independent_blocks = true
+
+[model]
+depth = [0.0, 10.0]
+vs = [2.7, 3.7]
+vp = [4.7, 6.5]
+rho = [2.4, 2.8]
+
+[parameters]
+lower_vs = [2.3, 3.45]
+upper_vs = [2.95, 3.95]
+vp_vs_ratio = 0.0
+
+[prior]
+kind = "uniform"
+measure = "physical_vs"
+
+[synthetic]
+seed = 72163
+vs = [2.6, 3.6]
+
+[lm]
+enabled = true
+max_iterations = 100
+gradient_tolerance = 1e-5
+
+[sampler]
+seed = 93513
+chains = 4
+warmup = 2000
+draws = 10000
+predictive_per_chain = 200
+proposal_sd = [0.02, 0.02, 0.15, 0.15, 0.15]
+initial_vs = [[2.4, 3.5], [2.5, 3.9], [2.8, 3.6], [2.9, 3.8]]
+
+[[observations]]
+name = "dispersion"
+observable = "rayleigh_phase_velocity"
+unit = "km/s"
+frequency_hz = [0.08, 0.12, 0.18, 0.25, 0.35, 0.5, 0.5, 0.7]
+mode = [0, 0, 0, 0, 0, 0, 1, 1]
+sigma = [0.015, 0.015, 0.015, 0.015, 0.015, 0.015, 0.015, 0.015]
+[observations.noise]
+kind = "lognormal"
+mean_log = 0.0
+sd_log = 0.5
+
+[[observations]]
+name = "ellipticity"
+observable = "rayleigh_modal_ellipticity"
+unit = "dimensionless"
+frequency_hz = [0.08, 0.12, 0.18, 0.25, 0.35, 0.5]
+mode = [0, 0, 0, 0, 0, 0]
+sigma = [0.03, 0.03, 0.03, 0.03, 0.03, 0.03]
+[observations.noise]
+kind = "lognormal"
+mean_log = 0.0
+sd_log = 0.5
+
+[[observations]]
+name = "receiver"
+observable = "p_receiver_function"
+unit = "dimensionless"
+sample_indices = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140]
+sigma = [0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008]
+[observations.noise]
+kind = "lognormal"
+mean_log = 0.0
+sd_log = 0.5
+[observations.processing]
+slowness_s_km = 0.06
+samples = 1024
+dt = 0.1
+pre_arrival = 2.0
+time_shift = 0.0
+gaussian_width = 2.5
+water_level = 0.01

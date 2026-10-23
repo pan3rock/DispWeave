@@ -9,6 +9,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 **M7 已完成：独立 RJMCMC 与跨维频散结果分析，版本 0.9.0。**
 M8 进行中：已完成 M8a 模态椭圆率、M8b 接收函数正演和 M8c 组合目标；M8d 联合后验实验仍待验收。
+目前按用户要求暂停，办公室接续请先读 [M8 交接说明](docs/handoff-m8.md)。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -294,5 +295,21 @@ C++ 示例同时评估频散、已提取的模态椭圆率和 P 接收函数，�
 
 LM 复用原有有界求解器，一次运行中固定噪声尺度；频散保留核导数，其他块可显式使用带步长检查的有限差分。
 HMC/NUTS 接口要求全部观测提供已验证梯度，当前椭圆率/接收函数组合会被拒绝。
-详见 [M8c 接口与验收](docs/m8c-validation.md)。下一项 M8d 提供联合反演 CLI、
+详见 [M8c 接口与验收](docs/m8c-validation.md)。M8d 正在验收联合反演 CLI、
 单观测对照、冲突数据实验和逐块后验预测；当前示例不代表这些科学验收已经完成。
+
+## 联合反演工作流（M8d，验收中）
+
+```bash
+build/dispweave joint-data --config examples/joint/synthetic.toml --output results/joint-data
+build/dispweave joint --config results/joint-data/observations.toml --output results/joint-run
+python scripts/joint_results.py results/joint-run --output results/joint-run/diagnostics.json
+python scripts/plot_joint.py results/joint-run --output results/joint-plots
+```
+
+`joint` 要求每块显式提供观测值，不会因存在合成配置而替换数据；输出目录须新建或为空。
+当前采用自有无梯度 Metropolis，仅在预热中适应提议；正式样本保留拒绝后的重复状态。
+可选 LM 保持噪声尺度固定，单独报告收敛/停滞，后验链仍使用配置中的分散初值。
+每块输出潜在信号及带相关噪声的后验预测，支持独立估计噪声尺度。
+分析需要 Python >=3.11、NumPy；绘图另需 Matplotlib。
+完整实验、独立积分方法和已知限制见 [M8d 验收记录](docs/m8d-validation.md)。
