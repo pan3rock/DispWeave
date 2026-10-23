@@ -7,6 +7,9 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
+本地结果网页：[研究结果总览](web/results/index.html)，整合图集、实验对照、截止核查与原始报告。
+使用方式见 [网页说明](web/results/README.md)，支持浏览器直接打开，无需联网或发布。
+
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
 M8a 正演、M8b 接收函数、M8c 组合目标、M8d 端到端实验均已验收。
 原九组实验中的标准冲突组曾发生采样混合失败；加入冻结的独立提议后，保持同一后验目标

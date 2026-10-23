@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DispWeave 地壳反演结果：参考模型、正则化敏感性、NUTS 诊断与独立模态截止核查。">
+  <meta name="color-scheme" content="light">
+  <title>DispWeave · 研究结果</title>
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳转到主要内容</a>
+  <aside class="sidebar">
+    <a class="brand" href="#overview" aria-label="DispWeave 结果总览"><img src="mark.svg" width="34" height="34" alt=""><span>DispWeave<span class="brand-caption">SURFACE WAVE INVERSION</span></span></a>
+    <div class="workspace-label">研究工作台 <span>01</span></div>
+    <nav aria-label="页面导航">
+      <a href="#overview" class="active"><span class="nav-icon">◫</span>结果总览<span class="nav-number">01</span></a>
+      <a href="#figures"><span class="nav-icon">▧</span>结果图集<span class="nav-number">08</span></a>
+      <a href="#experiments"><span class="nav-icon">≋</span>实验对照</a>
+      <a href="#cutoff"><span class="nav-icon">⌁</span>截止核查</a>
+      <a href="#reports"><span class="nav-icon">≡</span>报告与下一步</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span>本地研究快照<p>固定界面 · 45 个自由 Vs<br>Rayleigh 多阶频散</p><span class="mono">SNAPSHOT / 2026.10.23</span></div>
+  </aside>
+
+  <main id="main">
+    <header class="topbar"><span>研究结果 <span class="breadcrumb-separator">/</span> 地壳应用验证</span><div><span class="local-tag"><span class="status-dot"></span>本地查看</span><time datetime="2026-10-23">2026 / 10 / 23</time></div></header>
+
+    <section id="overview" class="overview section">
+      <div class="eyebrow"><span class="short-line"></span> DISPWEAVE / RESEARCH RESULTS</div>
+      <div class="hero-row"><div><h1>地壳反演，<br><span>每一步都有据可查。</span></h1><p class="hero-description">从参考模型拟合、正则化敏感性，到后验采样与模态截止。<br class="desktop-break">把结果、证据和当前边界放在同一张研究地图里。</p></div><div class="stage-stamp"><span>当前阶段</span><strong>M8 后应用验证</strong><p>固定维度联合反演已完成<br>地壳后验验证进行中</p><a href="../../docs/milestones.md">查看项目里程碑 <span aria-hidden="true">↗</span></a></div></div>
+
+      <div class="metrics">
+        <article><span class="metric-label">参考模型 · 多初值 LM</span><div class="metric-value">5<span>/ 5</span><span class="metric-check">✓</span></div><p>初值收敛，全部终态导数核对通过</p></article>
+        <article><span class="metric-label">正则化 · 五组权重</span><div class="metric-value">25<span>/ 25</span><span class="metric-check">✓</span></div><p>收敛且通过两步长有限差分核对</p></article>
+        <article><span class="metric-label">模态截止 · 独立查询核查</span><div class="metric-value">118<span>/ 118</span><span class="metric-check">✓</span></div><p>支持审计域内缺模态，未发现漏根</p></article>
+        <article class="metric-pending"><span class="metric-label">地壳 NUTS · 完成正式采样</span><div class="metric-value">3<span>/ 4 链</span><span class="metric-check">!</span></div><p>正式期仍有失败，整组验收未通过</p></article>
+      </div>
+
+      <div class="finding-strip"><div class="finding-symbol" aria-hidden="true">↳</div><div><span class="eyebrow">最新进展 · 独立核查已完成</span><h2>失败模型的数值证据，指向物理模态截止。</h2><p>113 条记录、118 个查询；两个代表模型跨越截止条件后，受俘获根数由 2 增至 3。有限区间的浮点核查仍不能作为通用无根证明。</p></div><a class="text-link" href="#cutoff">查看证据 <span aria-hidden="true">↗</span></a></div>
+      <div class="snapshot-line"><span><span class="tiny-square"></span>最近数值回归 <strong>72 / 72</strong> 通过</span><span>结果基线 <code>27c1552</code></span><span>本页是静态快照，不自动运行反演</span></div>
+    </section>
+
+    <section id="figures" class="section">
+      <div class="section-heading"><div><span class="eyebrow">01 / FIGURE ATLAS</span><h2>让结果自己说话</h2></div><p>原始研究图 · 可放大查看 · PNG / PDF</p></div>
+      <div class="filters" role="group" aria-label="筛选结果图">
+        <button type="button" class="active" data-filter="all" aria-pressed="true">全部结果 <span>8</span></button>
+        <button type="button" data-filter="regularization" aria-pressed="false">正则化扫描 <span>3</span></button>
+        <button type="button" data-filter="sampling" aria-pressed="false">采样诊断 <span>4</span></button>
+        <button type="button" data-filter="cutoff" aria-pressed="false">模态截止 <span>1</span></button>
+      </div>
+      <article class="figure-viewer">
+        <div class="figure-heading"><div><span id="figure-kind" class="badge warning">仅供诊断</span><h3 id="figure-title">Vs–深度结构与先验 / 样本区间</h3></div><div class="figure-pagination"><button type="button" id="figure-prev" aria-label="上一张图">←</button><span id="figure-count" class="mono" aria-live="polite">01 / 08</span><button type="button" id="figure-next" aria-label="下一张图">→</button></div></div>
+        <p id="figure-notice" class="figure-notice">来自已完成的三条链；原四链验收未通过。这些区间不能作为已验证的地壳后验不确定性结论。</p>
+        <button class="figure-canvas" type="button" id="figure-expand" aria-label="放大当前结果图"><img id="figure-image" src="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.png" alt="Vs 随深度的先验和三条已完成链的样本区间，以及样本与先验标准差比。"><span class="expand-hint">⤢ 放大查看</span></button>
+        <div id="image-unavailable" class="image-unavailable" hidden>此图尚未生成或文件已移动。请查看下方来源路径和对应实验报告。</div>
+        <div class="figure-caption"><div><p id="figure-description">左侧为完整深度范围，中间放大浅部，右侧比较样本与先验标准差。灰色为先验 95% 区间，蓝色为样本 95% 区间，黑线为参考模型。</p><span id="figure-source" class="figure-source">来源：crust-nuts-conservative / completed-chain-diagnostics</span></div><div class="figure-actions"><a id="figure-png" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.png" target="_blank" rel="noopener">PNG ↗</a><a id="figure-pdf" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.pdf" target="_blank" rel="noopener">PDF ↗</a></div></div>
+      </article>
+      <div id="figure-thumbnails" class="figure-thumbnails" role="group" aria-label="选择图表"></div>
+      <noscript><p class="noscript">启用 JavaScript 可切换全部图表、放大图片并探索截止结果。上方初始图和下方报告仍可直接查看。</p><p><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.png">频散拟合图</a> · <a href="../../results/crust-mode-audit-refined/cutoff-continuation.png">截止核查图</a> · <a href="../../results/crust-regularization-scan/structure.png">正则化结构图</a></p></noscript>
+    </section>
+
+    <section id="experiments" class="section">
+      <div class="section-heading"><div><span class="eyebrow">02 / CONTROLLED EXPERIMENTS</span><h2>拟合改善了，结构有多稳定？</h2></div><a class="text-link" href="../../docs/crust-regularization-validation.md">阅读完整对照 ↗</a></div>
+      <div class="experiment-grid"><article class="paper experiment-table"><div class="panel-heading"><h3>正则化权重扫描</h3><span class="badge success">25 / 25 数值核对通过</span></div><p class="panel-intro">固定参考中心和其他条件，每个 λ 使用同样的五个初值。</p><div class="table-scroll"><table><caption class="sr-only">五组阻尼权重下的相速度残差和初值间结构差异</caption><thead><tr><th scope="col">权重 λ</th><th scope="col">相速度 RMS <small>km/s</small></th><th scope="col">触界参数</th><th scope="col">组内最大 Vs 差 <small>km/s</small></th></tr></thead><tbody>
+        <tr><th scope="row">0</th><td>0.016967–0.016980</td><td><span class="table-warning">13–15</span></td><td>1.2000</td></tr>
+        <tr><th scope="row">10</th><td>0.017530</td><td>0</td><td>5.61 × 10<sup>−7</sup></td></tr>
+        <tr><th scope="row">30</th><td>0.017921</td><td>0</td><td>2.76 × 10<sup>−7</sup></td></tr>
+        <tr class="reference-row"><th scope="row">100 <span>参考设置</span></th><td>0.019002</td><td>0</td><td>3.04 × 10<sup>−8</sup></td></tr>
+        <tr><th scope="row">300</th><td>0.021367</td><td>0</td><td>9.39 × 10<sup>−9</sup></td></tr>
+      </tbody></table></div><div class="table-footnote">低残差与收敛不等于结构唯一。本轮没有自动选取 λ，也没有把确定性解差异解释为后验可信区间。</div></article>
+      <aside class="conditions"><span class="eyebrow">实验的共同条件</span><h3>先固定问题，<br>再比较结果。</h3><dl><div><dt>模型自由度</dt><dd>45 个 Vs · 含半空间</dd></div><div><dt>观测</dt><dd>125 点 · 模态 0–3</dd></div><div><dt>频率范围</dt><dd>0.01–0.4 Hz</dd></div><div><dt>误差假设</dt><dd>σ = 0.02 km/s</dd></div><div><dt>几何与物性</dt><dd>固定界面 · Brocher05</dd></div><div><dt>半空间顶深</dt><dd>208.925 km</dd></div></dl><p>误差尺度为本轮假设；原观测没有误差列。非零阻尼下组内解一致，但浅部结构仍随权重变化。</p></aside></div>
+
+      <article class="chain-panel paper"><div class="panel-heading"><div><span class="eyebrow">NUTS / TARGET ACCEPTANCE 0.99</span><h3>四条链，保留全部状态</h3></div><span class="badge warning">整组验收未通过</span></div><div class="chain-grid"><div class="chain stalled"><span class="chain-id">CHAIN 0 <span>预热受阻</span></span><strong>0 <small>/ 2000</small></strong><p>整体 −0.2 初值<br>199 / 1000 步预热后终止</p><div class="chain-track"><span style="width:0%"></span></div></div><div class="chain"><span class="chain-id">CHAIN 1 <span>正式状态已完成</span></span><strong>2000 <small>/ 2000</small></strong><p>整体 +0.2 初值<br>正式期正演失败 1 次</p><div class="chain-track"><span></span></div></div><div class="chain"><span class="chain-id">CHAIN 2 <span>正式状态已完成</span></span><strong>2000 <small>/ 2000</small></strong><p>正弦扰动初值<br>正式期正演失败 3 次</p><div class="chain-track"><span></span></div></div><div class="chain"><span class="chain-id">CHAIN 3 <span>正式状态已完成</span></span><strong>2000 <small>/ 2000</small></strong><p>余弦扰动初值<br>正式期正演失败 1 次</p><div class="chain-track"><span></span></div></div></div><p class="chain-note">三条完成链的最大 R̂ = 1.00317，最低 bulk ESS ≈ 2593。子集诊断不能替代原四链验收，也不能排除未探索区域的后验质量。<a href="../../docs/crust-nuts-validation.md">查看失败记录 ↗</a></p></article>
+    </section>
+
+    <section id="cutoff" class="section">
+      <div class="section-heading"><div><span class="eyebrow">03 / INDEPENDENT MODE AUDIT</span><h2>第三个模态，在哪里出现？</h2></div><span class="section-meta">0.1612 Hz · 请求 mode 2（第三个根）</span></div>
+      <div class="cutoff-grid"><article class="paper cutoff-explorer"><div class="panel-heading"><h3>半空间连续变化实验</h3><div class="segmented" role="group" aria-label="选择截止代表模型"><button type="button" data-case="0" class="active" aria-pressed="true">正式失败模型</button><button type="button" data-case="1" aria-pressed="false">预热失败模型</button></div></div><p class="panel-intro">固定全部有限层，仅改变半空间 Vs，并同步派生 Vp / ρ。</p><div id="cutoff-chart" class="cutoff-chart" role="img" aria-label="两个代表模型都在临界速度两侧由两个根变为三个根"></div><div class="cutoff-legend"><span><i class="legend-dot absent"></i>2 个根</span><span><i class="legend-dot present"></i>3 个根</span><span><i class="legend-line"></i>截止条件</span></div><p class="discrete-note">仅显示 4 个实际计算模型，不对点间根数作插值。选择一个点查看结果：</p><div class="point-controls" role="group" aria-label="选择已计算的半空间模型"><button type="button" data-point="0" class="active" aria-pressed="true">原失败点</button><button type="button" data-point="1" aria-pressed="false">临界值 − 0.001</button><button type="button" data-point="2" aria-pressed="false">临界值 + 0.001</button><button type="button" data-point="3" aria-pressed="false">临界值 + 0.010</button></div><div id="point-result" class="point-result" aria-live="polite"></div><noscript><p>两例在原模型和临界值 − 0.001 km/s 时有 2 个根，在临界值 + 0.001、+ 0.01 km/s 时有 3 个根。</p></noscript></article>
+      <aside class="audit-evidence"><span class="eyebrow">证据与解释</span><div class="audit-large">118<span>个查询</span></div><h3>独立核查全部得到一致结果</h3><p>116 个请求 mode 2 的查询只有 2 个根；2 个请求 mode 3 的查询只有 3 个根。未发现审计域内的生产正演漏根。</p><dl><div><dt>已有根的最大相速度差</dt><dd>8.67 × 10<sup>−13</sup> <small>km/s</small></dd></div><div><dt>正式失败模型的临界 Vs</dt><dd>4.439194324 <small>km/s</small></dd></div><div><dt>预热失败模型的临界 Vs</dt><dd>4.516440325 <small>km/s</small></dd></div></dl><div class="evidence-limit"><strong>数值证据的边界</strong><p>有限域浮点计数，非通用无根证明。生产接口的“缺失或未解析”仍不能一律当作零似然。</p></div><a class="text-link" href="../../docs/crust-mode-domain.md">完整方法、门槛与复现 ↗</a></aside></div>
+    </section>
+
+    <section id="reports" class="section reports-section">
+      <div class="section-heading"><div><span class="eyebrow">04 / EVIDENCE & NEXT STEPS</span><h2>把结论连回证据</h2></div><span class="section-meta">本地 Markdown 报告</span></div>
+      <div class="report-grid"><a class="report-link" href="../../docs/crust-reference-validation.md"><span class="report-number">01</span><div><span class="badge success">确定性验证通过</span><h3>参考模型与自由半空间</h3><p>五个初值 · 45 个自由 Vs · 终态导数核对</p></div><span aria-hidden="true">↗</span></a><a class="report-link" href="../../docs/crust-regularization-validation.md"><span class="report-number">02</span><div><span class="badge success">对照实验完成</span><h3>参考阻尼敏感性扫描</h3><p>五组 λ · 初值稳定性 · 深度区间差异</p></div><span aria-hidden="true">↗</span></a><a class="report-link" href="../../docs/crust-nuts-validation.md"><span class="report-number">03</span><div><span class="badge warning">地壳后验未通过</span><h3>参考先验与 NUTS 实验</h3><p>显式物理先验 · 四链记录 · 失败诊断</p></div><span aria-hidden="true">↗</span></a><a class="report-link" href="../../docs/crust-mode-domain.md"><span class="report-number">04</span><div><span class="badge success">独立数值核查完成</span><h3>模态截止与存在域核查</h3><p>118 个查询 · 两个控制实验 · 有限域证据</p></div><span aria-hidden="true">↗</span></a></div>
+      <div class="next-steps"><div><span class="eyebrow">下一步 / 尚未实施</span><h3>从已定位的问题，<br>走向可验证的采样。</h3></div><ol><li><span>01</span><div><strong>区分物理域外与数值失败</strong><p>实现模态存在域和失败分类契约，保留“未解析”状态。</p></div></li><li><span>02</span><div><strong>验证硬边界上的采样行为</strong><p>在已知分布目标上核对拒绝规则与最终样本分布。</p></div></li><li><span>03</span><div><strong>处理预热，重验原四链</strong><p>保持原初值与验收门槛，再判断地壳后验是否通过。</p></div></li></ol></div>
+    </section>
+    <footer><a class="footer-brand" href="#overview">DispWeave <span>研究结果</span></a><p>2026-10-23 结果快照 · 所有图表与报告来自本地项目文件</p><a href="#overview">回到顶部 ↑</a></footer>
+  </main>
+
+  <dialog id="lightbox" aria-labelledby="lightbox-title"><div class="lightbox-toolbar"><div><span id="lightbox-status" class="badge warning">仅供诊断</span><h2 id="lightbox-title">结果图</h2></div><div class="lightbox-controls"><button id="lightbox-prev" type="button" aria-label="上一张图">←</button><button id="lightbox-next" type="button" aria-label="下一张图">→</button><button id="lightbox-zoom" type="button" aria-pressed="false">原始尺寸</button><a id="lightbox-pdf" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.pdf" target="_blank" rel="noopener">PDF ↗</a><button id="lightbox-close" type="button" aria-label="关闭大图">关闭 ×</button></div></div><p id="lightbox-notice" class="lightbox-notice"></p><div id="lightbox-scroll" class="lightbox-scroll"><img id="lightbox-image" alt=""></div><p class="lightbox-help">← → 切换图表 · Esc 关闭 · 原始尺寸模式可滚动查看细节</p></dialog>
+</body>
+</html>
