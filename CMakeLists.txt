@@ -35,6 +35,10 @@ if(BUILD_TESTING)
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy" RESULT_VARIABLE DW_NUMPY_STATUS OUTPUT_QUIET ERROR_QUIET)
     if(DW_NUMPY_STATUS EQUAL 0)
       if(Python3_VERSION VERSION_GREATER_EQUAL 3.11)
+        add_test(NAME crust_nuts_diagnostics COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tests/crust_nuts_tests.py)
+        add_test(NAME reference_prior_workflow COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tests/reference_prior_workflow.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME bounds_workflow COMMAND ${Python3_EXECUTABLE}
           ${PROJECT_SOURCE_DIR}/tests/bounds_workflow_tests.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME material_workflow COMMAND ${Python3_EXECUTABLE}
@@ -137,6 +141,11 @@ if(BUILD_TESTING)
   target_link_libraries(objective_tests PRIVATE dispweave_core)
   foreach(case covariance parameterization posterior objective_failures)
     add_test(NAME ${case} COMMAND objective_tests ${case})
+  endforeach()
+  add_executable(reference_prior_tests tests/reference_prior_tests.cpp)
+  target_link_libraries(reference_prior_tests PRIVATE dispweave_core)
+  foreach(case normalization physical)
+    add_test(NAME reference_prior_${case} COMMAND reference_prior_tests ${case})
   endforeach()
   add_test(NAME cli COMMAND ${CMAKE_COMMAND}
     -DEXE=$<TARGET_FILE:dispweave> -DSOURCE=${PROJECT_SOURCE_DIR}

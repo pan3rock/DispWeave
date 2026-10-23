@@ -38,6 +38,14 @@ void materials() {
         for(int col=0;col<3;++col) {auto a=q,b=q;a[col]+=1e-6;b[col]-=1e-6;
             near((dw::log_posterior(problem,a,prior,false).value-dw::log_posterior(problem,b,prior,false).value)/2e-6,
                  posterior.gradient[col],1e-4);}
+        const auto reference_prior=dw::bounded_gaussian_prior(ref.vs,VectorXd::Constant(3,.1),
+                                  .8*ref.vs,1.2*ref.vs,dw::PriorMeasure::physical_vs);
+        const VectorXd shifted=q+v({.01,-.01,.01});
+        const auto regularized=dw::log_posterior(problem,shifted,reference_prior);
+        check(regularized.status==dw::EvaluationStatus::valid,"Reference posterior status");
+        for(int col=0;col<3;++col) {auto a=shifted,b=shifted;a[col]+=1e-6;b[col]-=1e-6;
+            near((dw::log_posterior(problem,a,reference_prior,false).value-dw::log_posterior(problem,b,reference_prior,false).value)/2e-6,
+                 regularized.gradient[col],1e-4);}
     }
     dw::ElasticRelation near_surface;near_surface.kind="nearsurface";
     dw::FixedVs p(input,.8*input.vs,VectorXd::Constant(3,10),near_surface);

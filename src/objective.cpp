@@ -62,6 +62,27 @@ Prior gaussian_prior(Eigen::VectorXd mean,Eigen::VectorXd sigma,PriorMeasure mea
         return p;
     }};
 }
+Prior bounded_gaussian_prior(Eigen::VectorXd mean,Eigen::VectorXd sigma,
+                             Eigen::VectorXd lo,Eigen::VectorXd hi,PriorMeasure measure) {
+    check_vectors(mean,sigma);check_vectors(mean,lo);check_vectors(mean,hi);
+    if((sigma.array()<=0).any() || (hi.array()<=lo.array()).any() || !(hi-lo).allFinite()
+       || (mean.array()<lo.array()).any() || (mean.array()>hi.array()).any())
+        throw std::invalid_argument("Bounded Gaussian needs positive sigma and a box containing its mean");
+    double log_mass=0;
+    for(Eigen::Index i=0;i<mean.size();++i) {
+        const double mass=.5*(std::erf((mean[i]-lo[i])/sigma[i]/std::sqrt(2.))
+                              +std::erf((hi[i]-mean[i])/sigma[i]/std::sqrt(2.)));
+        if(!std::isfinite(mass) || mass<=0)
+            throw std::invalid_argument("Unresolved bounded Gaussian normalizing mass");
+        log_mass+=std::log(mass);
+    }
+    const auto normal=gaussian_prior(mean,sigma,measure);
+    return {measure,[normal,lo,hi,log_mass](const Eigen::VectorXd& x,bool gradient) {
+        if(x.size()!=lo.size() || !x.allFinite()) throw std::invalid_argument("Malformed prior argument");
+        if((x.array()<lo.array()).any() || (x.array()>hi.array()).any()) return PriorEvaluation{-INFINITY,{}};
+        auto p=normal.evaluate(x,gradient);p.value-=log_mass;return p;
+    }};
+}
 Prior uniform_prior(Eigen::VectorXd lo,Eigen::VectorXd hi,PriorMeasure measure) {
     check_vectors(lo,hi);
     if((hi.array()<=lo.array()).any() || !(hi-lo).allFinite()) throw std::invalid_argument("Invalid prior bounds");

@@ -47,6 +47,10 @@ struct Prior {
     std::function<PriorEvaluation(const Eigen::VectorXd&,bool)> evaluate;
 };
 Prior gaussian_prior(Eigen::VectorXd mean,Eigen::VectorXd sigma,PriorMeasure);
+// Independent normals normalized on a finite box containing the mean.
+// The containing-mean contract avoids subtracting nearly equal tail CDFs.
+Prior bounded_gaussian_prior(Eigen::VectorXd mean,Eigen::VectorXd sigma,
+                             Eigen::VectorXd lower,Eigen::VectorXd upper,PriorMeasure);
 Prior uniform_prior(Eigen::VectorXd lower,Eigen::VectorXd upper,PriorMeasure);
 struct PosteriorEvaluation {
     EvaluationStatus status=EvaluationStatus::numerical_failure;

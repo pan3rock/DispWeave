@@ -289,10 +289,19 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     InvLMForward backend; const auto data=read_observations(data_path,cov_path);
     DispersionProblem problem(backend,parameters,data,method_name=="energy"?SensitivityMethod::energy:SensitivityMethod::implicit);
     const auto prior_name=toml::find<std::string>(cfg,"prior");
-    if(prior_name!="uniform_vs" && prior_name!="uniform_log_vs") throw std::invalid_argument("Sampler prior must be uniform_vs or uniform_log_vs");
-    const auto prior=prior_name=="uniform_vs"?
-        uniform_prior(bounds.lower,bounds.upper,PriorMeasure::physical_vs):
-        uniform_prior(parameters.lower(),parameters.upper(),PriorMeasure::log_vs);
+    if(prior_name!="uniform_vs" && prior_name!="uniform_log_vs" && prior_name!="reference_gaussian_vs")
+        throw std::invalid_argument("Sampler prior must be uniform_vs, uniform_log_vs or reference_gaussian_vs");
+    if(prior_name!="reference_gaussian_vs" && cfg.contains("prior_sigma_vs"))
+        throw std::invalid_argument("prior_sigma_vs requires reference_gaussian_vs");
+    Eigen::VectorXd prior_sigma;
+    const auto prior=[&]() {
+        if(prior_name=="reference_gaussian_vs") {
+            prior_sigma=vector(cfg,"prior_sigma_vs");
+            return bounded_gaussian_prior(model.vs,prior_sigma,bounds.lower,bounds.upper,PriorMeasure::physical_vs);
+        }
+        return prior_name=="uniform_vs"?uniform_prior(bounds.lower,bounds.upper,PriorMeasure::physical_vs):
+                                       uniform_prior(parameters.lower(),parameters.upper(),PriorMeasure::log_vs);
+    }();
     LogisticBox box(parameters.lower(),parameters.upper());
     const auto target=transform_density(dispersion_density(problem,prior),box);
     const auto starts=toml::find<std::vector<std::vector<double>>>(inv,"starts_vs");
@@ -323,6 +332,9 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     const auto seed=toml::find_or<std::int64_t>(cfg,"seed",2026);
     if(seed<0) throw std::invalid_argument("Sampler seed must be nonnegative");
     options.seed=static_cast<std::uint64_t>(seed);
+    const auto chain_offset=toml::find_or<std::int64_t>(cfg,"chain_id_offset",0);
+    if(chain_offset<0) throw std::invalid_argument("Sampler chain_id_offset must be nonnegative");
+    const bool record_failures=toml::find_or<bool>(cfg,"record_failures",false);
     Eigen::MatrixXd mass=Eigen::MatrixXd::Identity(model.vs.size(),model.vs.size());
     if(cfg.contains("mass")) {
         const auto rows=toml::find<std::vector<std::vector<double>>>(cfg,"mass");
@@ -336,16 +348,34 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     std::filesystem::create_directories(output);
     std::filesystem::copy_file(config_path,output/"config.toml"); save_data(output,data);
     auto mass_file=output_file(output/"mass.txt");mass_file<<mass<<'\n';
+    if(prior_name=="reference_gaussian_vs") {
+        auto f=output_file(output/"prior_parameters.txt");
+        f<<"# layer mean_vs sigma_vs lower_vs upper_vs; independent normalized bounded Gaussian in physical Vs, km/s\n";
+        for(Eigen::Index i=0;i<model.vs.size();++i)
+            f<<i<<' '<<model.vs[i]<<' '<<prior_sigma[i]<<' '<<bounds.lower[i]<<' '<<bounds.upper[i]<<'\n';
+    }
     auto summary=output_file(output/"chains.txt");
     summary<<"# chain draws accepted divergences invalid_evaluations step_size";
     if constexpr(nuts) summary<<" max_depth_reached";
     summary<<'\n';
     bool issues=false;
     for(size_t chain=0;chain<initial.size();++chain) {
-        options.chain_id=chain;
+        options.chain_id=static_cast<std::uint64_t>(chain_offset)+chain;
+        std::ofstream failed;
+        if(record_failures) {
+            failed=output_file(output/("chain_"+std::to_string(chain)+"_failed_evaluations.txt"));
+            failed<<"# target_call status z[all parameters]; zero-based calls including initialization\n";
+        }
+        std::uint64_t evaluation_index=0;
+        const LogDensity recorded_target=[&](const Eigen::VectorXd& z) {
+            auto e=target(z);
+            if(record_failures && e.status!=EvaluationStatus::valid)
+                failed<<evaluation_index<<' '<<status(e.status)<<' '<<z.transpose()<<std::endl;
+            ++evaluation_index;return e;
+        };
         const auto r=[&] {
-            if constexpr(nuts) return sample_nuts(target,initial[chain],metric,options);
-            else return sample_hmc(target,initial[chain],metric,options);
+            if constexpr(nuts) return sample_nuts(recorded_target,initial[chain],metric,options);
+            else return sample_hmc(recorded_target,initial[chain],metric,options);
         }();
         auto final_mass=output_file(output/("chain_"+std::to_string(chain)+"_mass.txt"));final_mass<<r.mass<<'\n';
         auto updates=output_file(output/("chain_"+std::to_string(chain)+"_metric_updates.txt"));
@@ -381,6 +411,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     metadata<<"version="<<DW_VERSION<<"\ncompiler="<<DW_COMPILER<<"\nbuild="<<DW_BUILD_TYPE
             <<"\nbackend=invLM Dunkin\ninvlm_commit="<<DW_INVLM_COMMIT
             <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nseed="<<options.seed
+            <<"\nchain_id_offset="<<chain_offset<<"\nrecord_failures="<<record_failures
             <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws;
     if constexpr(nuts) metadata<<"\nsampler=slice_nuts_hoffman_gelman_2014\nmax_depth="<<options.max_depth;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;
@@ -392,6 +423,9 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"mass_convention=momentum covariance in z coordinates\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
     save_relation(metadata,parameters.relation());
+    if(prior_name=="reference_gaussian_vs")
+        metadata<<"prior_measure=physical_vs\nprior_center=model.vs\nprior_scale=prior_sigma_vs_km_s\n"
+                <<"prior_normalization=independent_Gaussians_conditioned_on_parameter_bounds\n";
     save_bounds(output,metadata,inv,parameters,bounds);
     std::cout<<"chains="<<initial.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';
     return issues?5:0;
