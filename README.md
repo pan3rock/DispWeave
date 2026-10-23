@@ -7,7 +7,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-本地结果网页：[研究结果总览](web/results/index.html)，整合合成数据与目标模型、11 张结果图、实验对照及报告。
+本地结果网页：[反演结果](web/results/index.html)，首先直接展示 NUTS 模型、拟合与轨迹，再看 LM 和合成数据对照；其余图和报告保留链接。
 使用方式见 [网页说明](web/results/README.md)，支持浏览器直接打开，无需联网或发布。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
