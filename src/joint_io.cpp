@@ -148,6 +148,14 @@ int run_joint(const std::filesystem::path& config,const std::filesystem::path& o
     options.warmup=toml::find<int>(sampler,"warmup");options.draws=toml::find<int>(sampler,"draws");options.seed=toml::find<std::uint64_t>(sampler,"seed");
     options.adapt_scale=toml::find_or<bool>(sampler,"adapt_scale",true);options.adapt_covariance=toml::find_or<bool>(sampler,"adapt_covariance",true);
     options.target_accept=toml::find_or<double>(sampler,"target_accept",.234);options.scale=toml::find_or<double>(sampler,"scale",1.);
+    if(sampler.contains("independence")) {
+        const auto table=toml::find(sampler,"independence");IndependenceProposal global;
+        global.probability=toml::find<double>(table,"probability");
+        const auto components=toml::find<std::vector<toml::value>>(table,"components");
+        for(const auto& c:components)
+            global.components.push_back({vector(c,"mean"),matrix(c,"covariance"),toml::find<double>(c,"weight")});
+        options.independence=std::move(global);
+    }
     const int chains=toml::find<int>(sampler,"chains"),ppc=toml::find_or<int>(sampler,"predictive_per_chain",200);
     if(chains<1 || ppc<1 || ppc>options.draws) throw std::invalid_argument("Invalid chain/predictive count");
     Eigen::VectorXd proposal_sd=vector(sampler,"proposal_sd");
@@ -161,7 +169,7 @@ int run_joint(const std::filesystem::path& config,const std::filesystem::path& o
         if(joint_log_posterior(problem,x,prior).status!=EvaluationStatus::valid) throw std::invalid_argument("Invalid initial joint posterior for chain "+std::to_string(chain));
         initial.push_back(x);
     }
-    metadata<<"sampler=gaussian_random_walk_metropolis\nmodel_prior_kind="<<kind<<"\nmodel_prior_measure="<<measure_name
+    metadata<<"sampler="<<(options.independence?"random_walk_and_independence_metropolis":"gaussian_random_walk_metropolis")<<"\nmodel_prior_kind="<<kind<<"\nmodel_prior_measure="<<measure_name
         <<"\nseed="<<options.seed<<"\nchains="<<chains<<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nmodel_parameters="<<reference.vs.size()
         <<"\nnoise_parameters="<<problem.likelihood().noise_size()<<"\npredictive_per_chain="<<ppc<<"\nstate_order=logVs_then_inferred_log_scales_in_block_order\n";
     const auto reference_state=problem.initial_state(parameters.encode(reference));
@@ -216,9 +224,11 @@ int run_joint(const std::filesystem::path& config,const std::filesystem::path& o
         file(output/(prefix+"_state.txt"))<<result.draws<<'\n';file(output/(prefix+"_vs.txt"))<<result.draws.leftCols(reference.vs.size()).array().exp().matrix()<<'\n';
         file(output/(prefix+"_log_posterior.txt"))<<result.log_density<<'\n';file(output/(prefix+"_proposal_covariance.txt"))<<result.covariance*result.scale*result.scale<<'\n';
         auto trace=file(output/(prefix+"_trace.txt"));trace<<"# warmup accepted status scale acceptance_probability\n";
+        auto proposal_kind=file(output/(prefix+"_proposal_kind.txt"));proposal_kind<<"# one row per transition including warmup: 0=random_walk 1=independence\n";
         int accepted=0,invalid=0,support=0;
         for(const auto& t:result.transitions) {
             trace<<t.warmup<<' '<<t.accepted<<' '<<status(t.status)<<' '<<t.scale<<' '<<t.acceptance_probability<<'\n';
+            proposal_kind<<t.independent<<'\n';
             if(!t.warmup) {accepted+=t.accepted;support+=t.status==EvaluationStatus::outside_support;invalid+=t.status!=EvaluationStatus::valid && t.status!=EvaluationStatus::outside_support;}
         }
         auto adaptation=file(output/(prefix+"_adaptation.txt"));adaptation<<"# warmup_iteration samples followed by proposal covariance\n";

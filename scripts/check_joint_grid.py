@@ -104,11 +104,12 @@ def main():
             raise ValueError('Unresolved physics in grid; do not renormalize across failed nodes')
         grid = np.loadtxt(path, usecols=[0, 1]+list(range(3, 3+len(names))), skiprows=1)
         grids[name] = (grid, names)
-    cases = json.loads((args.suite/'manifest.json').read_text())['cases']
     if args.case:
-        if any(name not in cases for name in args.case):
-            parser.error('Unknown case')
+        if any(not (args.suite/f'{name}.toml').is_file() for name in args.case):
+            parser.error('Unknown case configuration')
         cases = args.case
+    else:
+        cases = json.loads((args.suite/'manifest.json').read_text())['cases']
     report = {}
     for name in cases:
         grid, names = grids['conflict' if name.startswith('conflict') else 'consistent']

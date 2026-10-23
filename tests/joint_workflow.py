@@ -11,6 +11,7 @@ import numpy as np
 exe, root = Path(sys.argv[1]).resolve(), Path(sys.argv[2])
 sys.path.insert(0, str(root/'scripts'))
 from joint_results import summarize, write_config, read_config
+from prepare_joint_proposal import prepare
 
 
 def replace_array(text, key, value):
@@ -87,6 +88,40 @@ with tempfile.TemporaryDirectory() as tmp:
     assert all(c['retained']['transitions'] == 80 for c in summary['sampler'])
     round_trip = work/'round-trip.toml';write_config(round_trip, document)
     assert read_config(round_trip) == document
+    # Fit and freeze a proposal from this separate short pilot, then verify the
+    # asymmetric Hastings ratio independently for accepted production moves.
+    mixture_config = work/'mixture.toml'
+    prepare(first, mixture_config, document['sampler']['seed']+1, probability=.5)
+    mixed_doc = read_config(mixture_config)
+    for key in ['observations', 'prior', 'parameters', 'model']:
+        assert mixed_doc[key] == document[key]
+    mixture_output = work/'mixture'
+    run('joint', mixture_config, mixture_output)
+    summarize(mixture_output)
+    components = mixed_doc['sampler']['independence']['components']
+
+    def log_proposal(x):
+        terms = []
+        for c in components:
+            factor = np.linalg.cholesky(c['covariance'])
+            z = np.linalg.solve(factor, x-c['mean'])
+            terms.append(np.log(c['weight'])-np.log(np.diag(factor)).sum()-.5*z@z)
+        return np.logaddexp.reduce(terms)  # Common normalizing constants cancel.
+
+    checked = 0
+    for c in range(2):
+        stem = f'chain_{c}'
+        kinds = np.loadtxt(mixture_output/f'{stem}_proposal_kind.txt', dtype=int)
+        state = np.loadtxt(mixture_output/f'{stem}_state.txt')
+        logp = np.loadtxt(mixture_output/f'{stem}_log_posterior.txt')
+        trace = np.loadtxt(mixture_output/f'{stem}_trace.txt', dtype=str, skiprows=1)
+        assert kinds.shape == (160,) and 0 < kinds.sum() < 160
+        for i in range(1, 80):
+            if kinds[80+i] and int(trace[80+i, 1]):
+                ratio = logp[i]-logp[i-1]+log_proposal(state[i-1])-log_proposal(state[i])
+                np.testing.assert_allclose(float(trace[80+i, 4]), np.exp(min(0., ratio)), rtol=1e-10, atol=1e-12)
+                checked += 1
+    assert checked > 0, 'No accepted independence step checked'
     # A missing prediction or explicit failure must invalidate analysis, not
     # produce tighter intervals by silently removing the row.
     status_file = first/'predictive_status.txt';original_status = status_file.read_text()

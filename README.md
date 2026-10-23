@@ -7,10 +7,11 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-**M7 已完成：独立 RJMCMC 与跨维频散结果分析，版本 0.9.0。**
-M8 进行中：已完成 M8a 模态椭圆率、M8b 接收函数正演和 M8c 组合目标。
-已恢复在当前工作区推进 M8d：九组联合/单观测实验及独立积分已完成，八组通过采样核对，
-标准冲突组跨峰混合失败；M8d/M8 尚未完成。详见 [当前验收记录](docs/m8d-validation.md)。
+**M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
+M8a 正演、M8b 接收函数、M8c 组合目标、M8d 端到端实验均已验收。
+原九组实验中的标准冲突组曾发生采样混合失败；加入冻结的独立提议后，保持同一后验目标
+的补充实验通过多链诊断与独立积分核对。联合 LM 的根精度停滞已修复。
+原失败证据、补充结果和适用限制见 [M8d 验收记录](docs/m8d-validation.md)。
 此前的办公室打包快照保留于 [M8 交接说明](docs/handoff-m8.md)，不代表最新进度。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
@@ -297,10 +298,10 @@ C++ 示例同时评估频散、已提取的模态椭圆率和 P 接收函数，�
 
 LM 复用原有有界求解器，一次运行中固定噪声尺度；频散保留核导数，其他块可显式使用带步长检查的有限差分。
 HMC/NUTS 接口要求全部观测提供已验证梯度，当前椭圆率/接收函数组合会被拒绝。
-详见 [M8c 接口与验收](docs/m8c-validation.md)。M8d 正在验收联合反演 CLI、
-单观测对照、冲突数据实验和逐块后验预测；当前示例不代表这些科学验收已经完成。
+详见 [M8c 接口与验收](docs/m8c-validation.md)。M8d 已完成联合反演 CLI、
+单观测对照、冲突数据实验和逐块后验预测；不包含联合 HMC 或联合跨维采样。
 
-## 联合反演工作流（M8d，验收中）
+## 联合反演工作流（M8d）
 
 ```bash
 build/dispweave joint-data --config examples/joint/synthetic.toml --output results/joint-data
@@ -311,6 +312,8 @@ python scripts/plot_joint.py results/joint-run --output results/joint-plots
 
 `joint` 要求每块显式提供观测值，不会因存在合成配置而替换数据；输出目录须新建或为空。
 当前采用自有无梯度 Metropolis，仅在预热中适应提议；正式样本保留拒绝后的重复状态。
+可选冻结的 Gaussian 混合独立提议帮助跨峰，使用完整 Hastings 密度修正；
+`scripts/prepare_joint_proposal.py` 可从单独试运行构造提议，旧样本不并入新后验。
 可选 LM 保持噪声尺度固定，单独报告收敛/停滞，后验链仍使用配置中的分散初值。
 每块输出潜在信号及带相关噪声的后验预测，支持独立估计噪声尺度。
 图表明确标记采样诊断失败；独立积分检查必须同时通过多链诊断，不能仅凭均值落在 MCSE 容限内验收。

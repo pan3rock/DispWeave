@@ -86,12 +86,27 @@ def load(directory):
         retained = trace[warmup:]
         if np.ptp(retained[:, 3].astype(float)) != 0:
             raise ValueError('Production proposal adapted')
+        kind_file = directory/f'chain_{c}_proposal_kind.txt'
+        kinds = np.zeros(warmup+draws, dtype=int)
+        if kind_file.exists():
+            kinds = np.loadtxt(kind_file, dtype=int, ndmin=1)
+            if kinds.shape != (warmup+draws,) or not np.isin(kinds, [0, 1]).all():
+                raise ValueError('Invalid proposal-kind trace')
+        elif 'independence' in sampler:
+            raise ValueError('Missing independence proposal-kind trace')
+        if 'independence' not in sampler and kinds.any():
+            raise ValueError('Undeclared independence proposal')
         phases = {}
         for name, rows in [('warmup', trace[:warmup]), ('retained', retained)]:
             codes, counts = np.unique(rows[:, 2], return_counts=True)
             phases[name] = dict(status_counts=dict(zip(codes.tolist(), counts.tolist())),
                                accepted=int(rows[:, 1].astype(int).sum()),
                                transitions=len(rows))
+            selected = kinds[:warmup] if name == 'warmup' else kinds[warmup:]
+            phases[name]['proposal_kinds'] = {
+                kind: dict(proposed=int(np.sum(selected == code)),
+                           accepted=int(rows[selected == code, 1].astype(int).sum()))
+                for code, kind in [(0, 'random_walk'), (1, 'independence')]}
         traces.append(phases)
     status = [line.split()[:3] for line in (directory/'predictive_status.txt').read_text().splitlines() if not line.startswith('#')]
     ppc = sampler.get('predictive_per_chain', 200)

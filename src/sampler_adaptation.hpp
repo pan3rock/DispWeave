@@ -7,6 +7,7 @@ namespace dw::detail {
 class DualAveraging {
 public:
     DualAveraging(double step,double target):target_(target),average_(std::log(step)),mu_(std::log(10.)+std::log(step)) {}
+    double averaged_step() const {return std::exp(average_);}
     double update(double acceptance,bool finish) {
         const double t=++count_,eta=1/(t+10.);
         hbar_=(1-eta)*hbar_+eta*(target_-acceptance);

@@ -53,5 +53,47 @@ int main() {try {
     const auto failed=dw::sample_metropolis(failures,v({0}),Eigen::MatrixXd::Identity(1,1),o);
     check(failed.draws.isZero() && calls==101,"Failed proposals corrupted chain");
     for(const auto& t:failed.transitions) check(!t.accepted && t.status==dw::EvaluationStatus::forward_failure,"Failure diagnostic lost");
+    // Unequal target mode masses and variances, deliberately opposite proposal
+    // weights. Missing the full Hastings ratio samples the wrong mode masses.
+    const dw::ValueDensity bimodal=[](const Eigen::VectorXd& x) {
+        const double a=std::log(.8/.35)-.5*std::pow((x[0]+6)/.35,2);
+        const double b=std::log(.2/.8)-.5*std::pow((x[0]-6)/.8,2),m=std::max(a,b);
+        return dw::ValueEvaluation{dw::EvaluationStatus::valid,m+std::log(std::exp(a-m)+std::exp(b-m))};
+    };
+    dw::IndependenceProposal global;global.probability=.35;
+    global.components={{v({-6}),Eigen::MatrixXd::Constant(1,1,.35*.35*2.25),.1},
+                       {v({6}),Eigen::MatrixXd::Constant(1,1,.8*.8*2.25),.9}};
+    for(unsigned seed:{43,731,2026}) {
+        dw::MetropolisOptions mixed;mixed.seed=seed;mixed.independence=global;mixed.warmup=2000;mixed.draws=60000;
+        const auto r=dw::sample_metropolis(bimodal,v({-6}),Eigen::MatrixXd::Constant(1,1,.1),mixed);
+        const double right=(r.draws.array()>0).cast<double>().mean();
+        check(std::abs(right-.2)<.025 && std::abs(r.draws.mean()+3.6)<.3,"Independent MH mode weights biased");
+        check(std::abs(r.draws.array().square().mean()-36.226)<.35,"Unequal mode variance normalization");
+        int jumps=0,independent=0;
+        for(int i=1;i<mixed.draws;++i) jumps+=(r.draws(i,0)>0)!=(r.draws(i-1,0)>0);
+        for(const auto& t:r.transitions) {
+            independent+=t.independent;
+            if(!t.warmup) check(t.scale==r.scale,"Mixed-kernel production adaptation");
+        }
+        check(jumps>200 && independent>10000,"Mixture did not explore both modes");
+        std::cout<<"mixture seed="<<seed<<" right_mass="<<right<<" jumps="<<jumps<<'\n';
+    }
+    o.independence=global;o.chain_id=0;
+    const auto mixed_a=dw::sample_metropolis(bimodal,v({-6}),Eigen::MatrixXd::Identity(1,1),o);
+    const auto mixed_b=dw::sample_metropolis(bimodal,v({-6}),Eigen::MatrixXd::Identity(1,1),o);
+    check(mixed_a.draws==mixed_b.draws,"Mixture seed replay differs");
+    // Independence proposals outside the support must still be rejected.
+    o.draws=30000;o.independence->components={{v({1.5}),Eigen::MatrixXd::Constant(1,1,1),1.}};
+    const auto mixed_uniform=dw::sample_metropolis(uniform,v({.5}),Eigen::MatrixXd::Constant(1,1,.16),o);
+    check(std::abs(mixed_uniform.draws.mean()-.5)<.02,"Independence support bias");
+    for(const auto& t:mixed_uniform.transitions) if(t.status==dw::EvaluationStatus::outside_support) check(!t.accepted,"Outside proposal accepted");
+    for(double probability:{0.,1.,double(NAN)}) {
+        o.independence->probability=probability;
+        rejects([&]{dw::sample_metropolis(uniform,v({.5}),Eigen::MatrixXd::Identity(1,1),o);});
+    }
+    o.independence=global;o.independence->components[0].weight=-1;
+    rejects([&]{dw::sample_metropolis(bimodal,v({-6}),Eigen::MatrixXd::Identity(1,1),o);});
+    o.independence=global;o.independence->components[0].covariance(0,0)=0;
+    rejects([&]{dw::sample_metropolis(bimodal,v({-6}),Eigen::MatrixXd::Identity(1,1),o);});
     std::cout<<"PASS Metropolis distributions, adaptation, support, replay and failures\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
