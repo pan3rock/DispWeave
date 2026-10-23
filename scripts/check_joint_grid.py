@@ -71,6 +71,22 @@ def reference(grid, names, config, stride=1, nodes=384, extent=10.):
                 scale_mean={label: float(weight@mean) for label, mean in scale_means.items()})
 
 
+def validation_issues(comparison, summary):
+    """Mean agreement is insufficient when poor mixing inflates the MCSE."""
+    issues = []
+    if not comparison['within_5mcse_and_2grid_error']:
+        issues.append('Vs means disagree with independent integration')
+    for label, row in comparison['scales'].items():
+        if not row['within_5mcse_and_2grid_error']:
+            issues.append(f'{label}: mean disagrees with independent integration')
+    for label, row in summary['parameters'].items():
+        if row['status'] != 'no_flag':
+            issues.append(f"{label}: sampling diagnostic {row['status']}")
+    if summary['numerical_proposals_including_warmup']:
+        issues.append('Numerical proposal failures recorded')
+    return issues
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('suite', type=Path)
@@ -122,12 +138,15 @@ def main():
             report[name]['scales'][label] = dict(reference_mean=mean, sample_mean=row['mean'], mcse_mean=row['mcse_mean'],
                 grid_node_extent_changes=changes, absolute_mean_error=scale_error,
                 within_5mcse_and_2grid_error=bool(scale_error <= 5*row['mcse_mean']+2*sum(changes)))
-        print(name, report[name], flush=True)
+        report[name]['sampling_diagnostics'] = {
+            label: {key: row[key] for key in ['rhat', 'ess_bulk', 'ess_tail', 'status']}
+            for label, row in summary['parameters'].items()}
+        report[name]['validation_issues'] = validation_issues(report[name], summary)
+        report[name]['passed'] = not report[name]['validation_issues']
+        print(name, 'passed' if report[name]['passed'] else report[name]['validation_issues'], flush=True)
     save_json(args.output, report)
-    if any(not case['within_5mcse_and_2grid_error'] or
-           any(not scale['within_5mcse_and_2grid_error'] for scale in case['scales'].values())
-           for case in report.values()):
-        raise SystemExit('Posterior mean comparison failed; inspect the saved reference/MCSE report')
+    if any(not case['passed'] for case in report.values()):
+        raise SystemExit('Posterior validation failed; inspect the saved integration and sampling diagnostics')
 
 
 if __name__ == '__main__':
