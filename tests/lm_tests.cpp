@@ -11,6 +11,26 @@ dw::DataEvaluation linear(const VectorXd& x) {
     e.jacobian.resize(3,2); e.jacobian<<1,2,2,-1,1,1;
     e.residual=e.jacobian*(x-v({1,2})); return e;
 }
+// Independent analytic observation model to check conditional optimization:
+// phase = 10 + A log(Vs), with a nonzero residual in the fixed coordinates.
+class LogLinearForward final : public dw::Forward {
+public:
+    Eigen::Matrix3d a;
+    LogLinearForward() {a<<1,2,3,0,3,-1,2,1,2;}
+    dw::ForwardResult evaluate(const dw::LayeredModel& m,const std::vector<dw::DispersionQuery>& queries,
+                              dw::SensitivityMethod method) const override {
+        check(queries.size()==3,"analytic query count");
+        dw::ForwardResult out;out.rows.resize(3);out.sensitivity_method=method;
+        VectorXd c=VectorXd::Constant(3,10)+a*m.vs.array().log().matrix();
+        for(int i=0;i<3;++i) {
+            auto& r=out.rows[i];r.phase_velocity=c[i];r.status=dw::RootStatus::valid;
+            r.sensitivity.status=dw::SensitivityStatus::valid;
+            r.sensitivity.dc_dvs=a.row(i).transpose().array()/m.vs.array();
+            r.sensitivity.dc_dvp=VectorXd::Zero(3);r.sensitivity.dc_drho=VectorXd::Zero(3);
+        }
+        return out;
+    }
+};
 int main(int argc,char** argv) { try {
     const std::string test=argc>1?argv[1]:"";
     if(test=="linear") {
@@ -75,6 +95,31 @@ int main(int argc,char** argv) { try {
         check(!r.converged && r.termination==dw::LMTermination::stalled && r.reason=="step_stagnation",
               "finite evaluation plateau classified as stagnation");
         check(r.projected_gradient>1e-7 && r.q[0]==0 && r.rejected>0,"stagnation is not success");
+    } else if(test=="fixed") {
+        dw::LayeredModel m{v({0,1,2}),v({1,2,3}),v({10,10,10}),v({2,2,2})};
+        dw::FixedVs p(m,.5*m.vs,1.5*m.vs);LogLinearForward forward;
+        const VectorXd target=v({1.3,2.2,2.8}).array().log();
+        dw::DispersionObservations data{{{1,0},{2,0},{3,0}},
+            VectorXd::Constant(3,10)+forward.a*target,Eigen::Matrix3d::Identity()};
+        dw::DispersionProblem problem(forward,p,data);
+        const auto initial=p.encode(m);
+        const double expected=initial[1]+forward.a.col(1).dot(forward.a*(target-initial))/forward.a.col(1).squaredNorm();
+        auto r=dw::invert_lm(problem,initial,{}, {2,0});
+        check(r.converged && std::abs(r.q[1]-expected)<1e-8,"conditional analytic optimum");
+        check(r.q[0]==initial[0] && r.q[2]==initial[2],"fixed coordinates moved");
+        check(r.evaluation.jacobian.cols()==3 && r.evaluation.jacobian.isApprox(forward.a,1e-12),"full Jacobian contract");
+        check((r.evaluation.jacobian.transpose()*r.evaluation.residual).norm()>.1 && r.projected_gradient<1e-7,
+              "fixed gradient must not prevent conditional convergence");
+        for(const auto& mask:std::vector<std::vector<int>>{{-1},{3},{0,0},{0,1,2}}) {
+            bool threw=false;try {dw::invert_lm(problem,initial,{},mask);} catch(const std::invalid_argument&) {threw=true;}
+            check(threw,"invalid fixed layer list accepted");
+        }
+        auto invalid=initial;invalid[0]=p.lower()[0]-1;
+        r=dw::invert_lm(problem,invalid,{}, {0});
+        check(r.reason=="invalid_initial_bounds" && r.evaluations==0,"fixed initial outside bounds accepted");
+        dw::LMOptions options;options.max_iterations=1;
+        r=dw::invert_lm(problem,initial,options,{2,0});
+        check(!r.converged && r.reason=="max_iterations" && r.q.size()==3 && r.q[2]==initial[2],"fixed failed result contract");
     } else if(test=="failures") {
         auto r=dw::bounded_lm(linear,v({6,0}),v({-5,-5}),v({5,5}));
         check(!r.converged && r.evaluations==0,"out of bounds initial");

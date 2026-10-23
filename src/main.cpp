@@ -8,10 +8,12 @@ int main(int argc,char** argv) {
     app.set_version_flag("--version",DW_VERSION);
     app.require_subcommand(1,1);
     auto command=app.add_subcommand("forward","Evaluate paired frequency/mode queries using invLM Dunkin");
-    std::string config,output,sensitivity="none";
+    std::string config,output,sensitivity="none",root_accuracy="standard";
     command->add_option("--config",config)->required()->check(CLI::ExistingFile);
     command->add_option("--output",output)->required();
     command->add_option("--sensitivity",sensitivity)->check(CLI::IsMember({"none","energy","implicit"}));
+    command->add_option("--root-accuracy",root_accuracy,"Refinement tolerance; root enumeration is unchanged")
+        ->check(CLI::IsMember({"standard","refined"}));
     auto ellipticity=app.add_subcommand("ellipticity","Evaluate modal Rayleigh surface displacement ratios; not ambient H/V");
     ellipticity->add_option("--config",config)->required()->check(CLI::ExistingFile);
     ellipticity->add_option("--output",output)->required();
@@ -76,7 +78,8 @@ int main(int argc,char** argv) {
             return invalid?2:0;
         }
         const auto method=sensitivity=="none"?dw::SensitivityMethod::none:(sensitivity=="energy"?dw::SensitivityMethod::energy:dw::SensitivityMethod::implicit);
-        const auto r=dw::InvLMForward().evaluate(c.model,c.queries,method);
+        const auto accuracy=root_accuracy=="refined"?dw::RootAccuracy::refined:dw::RootAccuracy::standard;
+        const auto r=dw::InvLMForward(dw::SecularMethod::dunkin,accuracy).evaluate(c.model,c.queries,method);
         dw::write_forward_result(output,c,r);
         size_t invalid=0; for(const auto& row:r.rows) if(row.status!=dw::RootStatus::valid) ++invalid;
         size_t gradient_invalid=0;

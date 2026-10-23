@@ -95,6 +95,15 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     if(starts.empty()) throw std::invalid_argument("At least one starts_vs row required");
     for(const auto& start:starts)
         if(static_cast<Eigen::Index>(start.size())!=model.vs.size()) throw std::invalid_argument("Start dimension mismatch");
+    const auto fixed=toml::find_or<std::vector<int>>(inv,"fixed_vs_layers",{});
+    std::vector<bool> is_fixed(model.vs.size(),false);
+    for(int layer:fixed) {
+        if(layer<0 || layer>=model.vs.size() || is_fixed[layer]) throw std::invalid_argument("Invalid/duplicate fixed Vs layer");
+        is_fixed[layer]=true;
+        for(const auto& start:starts)
+            if(start[layer]!=model.vs[layer]) throw std::invalid_argument("Fixed Vs starts must match model.vs");
+    }
+    if(fixed.size()==static_cast<size_t>(model.vs.size())) throw std::invalid_argument("LM requires at least one free Vs layer");
     const auto method_name=toml::find_or<std::string>(inv,"sensitivity","energy");
     if(method_name!="energy" && method_name!="implicit") throw std::invalid_argument("Inversion sensitivity must be energy or implicit");
     const auto method=method_name=="energy"?SensitivityMethod::energy:SensitivityMethod::implicit;
@@ -136,7 +145,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     std::vector<LMResult> runs;
     for(const auto& start:starts) {
         Eigen::VectorXd q=Eigen::Map<const Eigen::VectorXd>(start.data(),start.size()).array().log();
-        runs.push_back(invert_lm(problem,q,options));
+        runs.push_back(invert_lm(problem,q,options,fixed));
     }
     int best=-1;
     for(size_t i=0;i<runs.size();++i)
@@ -154,7 +163,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
         int bounds=0;
         if(parameters.contains(r.q))
             for(Eigen::Index k=0;k<r.q.size();++k)
-                if(r.q[k]==parameters.lower()[k] || r.q[k]==parameters.upper()[k]) ++bounds;
+                if(!is_fixed[k] && (r.q[k]==parameters.lower()[k] || r.q[k]==parameters.upper()[k])) ++bounds;
         summary<<i<<' '<<r.converged<<' '<<r.evaluation.least_squares_cost<<' '<<r.evaluations<<' '<<r.accepted<<' '<<r.rejected<<' '
                <<r.forward_failures<<' '<<r.gradient_failures<<' '<<r.box_iterations<<' '<<r.projected_gradient<<' '<<bounds<<' '<<to_string(r.termination)<<' '<<r.reason<<'\n';
         auto trace=output_file(output/(prefix+"_trace.txt"));
@@ -177,6 +186,9 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
             <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nbackend=dunkin\nsensitivity="<<method_name
             <<"\nroot_accuracy=refined\nsynthetic="<<synthetic<<"\nseed="<<seed<<"\nadd_noise="<<noise<<"\nbest_run="<<best
             <<"\nseconds="<<seconds<<"\nparameterization=fixed depths/rho; log Vs; bounded data least squares\n";
+    metadata<<"free_vs_parameters="<<model.vs.size()-fixed.size()<<"\nfixed_vs_layers=";
+    for(size_t i=0;i<fixed.size();++i) metadata<<(i?",":"")<<fixed[i];
+    metadata<<"\nfixed_vs_values=model.vs; starts must match\nprojected_gradient_coordinates=free log Vs, scaled by support widths\n";
     std::cout<<"runs="<<runs.size()<<" best_run="<<best<<" seconds="<<seconds<<" output="<<output<<'\n';
     if(best>=0) std::cout<<"cost="<<runs[best].evaluation.least_squares_cost<<" reason="<<runs[best].reason<<'\n';
     return best>=0?0:4;
@@ -190,6 +202,8 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
         throw std::invalid_argument("Output directory must be new or empty");
     const auto document=toml::parse(config_path.string());
     const auto table=toml::find(document,"model"),inv=toml::find(document,"inversion"),cfg=toml::find(document,nuts?"nuts":"hmc");
+    if(!toml::find_or<std::vector<int>>(inv,"fixed_vs_layers",{}).empty())
+        throw std::invalid_argument("fixed_vs_layers currently supported only by invert/synthetic");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
     FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
     const auto method_name=toml::find_or<std::string>(inv,"sensitivity","implicit");

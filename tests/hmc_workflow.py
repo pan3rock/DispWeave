@@ -95,6 +95,10 @@ with tempfile.TemporaryDirectory() as tmp:
     invalid = work / 'invalid.toml'
     invalid.write_text(content.replace('[1.1, 1.8, 2.8]', '[0.7, 1.8, 2.8]'))
     sample(work / 'invalid', cfg=invalid, codes=(1,))
+    fixed = work / 'fixed.toml'
+    fixed.write_text(content.replace('[inversion]', '[inversion]\nfixed_vs_layers = [2]'))
+    rejected = sample(work / 'fixed', cfg=fixed, codes=(1,))
+    assert 'fixed_vs_layers currently supported only by invert/synthetic' in rejected.stderr
     missing = work / 'missing.txt'
     lines = (data / 'observations.txt').read_text().splitlines()
     rows = []

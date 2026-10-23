@@ -67,6 +67,25 @@ with tempfile.TemporaryDirectory(prefix="dispweave-workflow-") as tmp:
     config.write_text(template.replace("starts_vs = [[1.1, 1.8, 2.8], [0.9, 2.2, 3.2], [1.2, 2.1, 3.1]]", "starts_vs = [[0.1, 2.0, 3.0]]"))
     run("synthetic", "--config", config, "--output", work / "invalid", code=4)
     assert table(work / "invalid/runs.txt")[0][-1] == "invalid_initial_bounds"
+    fixed_template = template.replace("[inversion]", "[inversion]\nfixed_vs_layers = [2]").replace(
+        "starts_vs = [[1.1, 1.8, 2.8], [0.9, 2.2, 3.2], [1.2, 2.1, 3.1]]",
+        "starts_vs = [[1.1, 1.8, 3.0], [0.9, 2.2, 3.0], [1.2, 2.1, 3.0]]")
+    config.write_text(fixed_template)
+    fixed_result = work / "fixed"
+    run("synthetic", "--config", config, "--output", fixed_result)
+    assert all(r[1] == "1" for r in table(fixed_result / "runs.txt"))
+    assert metadata(fixed_result / "metadata.txt")["free_vs_parameters"] == "2"
+    assert metadata(fixed_result / "metadata.txt")["fixed_vs_layers"] == "2"
+    for i in range(3):
+        model = table(fixed_result / f"run_{i}_model.txt")
+        assert abs(float(model[-1][3]) - 3.) < 1e-14
+        assert max(abs(float(r[3]) - float(r[1])) for r in model) < 1e-7
+    for mask in ["[-1]", "[3]", "[2, 2]", "[0, 1, 2]"]:
+        config.write_text(fixed_template.replace("fixed_vs_layers = [2]", f"fixed_vs_layers = {mask}"))
+        run("synthetic", "--config", config, "--output", work / "invalid_fixed", code=1)
+    # No silent replacement of a supplied fixed-layer initial value.
+    config.write_text(fixed_template.replace("[1.1, 1.8, 3.0]", "[1.1, 1.8, 2.9]"))
+    run("synthetic", "--config", config, "--output", work / "mismatch_fixed", code=1)
     config.write_text(template)
     bad = work / "bad.txt"
     bad.write_text("0.2 1.5 0 0.01 extra\n")

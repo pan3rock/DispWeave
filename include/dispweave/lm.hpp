@@ -33,5 +33,9 @@ using LeastSquaresFunction=std::function<DataEvaluation(const Eigen::VectorXd&)>
 LMResult bounded_lm(const LeastSquaresFunction&,const Eigen::VectorXd& initial,
                     const Eigen::VectorXd& lower,const Eigen::VectorXd& upper,
                     const LMOptions& options={});
-LMResult invert_lm(const DispersionProblem&,const Eigen::VectorXd& initial,const LMOptions& options={});
+// Freeze the listed zero-based layers at their initial log-Vs values. Solve
+// only the remaining coordinates; q and the returned Jacobian stay full-sized.
+// Projected gradient and step norms refer to the free coordinates only.
+LMResult invert_lm(const DispersionProblem&,const Eigen::VectorXd& initial,const LMOptions& options={},
+                  const std::vector<int>& fixed_vs_layers={});
 }

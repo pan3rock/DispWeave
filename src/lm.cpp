@@ -175,8 +175,48 @@ LMResult bounded_lm(const LeastSquaresFunction& function,const Eigen::VectorXd& 
     }
     return result;
 }
-LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initial,const LMOptions& options) {
-    return bounded_lm([&](const Eigen::VectorXd& q){return problem.evaluate(q);},initial,
-                      problem.parameters().lower(),problem.parameters().upper(),options);
+LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initial,const LMOptions& options,
+                  const std::vector<int>& fixed_vs_layers) {
+    const auto& p=problem.parameters();
+    const auto n=p.lower().size();
+    std::vector<bool> fixed(n,false);
+    for(int layer:fixed_vs_layers) {
+        if(layer<0 || layer>=n || fixed[layer]) throw std::invalid_argument("Invalid/duplicate fixed Vs layer");
+        fixed[layer]=true;
+    }
+    if(static_cast<Eigen::Index>(fixed_vs_layers.size())==n)
+        throw std::invalid_argument("LM requires at least one free Vs layer");
+    // Preserve the original path and its invalid-initial diagnostics.
+    if(fixed_vs_layers.empty() || !p.contains(initial))
+        return bounded_lm([&](const Eigen::VectorXd& q){return problem.evaluate(q);},initial,p.lower(),p.upper(),options);
+    std::vector<int> free;
+    for(int i=0;i<n;++i) if(!fixed[i]) free.push_back(i);
+    auto select=[&](const Eigen::VectorXd& q) {
+        Eigen::VectorXd x(free.size());
+        for(size_t i=0;i<free.size();++i) x[i]=q[free[i]];
+        return x;
+    };
+    auto expand=[&](const Eigen::VectorXd& x) {
+        Eigen::VectorXd q=initial;
+        for(size_t i=0;i<free.size();++i) q[free[i]]=x[i];
+        return q;
+    };
+    auto evaluate=[&](const Eigen::VectorXd& x) {
+        auto e=problem.evaluate(expand(x));
+        if(e.status==EvaluationStatus::valid) {
+            Eigen::MatrixXd j(e.jacobian.rows(),free.size());
+            for(size_t i=0;i<free.size();++i) j.col(i)=e.jacobian.col(free[i]);
+            e.jacobian=std::move(j);
+        }
+        return e;
+    };
+    auto result=bounded_lm(evaluate,select(initial),select(p.lower()),select(p.upper()),options);
+    result.q=expand(result.q);
+    // Restore the full Jacobian from the retained kernels, without another
+    // forward evaluation or altering evaluation/iteration counts.
+    if(result.evaluation.status==EvaluationStatus::valid)
+        result.evaluation.jacobian=problem.likelihood().whiten_jacobian(
+            p.phase_jacobian(result.q,result.evaluation.forward));
+    return result;
 }
 }

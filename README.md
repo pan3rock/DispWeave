@@ -18,6 +18,8 @@ M8a 正演、M8b 接收函数、M8c 组合目标、M8d 端到端实验均已验�
 浅层多阶及匹配的 m1 例子通过固定参数化 LM/NUTS 测试；地壳 44 参数反演未通过。
 已同步修复 DispWeave/invLM 默认 Dunkin 后端的已定位近邻根漏检，见 [修复验收](docs/clustered-root-repair.md)。
 地壳反演仍未整体收敛，fast_scalar 在该困难模型上仍漏根；不能将局部修复视为全域正演可靠性证明。
+已完成 [地壳半空间/深部分层 A/B/C 对照](docs/crust-depth-controls.md)：固定半空间不足以消除跳变，
+合并均匀深部后的三个可计算终态通过局部导数检查，但仍未收敛。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -106,6 +108,9 @@ python scripts/plot_inversion.py results/synthetic
 `runs.txt` 的 `termination` 区分 `converged`、`stalled`、`failed`；小步停滞不视为成功。
 观测列为 `frequency_hz phase_km_s mode sigma_km_s`；可提供完整协方差。
 当前固定层顶与密度，反演 Vs，Vp 固定或按指定 Vp/Vs 随动。
+`[inversion] fixed_vs_layers = [2]` 可将零基第 2 层的 Vs 固定为 `model.vs[2]`；
+对应的每个 `starts_vs` 分量必须匹配。输出保留全部层，梯度终止条件仅针对自由参数。
+该选项目前用于 `invert/synthetic`，HMC/NUTS 会显式拒绝，见上述地壳对照报告。
 
 一条命令完成构建、测试、六组基阶/多模态及噪声对照、绘图与观测重放：
 
