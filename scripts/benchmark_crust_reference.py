@@ -19,8 +19,8 @@ from benchmark_crust_depth import brocher, forward, audit_terminal, digest, rows
 
 def reference_config(model, vs_min, vs_max, width, amplitude, regularization, weight, iterations):
     if (not np.isfinite([vs_min,vs_max,width,amplitude,weight]).all() or
-            vs_min<=0 or vs_max<=vs_min or width<=0 or amplitude<=0 or weight<=0 or iterations<1):
-        raise ValueError('Require finite positive bounds, width, amplitude, weight and iteration budget')
+            vs_min<=0 or vs_max<=vs_min or width<=0 or amplitude<=0 or weight<0 or iterations<1):
+        raise ValueError('Require finite positive bounds, width, amplitude and iteration budget; weight must be nonnegative')
     if regularization not in ['reference_damping','perturbation_smooth','vs_smooth']:
         raise ValueError('Explicit supported regularization required')
     vs=np.asarray(model['vs']);z=np.asarray(model['depth'])

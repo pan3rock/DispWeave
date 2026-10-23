@@ -1,5 +1,6 @@
 """Input contracts for external examples; no QEDispInv checkout is required."""
 from pathlib import Path
+import copy
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from check_qedisp_examples import model_table, data_table, check_queries
 from benchmark_crust_depth import variants
 from benchmark_crust_reference import reference_config, depth_rms
+from benchmark_crust_regularization import sweep_configs, summarize_case, compare_weights, fd_passed, metric_range
 
 
 class ExternalContracts(unittest.TestCase):
@@ -88,6 +90,61 @@ class ExternalContracts(unittest.TestCase):
         self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],0.,4.),np.sqrt(13/4))
         self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],.5,2.),np.sqrt(4.5/1.5))
         self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],4.,5.),20.)
+
+    def test_weight_scan_changes_only_lambda_including_zero(self):
+        model=dict(depth=[0.,1.,4.],vs=[3.,3.5,4.],vp=[5.5,6.,7.],rho=[2.5,2.6,3.])
+        original=copy.deepcopy(model)
+        configs,labels=sweep_configs(model,[0.,10.,30.,100.,300.])
+        self.assertEqual(model,original)
+        for config,weight in zip(configs,[0.,10.,30.,100.,300.]):
+            self.assertEqual(config['inversion']['regularization'],dict(type='reference_damping',**{'lambda':weight}))
+            expected=copy.deepcopy(configs[0]);expected['inversion']['regularization']['lambda']=weight
+            self.assertEqual(config,expected)
+            self.assertEqual(len(config['inversion']['starts_vs']),len(labels))
+        # Ensure this is also accepted by the actual per-weight runner's builder.
+        zero,_=reference_config(model,.5,6.,1.2,.2,'reference_damping',0.,200)
+        self.assertEqual(zero,configs[0])
+        configs[0]['model']['vs'][0]=99
+        self.assertEqual(configs[1]['model']['vs'][0],3.)
+        for bad in [[],[0,10],[100,100],[-1,100],[float('nan'),100],[100,float('inf')]]:
+            with self.subTest(weights=bad),self.assertRaises(ValueError):sweep_configs(model,bad)
+
+    def test_scan_preserves_failed_runs_and_checks_both_fd_steps(self):
+        model=dict(depth=[0.,1.,4.],vs=[3.,3.5,4.],vp=[5.5,6.,7.],rho=[2.5,2.6,3.])
+        configs,_=sweep_configs(model,[0.,100.])
+        audit=dict(invalid_rows=[],unavailable_gradients=[],fd_passed_at_1e_6=True,
+                   steps=[dict(h=h,unresolved_fd_entries=0,max_scaled_error=.1) for h in [1e-5,1e-6]])
+        records=[dict(run=i,converged=i!=1,audit=copy.deepcopy(audit)) for i in range(5)]
+        records[2]['audit']['steps'][0]['max_scaled_error']=2.  # Fine step alone cannot certify.
+        records[3]['audit']['steps'][0]['unresolved_fd_entries']=1
+        records[4]['audit']['steps']=[]
+        profiles={i:np.array(model['vs'])+np.array([.1,.2,.3]) for i in range(5)}
+        group=summarize_case(configs[0],records,profiles)
+        self.assertEqual(len(group['runs']),5)
+        self.assertEqual(group['converged_count'],4)
+        self.assertEqual(group['fd_passed_count'],2)
+        self.assertEqual(group['validated_count'],1)
+        self.assertIsNone(group['within_weight_max_layer_spread_km_s'])
+        self.assertFalse(group['runs'][1]['validated'])
+        self.assertEqual(group['runs'][2]['audit'],records[2]['audit'])
+        r=group['runs'][0]
+        self.assertAlmostEqual(r['reference_depth_rms'][0]['rms_km_s'],np.sqrt((.1**2+3*.2**2)/4))
+        self.assertAlmostEqual(r['halfspace_reference_change_km_s'],.3)
+        for broken in [{},dict(audit,invalid_rows=[0]),dict(audit,unavailable_gradients=[1])]:
+            self.assertFalse(fd_passed(broken))
+        with self.assertRaises(ValueError):summarize_case(configs[0],records[:-1],profiles)
+        with self.assertRaises(ValueError):summarize_case(configs[0],records[:-1]+[records[0]],profiles)
+        reference_profiles={i:np.array(model['vs']) for i in range(5)}
+        baseline=summarize_case(configs[1],records,reference_profiles)
+        comparison=compare_weights([group,baseline],model)
+        self.assertEqual(len(comparison[0]['pairs']),1)
+        self.assertAlmostEqual(comparison[0]['pairs'][0]['max_layer_difference_km_s'],.3)
+        for r in group['runs']:r['validated']=False
+        comparison=compare_weights([group,baseline],model)
+        self.assertFalse(comparison[0]['available'])
+        self.assertEqual(comparison[0]['pairs'],[])
+        for values in [[.01,None],[.01,float('nan')],[.01,float('inf')]]:
+            self.assertIn('未解析',metric_range(values))
 
 
 if __name__ == '__main__':
