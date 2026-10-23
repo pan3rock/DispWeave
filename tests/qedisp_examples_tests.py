@@ -8,6 +8,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from check_qedisp_examples import model_table, data_table, check_queries
 from benchmark_crust_depth import variants
+from benchmark_crust_reference import reference_config, depth_rms
 
 
 class ExternalContracts(unittest.TestCase):
@@ -65,6 +66,28 @@ class ExternalContracts(unittest.TestCase):
         doc['model']['vs'][-1] = 4.01
         with self.assertRaises(ValueError):
             variants(doc, 100.)
+
+    def test_reference_case_free_halfspace_and_depth_based_starts(self):
+        model=dict(depth=[0.,1.,25.,200.],vs=[3.,3.1,4.,4.5],vp=[5.5,5.6,7.,8.],rho=[2.5,2.6,3.,3.2])
+        config,labels=reference_config(model,.5,6.,1.2,.2,'reference_damping',100.,200)
+        self.assertEqual(config['model'],model)
+        self.assertEqual(config['inversion']['fixed_vs_layers'],[])
+        self.assertEqual(config['inversion']['starts_vs'][0],model['vs'])
+        self.assertEqual(labels,['reference','uniform_minus','uniform_plus','depth_sine','depth_cosine'])
+        np.testing.assert_allclose(np.array(config['inversion']['starts_vs'][1])-model['vs'],-.2,atol=1e-15)
+        # Quarter-period in physical depth, regardless of how many layers precede it.
+        self.assertAlmostEqual(config['inversion']['starts_vs'][3][2],4.2)
+        self.assertEqual(config['inversion']['starts_vs'][2][-1],4.7)
+        self.assertNotIn('lower_vs',config['inversion'])
+        self.assertNotIn('upper_vs',config['inversion'])
+        with self.assertRaises(ValueError):
+            reference_config(model,.5,6.,.2,.2,'reference_damping',100.,200)
+
+    def test_structure_comparison_weights_depth_not_layer_count(self):
+        # Integral over [0,4]: 1 km * 1^2 + 3 km * 2^2; halfspace excluded.
+        self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],0.,4.),np.sqrt(13/4))
+        self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],.5,2.),np.sqrt(4.5/1.5))
+        self.assertAlmostEqual(depth_rms([1.,2.,20.],[0.,1.,4.],4.,5.),20.)
 
 
 if __name__ == '__main__':

@@ -17,10 +17,13 @@ M8a 正演、M8b 接收函数、M8c 组合目标、M8d 端到端实验均已验�
 已用 QEDispInv 自带合成示例完成一轮应用测试，见 [测试记录与复现](docs/qedisp-examples-validation.md)。
 浅层多阶及匹配的 m1 例子通过固定参数化 LM/NUTS 测试；地壳 44 参数反演未通过。
 已同步修复 DispWeave/invLM 默认 Dunkin 后端的已定位近邻根漏检，见 [修复验收](docs/clustered-root-repair.md)。
-地壳反演仍未整体收敛，fast_scalar 在该困难模型上仍漏根；不能将局部修复视为全域正演可靠性证明。
+原 44 参数、无正则化的地壳配置未整体收敛，fast_scalar 在该困难模型上仍漏根；不能将局部修复视为全域正演可靠性证明。
 已完成 [地壳半空间/深部分层 A/B/C 对照](docs/crust-depth-controls.md)：固定半空间不足以消除跳变，
 合并均匀深部后的无正则化对照仍未收敛。后续已接入 [经验物性与显式正则化](docs/material-regularization.md)，
 C 组加入参考阻尼后，固定物性/Brocher05 均为 3/4 收敛，剩余初值未解析。
+随后使用 QEDispInv 的 `mref.txt`、45 个自由 Vs（含半空间）、交集边界、Brocher05 与
+参考阻尼完成 [参考模型地壳验证](docs/crust-reference-validation.md)：**5/5 初值收敛**，
+全部终态通过全参数 FD 检查；相速度 RMS≈0.0190 km/s，σ=0.02 为本轮假设。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
