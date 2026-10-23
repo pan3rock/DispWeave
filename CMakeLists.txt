@@ -37,6 +37,8 @@ if(BUILD_TESTING)
           ${PROJECT_SOURCE_DIR}/tests/joint_workflow.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME joint_grid_reference COMMAND ${Python3_EXECUTABLE}
           ${PROJECT_SOURCE_DIR}/tests/joint_grid_tests.py)
+        add_test(NAME joint_lm_precision COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tests/joint_lm_tests.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
       endif()
       add_test(NAME receiver_workflow COMMAND ${Python3_EXECUTABLE}
         ${PROJECT_SOURCE_DIR}/tests/receiver_workflow.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})

@@ -167,16 +167,23 @@ int run_joint(const std::filesystem::path& config,const std::filesystem::path& o
     const auto reference_state=problem.initial_state(parameters.encode(reference));
     const bool lm_enabled=document.contains("lm") && toml::find_or<bool>(toml::find(document,"lm"),"enabled",false);
     if(lm_enabled) {
+        // Near a least-squares minimum, standard root error can exceed the
+        // predicted reduction. Refine the same brackets for BOTH values and
+        // kernels during LM; leave the declared sampling target unchanged.
+        const InvLMForward lm_backend(SecularMethod::dunkin,RootAccuracy::refined);
+        std::vector<ObservationBlock> lm_blocks;
+        for(const auto& table:tables) lm_blocks.push_back(load_block(table,lm_backend,false).block);
+        const JointProblem lm_problem(parameters,JointLikelihood(std::move(lm_blocks),BlockDependence::conditional_independence));
         LMOptions lm;lm.max_iterations=toml::find_or<int>(toml::find(document,"lm"),"max_iterations",100);
         lm.gradient_tolerance=toml::find_or<double>(toml::find(document,"lm"),"gradient_tolerance",1e-5);
-        const auto fit=bounded_lm([&](const Eigen::VectorXd& q){auto x=reference_state;x.head(q.size())=q;return problem.least_squares(x,true).data;},
+        const auto fit=bounded_lm([&](const Eigen::VectorXd& q){auto x=reference_state;x.head(q.size())=q;return lm_problem.least_squares(x,true).data;},
             reference_state.head(reference.vs.size()),parameters.lower(),parameters.upper(),lm);
         file(output/"lm_vs.txt")<<fit.q.array().exp().matrix()<<'\n';
         file(output/"lm_summary.txt")<<"termination="<<to_string(fit.termination)<<"\nreason="<<fit.reason<<"\ncost="<<fit.evaluation.least_squares_cost
             <<"\nevaluations="<<fit.evaluations<<"\nprojected_gradient="<<fit.projected_gradient
             <<"\naccepted="<<fit.accepted<<"\nrejected="<<fit.rejected<<"\nforward_failures="<<fit.forward_failures
             <<"\ngradient_failures="<<fit.gradient_failures
-            <<"\nnoise_scales=fixed_at_prior_initial_values\nused_for_chain_initialization=false\n";
+            <<"\nnoise_scales=fixed_at_prior_initial_values\nused_for_chain_initialization=false\ndispersion_root_accuracy=refined\n";
         auto trace=file(output/"lm_trace.txt");
         trace<<"# iteration cost trial_cost damping gain_ratio projected_gradient accepted trial_status predicted_reduction actual_reduction step_norm\n";
         for(const auto& t:fit.trace) trace<<t.iteration<<' '<<t.cost<<' '<<t.trial_cost<<' '<<t.damping<<' '<<t.gain_ratio<<' '
