@@ -7,6 +7,17 @@ const regularizationDirectory = "../../results/crust-regularization-scan";
 const samplingNotice = "来自已完成的三条链；原四链验收未通过。这些区间不能作为已验证的地壳后验不确定性结论。";
 const regularizationNotice = "固定参考中心、界面与误差假设的确定性对照。收敛与低残差不代表结构唯一，也不构成后验可信区间。";
 const figures = [
+  {id:"target-recovery", category:"synthetic", title:"合成目标、反演参考与 LM 恢复结果", short:"目标与恢复模型", kind:"合成恢复对照", file:"../../results/crust-target-comparison/target-recovery",
+    notice:"橙线是提供的合成目标 model_data.txt，灰虚线是参考 mref.txt，绿线是已有 LM 解。目标为 44 层，反演使用 45 层固定界面；目标原始 Vp/ρ 不完全满足反演采用的 Brocher05。",
+    description:"按各自真实层界面叠加绘图，不按层编号对齐。左侧展示至 350 km，右侧放大 0–45 km。目标模型只用于本轮展示与正演对照，既有参考、先验和反演结果保持原定义。",
+    alt:"合成目标、反演参考模型与 lambda=100 的既有 LM 解，在完整深度和浅部的 Vs 对照。目标为橙色，参考为灰色虚线，LM 为绿色。"},
+  {id:"synthetic-data", category:"synthetic", title:"原始合成观测与目标 / 参考 / 恢复模型的预测", short:"原始数据与预测", kind:"125 点合成数据", file:"../../results/crust-target-comparison/synthetic-data",
+    notice:"黑点为 data.txt 中未改动的 125 条观测。目标预测保留 model_data.txt 的原始 Vp、Vs、密度和层界面。误差棒 σ=0.02 km/s 是反演假设，源文件不含误差列。",
+    description:"上排展示四个模态的合成观测与三个模型的预测，下排展示预测减观测的标准化残差。目标预测与数据的 RMS 约 0.018567 km/s；没有重建原始噪声随机种子，不能把假设 σ 当作已知生成噪声。",
+    alt:"四个模态的原始合成观测、目标模型原始物性预测、Brocher05 参考模型预测及已有 LM 预测，下排是各预测相对数据的残差。"},
+  {id:"target-nuts", category:"synthetic", diagnostic:true, title:"目标模型与三条已完成链的样本区间", short:"目标与采样区间", kind:"仅供诊断", file:"../../results/crust-target-comparison/target-nuts", notice:samplingNotice,
+    description:"在同一深度坐标中叠加橙色目标、灰色参考、绿色 LM 解和蓝色样本区间。区间由既有 6000 个正式状态计算，仍条件于 45 层固定界面；图示不构成后验覆盖率或界面恢复验收。",
+    alt:"目标模型和已有 LM 解叠加于三条已完成链的 Vs 样本 95% 区间，标明 NUTS 验收未通过。"},
   {id:"structure", category:"sampling", title:"Vs–深度结构与先验 / 样本区间", short:"速度结构与区间", kind:"仅供诊断", file:`${samplingDirectory}/prior-posterior`, notice:samplingNotice,
     description:"左侧为完整深度范围，中间放大浅部，右侧比较样本与先验标准差。灰色为先验 95% 区间，蓝色为样本 95% 区间，黑线为参考模型。",
     alt:"Vs 随深度的先验和三条已完成链的样本区间，以及样本与先验标准差比。"},
@@ -33,7 +44,9 @@ const figures = [
     description:"相关矩阵用于观察已访问区域中的参数耦合。该结果条件于固定层界面、物性关系与参考先验，不代表层数或界面深度的不确定性。",
     alt:"三条已完成链的 Vs 参数相关矩阵，显示参数间的样本耦合。"}
 ];
-const categoryNames = {sampling:"NUTS · 仅供诊断", regularization:"正则化 · 对照完成", cutoff:"模态截止 · 独立核查"};
+const categoryNames = {synthetic:"合成数据 · 目标对照", sampling:"NUTS · 仅供诊断", regularization:"正则化 · 对照完成", cutoff:"模态截止 · 独立核查"};
+const isDiagnostic = figure => figure.category === "sampling" || figure.diagnostic === true;
+const badgeClass = figure => isDiagnostic(figure) ? "warning" : figure.category === "synthetic" ? "neutral" : "success";
 let activeFilter = "all";
 let selectedId = figures[0].id;
 const byId = id => document.getElementById(id);
@@ -45,7 +58,7 @@ function updateLightbox() {
   const figure = currentFigure();
   byId("lightbox-title").textContent = figure.title;
   byId("lightbox-status").textContent = figure.kind;
-  byId("lightbox-status").className = `badge ${figure.category === "sampling" ? "warning" : "success"}`;
+  byId("lightbox-status").className = `badge ${badgeClass(figure)}`;
   byId("lightbox-notice").textContent = figure.notice;
   byId("lightbox-image").src = `${figure.file}.png`;
   byId("lightbox-image").alt = figure.alt;
@@ -75,7 +88,7 @@ function renderThumbnails() {
     const title = document.createElement("strong");
     title.textContent = figure.short;
     const detail = document.createElement("small");
-    detail.textContent = categoryNames[figure.category];
+    detail.textContent = isDiagnostic(figure) ? "NUTS · 仅供诊断" : categoryNames[figure.category];
     label.append(title, detail);
     button.append(img, label);
     button.addEventListener("click", () => selectFigure(figure.id));
@@ -90,9 +103,9 @@ function selectFigure(id) {
   byId("figure-title").textContent = figure.title;
   byId("figure-description").textContent = figure.description;
   byId("figure-kind").textContent = figure.kind;
-  byId("figure-kind").className = `badge ${figure.category === "sampling" ? "warning" : "success"}`;
+  byId("figure-kind").className = `badge ${badgeClass(figure)}`;
   byId("figure-notice").textContent = figure.notice;
-  byId("figure-notice").classList.toggle("evidence", figure.category !== "sampling");
+  byId("figure-notice").classList.toggle("evidence", !isDiagnostic(figure));
   byId("figure-source").textContent = `来源：${figure.file.replace("../../results/", "results/")}.png`;
   byId("figure-png").href = `${figure.file}.png`;
   byId("figure-pdf").href = `${figure.file}.pdf`;

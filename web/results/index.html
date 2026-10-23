@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="DispWeave 地壳反演结果：参考模型、正则化敏感性、NUTS 诊断与独立模态截止核查。">
+  <meta name="description" content="DispWeave 地壳合成反演结果：原始数据、目标模型与恢复对照、正则化敏感性、NUTS 诊断和模态截止核查。">
   <meta name="color-scheme" content="light">
   <title>DispWeave · 研究结果</title>
   <link rel="icon" href="mark.svg" type="image/svg+xml">
@@ -17,20 +17,21 @@
     <div class="workspace-label">研究工作台 <span>01</span></div>
     <nav aria-label="页面导航">
       <a href="#overview" class="active"><span class="nav-icon">◫</span>结果总览<span class="nav-number">01</span></a>
-      <a href="#figures"><span class="nav-icon">▧</span>结果图集<span class="nav-number">08</span></a>
+      <a href="#synthetic"><span class="nav-icon">◇</span>数据与目标</a>
+      <a href="#figures"><span class="nav-icon">▧</span>结果图集<span class="nav-number">11</span></a>
       <a href="#experiments"><span class="nav-icon">≋</span>实验对照</a>
       <a href="#cutoff"><span class="nav-icon">⌁</span>截止核查</a>
       <a href="#reports"><span class="nav-icon">≡</span>报告与下一步</a>
     </nav>
-    <div class="sidebar-bottom"><span class="status-dot"></span>本地研究快照<p>固定界面 · 45 个自由 Vs<br>Rayleigh 多阶频散</p><span class="mono">SNAPSHOT / 2026.10.23</span></div>
+    <div class="sidebar-bottom"><span class="status-dot"></span>本地合成实验<p>目标 44 层 · 反演 45 个自由 Vs<br>Rayleigh 多阶频散</p><span class="mono">SNAPSHOT / 2026.10.23</span></div>
   </aside>
 
   <main id="main">
-    <header class="topbar"><span>研究结果 <span class="breadcrumb-separator">/</span> 地壳应用验证</span><div><span class="local-tag"><span class="status-dot"></span>本地查看</span><time datetime="2026-10-23">2026 / 10 / 23</time></div></header>
+    <header class="topbar"><span>研究结果 <span class="breadcrumb-separator">/</span> 地壳合成实验</span><div><span class="local-tag"><span class="status-dot"></span>本地查看</span><time datetime="2026-10-23">2026 / 10 / 23</time></div></header>
 
     <section id="overview" class="overview section">
       <div class="eyebrow"><span class="short-line"></span> DISPWEAVE / RESEARCH RESULTS</div>
-      <div class="hero-row"><div><h1>地壳反演，<br><span>每一步都有据可查。</span></h1><p class="hero-description">从参考模型拟合、正则化敏感性，到后验采样与模态截止。<br class="desktop-break">把结果、证据和当前边界放在同一张研究地图里。</p></div><div class="stage-stamp"><span>当前阶段</span><strong>M8 后应用验证</strong><p>固定维度联合反演已完成<br>地壳后验验证进行中</p><a href="../../docs/milestones.md">查看项目里程碑 <span aria-hidden="true">↗</span></a></div></div>
+      <div class="hero-row"><div><h1>地壳合成反演，<br><span>从目标到恢复结果。</span></h1><p class="hero-description">QEDispInv 提供的合成示例：125 条观测，44 层目标模型。<br class="desktop-break">区分合成目标、反演参考和恢复结果，再判断拟合与结构。</p></div><div class="stage-stamp"><span>当前阶段</span><strong>M8 后应用验证</strong><p>固定维度联合反演已完成<br>地壳后验验证进行中</p><a href="../../docs/milestones.md">查看项目里程碑 <span aria-hidden="true">↗</span></a></div></div>
 
       <div class="metrics">
         <article><span class="metric-label">参考模型 · 多初值 LM</span><div class="metric-value">5<span>/ 5</span><span class="metric-check">✓</span></div><p>初值收敛，全部终态导数核对通过</p></article>
@@ -43,20 +44,31 @@
       <div class="snapshot-line"><span><span class="tiny-square"></span>最近数值回归 <strong>72 / 72</strong> 通过</span><span>结果基线 <code>27c1552</code></span><span>本页是静态快照，不自动运行反演</span></div>
     </section>
 
+    <section id="synthetic" class="section">
+      <div class="section-heading"><div><span class="eyebrow">SYNTHETIC BENCHMARK / INPUTS</span><h2>先看数据，再看要恢复的模型</h2></div><span class="badge neutral">QEDispInv / syn-crustmantle</span></div>
+      <div class="synthetic-sources">
+        <article><span class="source-role target">合成目标</span><h3>model_data.txt</h3><p>示例配置指定的正演模型，<strong>44 层</strong>，末层半空间顶深 320 km。Vs、Vp、密度与原始层界面均保留。</p><a href="../../results/crust-target-comparison/model_data.txt" target="_blank" rel="noopener">查看目标模型 ↗</a></article>
+        <article><span class="source-role reference">反演参考</span><h3>mref.txt</h3><p>反演的参考中心，<strong>45 层</strong>，固定界面、半空间顶深 208.925 km。用于定义初值、速度窗口与先验中心。</p><a href="../../results/crust-target-comparison/mref.txt" target="_blank" rel="noopener">查看参考模型 ↗</a></article>
+        <article><span class="source-role observations">原始合成观测</span><h3>data.txt</h3><p><strong>125 点</strong>，模态 0–3 分别为 43 / 31 / 31 / 20 点。频率 0.01–0.4 Hz；三列为频率、相速度、模态。</p><a href="../../results/crust-target-comparison/data.txt" target="_blank" rel="noopener">查看原始数据 ↗</a></article>
+      </div>
+      <div class="synthetic-context"><p><strong>目标 ≠ 参考。</strong>目标模型与参考模型使用不同界面；反演固定参考界面，并用 Brocher05 从 Vs 派生 Vp / ρ。目标原始物性与这一关系并不完全一致，直接重算的最大 Vp 差为 0.635 km/s。因此，拟合好不等于完整目标结构已被恢复。</p><p>保留目标原始物性进行正演，其预测与源观测的 RMS 为 <strong>0.018567 km/s</strong>。源数据没有误差列，<strong>σ=0.02 km/s 是反演假设</strong>；原始噪声随机种子未重建。<a href="../../docs/crust-target-comparison.md">来源核对与补图记录 ↗</a></p></div>
+    </section>
+
     <section id="figures" class="section">
       <div class="section-heading"><div><span class="eyebrow">01 / FIGURE ATLAS</span><h2>让结果自己说话</h2></div><p>原始研究图 · 可放大查看 · PNG / PDF</p></div>
       <div class="filters" role="group" aria-label="筛选结果图">
-        <button type="button" class="active" data-filter="all" aria-pressed="true">全部结果 <span>8</span></button>
+        <button type="button" class="active" data-filter="all" aria-pressed="true">全部结果 <span>11</span></button>
+        <button type="button" data-filter="synthetic" aria-pressed="false">数据与目标 <span>3</span></button>
         <button type="button" data-filter="regularization" aria-pressed="false">正则化扫描 <span>3</span></button>
         <button type="button" data-filter="sampling" aria-pressed="false">采样诊断 <span>4</span></button>
         <button type="button" data-filter="cutoff" aria-pressed="false">模态截止 <span>1</span></button>
       </div>
       <article class="figure-viewer">
-        <div class="figure-heading"><div><span id="figure-kind" class="badge warning">仅供诊断</span><h3 id="figure-title">Vs–深度结构与先验 / 样本区间</h3></div><div class="figure-pagination"><button type="button" id="figure-prev" aria-label="上一张图">←</button><span id="figure-count" class="mono" aria-live="polite">01 / 08</span><button type="button" id="figure-next" aria-label="下一张图">→</button></div></div>
-        <p id="figure-notice" class="figure-notice">来自已完成的三条链；原四链验收未通过。这些区间不能作为已验证的地壳后验不确定性结论。</p>
-        <button class="figure-canvas" type="button" id="figure-expand" aria-label="放大当前结果图"><img id="figure-image" src="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.png" alt="Vs 随深度的先验和三条已完成链的样本区间，以及样本与先验标准差比。"><span class="expand-hint">⤢ 放大查看</span></button>
+        <div class="figure-heading"><div><span id="figure-kind" class="badge neutral">合成恢复对照</span><h3 id="figure-title">合成目标、反演参考与 LM 恢复结果</h3></div><div class="figure-pagination"><button type="button" id="figure-prev" aria-label="上一张图">←</button><span id="figure-count" class="mono" aria-live="polite">01 / 11</span><button type="button" id="figure-next" aria-label="下一张图">→</button></div></div>
+        <p id="figure-notice" class="figure-notice evidence">橙线是提供的合成目标 model_data.txt，灰虚线是参考 mref.txt，绿线是已有 LM 解。目标为 44 层，反演使用 45 层固定界面；目标原始 Vp/ρ 不完全满足反演采用的 Brocher05。</p>
+        <button class="figure-canvas" type="button" id="figure-expand" aria-label="放大当前结果图"><img id="figure-image" src="../../results/crust-target-comparison/target-recovery.png" alt="合成目标、参考模型与既有 LM 解的全深度和浅部 Vs 对照。橙线为目标，灰虚线为参考，绿线为 LM。"><span class="expand-hint">⤢ 放大查看</span></button>
         <div id="image-unavailable" class="image-unavailable" hidden>此图尚未生成或文件已移动。请查看下方来源路径和对应实验报告。</div>
-        <div class="figure-caption"><div><p id="figure-description">左侧为完整深度范围，中间放大浅部，右侧比较样本与先验标准差。灰色为先验 95% 区间，蓝色为样本 95% 区间，黑线为参考模型。</p><span id="figure-source" class="figure-source">来源：crust-nuts-conservative / completed-chain-diagnostics</span></div><div class="figure-actions"><a id="figure-png" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.png" target="_blank" rel="noopener">PNG ↗</a><a id="figure-pdf" href="../../results/crust-nuts-conservative/completed-chain-diagnostics/prior-posterior.pdf" target="_blank" rel="noopener">PDF ↗</a></div></div>
+        <div class="figure-caption"><div><p id="figure-description">按各自真实层界面叠加绘图，不按层编号对齐。左侧展示至 350 km，右侧放大 0–45 km。目标模型只用于本轮展示与正演对照，既有参考、先验和反演结果保持原定义。</p><span id="figure-source" class="figure-source">来源：results/crust-target-comparison/target-recovery.png</span></div><div class="figure-actions"><a id="figure-png" href="../../results/crust-target-comparison/target-recovery.png" target="_blank" rel="noopener">PNG ↗</a><a id="figure-pdf" href="../../results/crust-target-comparison/target-recovery.pdf" target="_blank" rel="noopener">PDF ↗</a></div></div>
       </article>
       <div id="figure-thumbnails" class="figure-thumbnails" role="group" aria-label="选择图表"></div>
       <noscript><p class="noscript">启用 JavaScript 可切换全部图表、放大图片并探索截止结果。上方初始图和下方报告仍可直接查看。</p><p><a href="../../results/crust-nuts-conservative/completed-chain-diagnostics/predictive.png">频散拟合图</a> · <a href="../../results/crust-mode-audit-refined/cutoff-continuation.png">截止核查图</a> · <a href="../../results/crust-regularization-scan/structure.png">正则化结构图</a></p></noscript>

@@ -18,11 +18,13 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory .
 这是截至 2026-10-23、数值结果基线 `27c1552` 的静态整理，不自动重新计算或更新实验。
 
 - 总览：参考模型 5/5、权重扫描 25/25、独立核查 118/118；地壳 NUTS 后验仍未通过验收。
-- 图集：8 张已有图，按正则化、采样诊断、截止核查筛选；支持原始尺寸、键盘切换与 PNG/PDF 入口。
+- 数据与目标：区分 44 层合成目标、45 层反演参考及原始 125 点观测，提供源文件入口；说明界面和物性差异。
+- 图集：11 张图，按数据与目标、正则化、采样诊断、截止核查筛选；支持原始尺寸、键盘切换与 PNG/PDF 入口。
+- 默认展示原目标 / 参考 / LM 结构对照；另有原始数据与各模型预测、目标与诊断样本区间叠加。
 - 对照：五组正则化权重的残差和结构差异，目标接受率 0.99 的原四链状态。
 - 截止探索：两个代表模型，各四个实际计算点。根数和根位置取自
   `results/crust-mode-audit-refined/continuations.json`；不插值、不执行新的正演。
-- 四份原始 Markdown 报告及下一步工作。
+- 四份实验报告、合成目标补图记录及下一步工作。
 
 图表依赖以下已有本地目录（生成结果继续由项目 `.gitignore` 排除）：
 
@@ -30,11 +32,13 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory .
 results/crust-regularization-scan/
 results/crust-nuts-conservative/completed-chain-diagnostics/
 results/crust-mode-audit-refined/
+results/crust-target-comparison/
 ```
 
 缺少图片时页面显示缺失提示，不用示意图替代真实结果。新克隆的仓库需要另行生成或恢复这些结果。
 参考模型 5/5 的来源为 `docs/crust-reference-validation.md`；当前本地没有它当时的独立图目录，
-因此图集仅列出已核对存在的 8 张图。
+本轮从已有 λ=100 的保存终态补绘目标对照，没有重新反演。新增图的来源、核对与复现见
+[合成目标补图记录](../../docs/crust-target-comparison.md)。
 
 ## 维护
 
@@ -45,7 +49,7 @@ results/crust-mode-audit-refined/
 本项仅新增展示层，未修改数值程序或重跑反演。页面中的 72/72 是基线核查的 CTest 记录，
 不是网页测试数量。
 
-## 本轮网页检查
+## 初版网页检查
 
 在本机已有 Chromium 的断网模式下，通过 `file://` 实际打开并检查：
 
@@ -57,3 +61,7 @@ results/crust-mode-audit-refined/
 - 无 JavaScript 运行错误、无外部网络请求。
 
 截图及检查摘要保存在本地 `results/results-web-validation/`，不提交生成文件。
+
+合成目标补图后的检查另存于 `results/results-web-target-validation/`，保留初版记录。
+新增检查覆盖全部 11 张图和 PDF、目标图默认展示、三张新图的分类、NUTS 未通过标记、
+键盘与放大操作、六种屏幕宽度和无 JavaScript 的目标图回退；均通过。
