@@ -1,5 +1,6 @@
 #pragma once
 #include "objective.hpp"
+#include "regularization.hpp"
 namespace dw {
 struct LMOptions {
     int max_iterations=150;
@@ -14,6 +15,7 @@ struct LMIteration {
     EvaluationStatus trial_status;
     double predicted_reduction, actual_reduction, step_norm;
     int box_iterations;
+    double data_cost=NAN, regularization_cost=0, trial_data_cost=NAN, trial_regularization_cost=0;
 };
 enum class LMTermination { converged, stalled, failed };
 const char* to_string(LMTermination);
@@ -37,5 +39,5 @@ LMResult bounded_lm(const LeastSquaresFunction&,const Eigen::VectorXd& initial,
 // only the remaining coordinates; q and the returned Jacobian stay full-sized.
 // Projected gradient and step norms refer to the free coordinates only.
 LMResult invert_lm(const DispersionProblem&,const Eigen::VectorXd& initial,const LMOptions& options={},
-                  const std::vector<int>& fixed_vs_layers={});
+                  const std::vector<int>& fixed_vs_layers={},const VsRegularization* regularization=nullptr);
 }

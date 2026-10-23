@@ -7,10 +7,12 @@ include(cmake/Dependencies.cmake)
 add_library(invlm_physics STATIC third_party/invLM/src/dispersion.cpp
   third_party/invLM/src/secfunc.cpp third_party/invLM/src/secfunc_fast_scalar.cpp
   third_party/invLM/src/toms748.cpp third_party/invLM/src/dispersion_kernel.cpp
-  third_party/invLM/src/dunkin_derivative.cpp)
+  third_party/invLM/src/dunkin_derivative.cpp third_party/invLM/src/model_builder.cpp
+  third_party/invLM/src/regularization.cpp)
 target_include_directories(invlm_physics PUBLIC third_party/invLM/include)
 target_link_libraries(invlm_physics PUBLIC dw_eigen)
 add_library(dispweave_core src/model.cpp src/gaussian.cpp src/joint.cpp src/joint_observations.cpp src/metropolis.cpp src/receiver.cpp src/ellipticity.cpp src/forward.cpp src/sensitivity.cpp src/parameterization.cpp src/objective.cpp src/lm.cpp src/resolution.cpp src/hmc.cpp src/nuts.cpp src/rj_model.cpp src/rj_proposal.cpp src/rjmcmc.cpp src/rj_dispersion.cpp src/predictive.cpp)
+target_sources(dispweave_core PRIVATE src/regularization.cpp)
 target_include_directories(dispweave_core PUBLIC include)
 target_link_libraries(dispweave_core PUBLIC dw_eigen PRIVATE invlm_physics)
 add_executable(dispweave src/main.cpp src/io.cpp src/receiver_io.cpp src/joint_io.cpp src/workflow.cpp src/resolution_io.cpp)
@@ -33,6 +35,8 @@ if(BUILD_TESTING)
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy" RESULT_VARIABLE DW_NUMPY_STATUS OUTPUT_QUIET ERROR_QUIET)
     if(DW_NUMPY_STATUS EQUAL 0)
       if(Python3_VERSION VERSION_GREATER_EQUAL 3.11)
+        add_test(NAME material_workflow COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tests/material_workflow_tests.py $<TARGET_FILE:dispweave> ${PROJECT_SOURCE_DIR})
         add_test(NAME qedisp_example_contracts COMMAND ${Python3_EXECUTABLE}
           ${PROJECT_SOURCE_DIR}/tests/qedisp_examples_tests.py)
         add_test(NAME joint_workflow COMMAND ${Python3_EXECUTABLE}
@@ -108,6 +112,9 @@ if(BUILD_TESTING)
     add_test(NAME hmc_${case} COMMAND hmc_tests ${case})
   endforeach()
   add_executable(lm_tests tests/lm_tests.cpp)
+  add_executable(material_regularization_tests tests/material_regularization_tests.cpp)
+  target_link_libraries(material_regularization_tests PRIVATE dispweave_core)
+  add_test(NAME material_regularization COMMAND material_regularization_tests)
   target_link_libraries(lm_tests PRIVATE dispweave_core)
   foreach(case linear nonlinear failures boxes precision fixed)
     add_test(NAME lm_${case} COMMAND lm_tests ${case})

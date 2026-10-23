@@ -20,8 +20,10 @@ from joint_results import read_config, write_config, save_json
 
 def variants(document, merge_depth):
     model = document['model'];inv = document['inversion'];n = len(model['vs'])
-    if inv.get('fixed_vs_layers') or inv.get('vp_vs_ratio', 0):
-        raise ValueError('Control source must have free Vs and fixed Vp')
+    if (inv.get('fixed_vs_layers') or inv.get('vp_vs_ratio', 0)
+            or inv.get('vs2model', 'fixvprho') != 'fixvprho'
+            or inv.get('regularization', {}).get('lambda', 0)):
+        raise ValueError('Control source must have free Vs, fixed Vp/rho and no regularization')
     indices = [i for i, z in enumerate(model['depth']) if z == merge_depth]
     if len(indices) != 1 or indices[0] == 0:
         raise ValueError('Merge depth must be an existing non-surface interface')
@@ -61,23 +63,42 @@ def forward(exe, config, output, sensitivity='none'):
     return forward_rows(output)
 
 
+def brocher(vs):
+    """Independent polynomial evaluation for the diagnostic's physical probes."""
+    pv = [-.0251, .2683, -.8206, 2.0947, .9409]
+    pr = [.000106, -.0043, .0671, -.4721, 1.6612, 0.]
+    vp = np.polyval(pv, vs);rho = np.polyval(pr, vp)
+    dvp = np.polyval(np.polyder(pv), vs)
+    return vp, rho, dvp, np.polyval(np.polyder(pr), vp)*dvp
+
+
 def audit_terminal(exe, config, data, work, index):
     """Local FD probes are diagnostics, never a root-completeness certificate."""
     dest = work/f'audit-{index}';dest.mkdir()
     table = np.loadtxt(work/f'lm/run_{index}_model.txt', ndmin=2)
     model = copy.deepcopy(config['model']);model['vs'] = table[:, 3].tolist()
+    model['vp'] = table[:, 4].tolist();model['rho'] = table[:, 5].tolist()
     vs = np.array(model['vs']);n = len(vs)
+    relation = config['inversion'].get('vs2model', 'fixvprho')
+    if relation not in ['fixvprho', 'brocher05']:
+        raise ValueError('Terminal audit currently supports fixed properties or Brocher05')
     query = dict(frequency_hz=data[:, 0].tolist(), mode=data[:, 2].astype(int).tolist())
     doc = dict(model=model, queries=query);write_config(dest/'forward.toml', doc)
     base = forward(exe, dest/'forward.toml', dest/'forward.txt', 'implicit')
     check_queries(base, data[:, 0], data[:, 2])
     invalid = [i for i, r in enumerate(base) if r[4] != 'valid']
     bad_gradient = [i for i, r in enumerate(base) if r[7] != 'valid']
-    result = dict(invalid_rows=invalid, unavailable_gradients=bad_gradient, steps=[])
+    result = dict(invalid_rows=invalid, unavailable_gradients=bad_gradient, vs2model=relation, steps=[])
     if invalid or bad_gradient:
         save_json(dest/'audit.json', result);return result
     c = np.array([float(r[3]) for r in base])
     jac = np.array([r[12:12+n] for r in base], float)*vs
+    if relation == 'brocher05':
+        vp, rho, dvp, drho = brocher(vs)
+        if not np.allclose(vp, table[:, 4], atol=1e-12, rtol=1e-12) or not np.allclose(rho, table[:, 5], atol=1e-12, rtol=1e-12):
+            raise ValueError('Saved model violates declared empirical relation')
+        jac += (np.array([r[12+n:12+2*n] for r in base], float)*dvp
+                + np.array([r[12+2*n:12+3*n] for r in base], float)*drho)*vs
     free = [i for i in range(n) if i not in config['inversion']['fixed_vs_layers']]
     result['rms_km_s'] = float(np.sqrt(np.mean((c-data[:, 1])**2)))
     # Preserve query order, full predictions, statuses and every FD column.
@@ -88,6 +109,8 @@ def audit_terminal(exe, config, data, work, index):
             for sign in [-1, 1]:
                 trial = vs.copy();trial[layer] *= np.exp(sign*h)
                 doc['model']['vs'] = trial.tolist()
+                if relation == 'brocher05':
+                    vp, rho, _, _ = brocher(trial);doc['model']['vp'] = vp.tolist();doc['model']['rho'] = rho.tolist()
                 path = temp/'input.toml'
                 if path.exists():path.unlink()
                 write_config(path, doc)
@@ -131,8 +154,10 @@ def audit_terminal(exe, config, data, work, index):
             doc['queries'] = dict(frequency_hz=[spec['frequency_hz']]*(spec['mode']+3), mode=list(range(spec['mode']+3)))
             for sign in [-1, 0, 1]:
                 trial = vs.copy();trial[j] *= np.exp(sign*1e-6);doc['model']['vs'] = trial.tolist()
+                if relation == 'brocher05':
+                    vp, rho, _, _ = brocher(trial);doc['model']['vp'] = vp.tolist();doc['model']['rho'] = rho.tolist()
                 path = branch/f'{sign}.toml';write_config(path, doc)
-                np.savetxt(branch/f'{sign}-model.txt', np.c_[np.arange(n), model['depth'], model['rho'], trial, model['vp']], fmt='%.17g')
+                np.savetxt(branch/f'{sign}-model.txt', np.c_[np.arange(n), model['depth'], doc['model']['rho'], trial, doc['model']['vp']], fmt='%.17g')
                 forward(exe, path, branch/f'{sign}.txt')
     save_json(dest/'audit.json', result)
     return result
@@ -192,7 +217,7 @@ def plot(output):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     summary = json.loads((output/'summary.json').read_text())
-    fig, axes = plt.subplots(3, 2, figsize=(12, 12), constrained_layout=True)
+    fig, axes = plt.subplots(len(summary), 2, figsize=(12, 4*len(summary)), constrained_layout=True, squeeze=False)
     for row, (name, report) in enumerate(summary.items()):
         work = output/name;config = read_config(work/'inversion.toml');model = config['model']
         data = np.loadtxt(work/'observations.txt', ndmin=2)
@@ -213,7 +238,7 @@ def plot(output):
         axes[row, 1].axhline(0, color='gray');axes[row, 1].set(xlabel='Frequency (Hz)', ylabel='Residual / assumed sigma',
             title='All modes; colors match runs; invalid predictions remain gaps')
         for ax in axes[row]:ax.grid(alpha=.2)
-    fig.suptitle('Crustal depth controls — dashed models are unconverged attempts')
+    fig.suptitle('Crustal inversion controls — dashed models are unconverged attempts')
     fig.savefig(output/'comparison.png', dpi=160);fig.savefig(output/'comparison.pdf');plt.close(fig)
 
 

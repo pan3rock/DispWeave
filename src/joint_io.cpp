@@ -99,6 +99,7 @@ int run_joint(const std::filesystem::path& config,const std::filesystem::path& o
     auto document=toml::parse(config.string());
     if(!toml::find_or<bool>(document,"independent_blocks",false)) throw std::invalid_argument("Declare independent_blocks=true to combine block likelihoods");
     const auto m=toml::find(document,"model"),p=toml::find(document,"parameters");
+    if(p.contains("vs2model")) throw std::invalid_argument("vs2model currently supported by dispersion workflows; joint density partials are not yet connected");
     const LayeredModel reference{vector(m,"depth"),vector(m,"vs"),vector(m,"vp"),vector(m,"rho")};
     const double ratio=toml::find_or<double>(p,"vp_vs_ratio",0.);
     const FixedVs parameters(reference,vector(p,"lower_vs"),vector(p,"upper_vs"),ratio);

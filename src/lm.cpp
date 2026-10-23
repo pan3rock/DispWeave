@@ -99,7 +99,10 @@ LMResult bounded_lm(const LeastSquaresFunction& function,const Eigen::VectorXd& 
                || e.jacobian.cols()!=n || !e.residual.allFinite() || !e.jacobian.allFinite()
                || !std::isfinite(e.residual.squaredNorm())) {
                 e.status=EvaluationStatus::numerical_failure; e.message="Malformed least-squares evaluation";
-            } else { rows=e.residual.size(); e.least_squares_cost=.5*e.residual.squaredNorm(); }
+            } else {
+                rows=e.residual.size(); e.least_squares_cost=.5*e.residual.squaredNorm();
+                if(std::isnan(e.data_cost)) e.data_cost=e.least_squares_cost;
+            }
         }
         if(e.status==EvaluationStatus::forward_failure) ++result.forward_failures;
         if(e.status==EvaluationStatus::gradient_failure) ++result.gradient_failures;
@@ -158,7 +161,8 @@ LMResult bounded_lm(const LeastSquaresFunction& function,const Eigen::VectorXd& 
         }
         const bool accept=std::isfinite(gain) && gain>1e-4;
         result.trace.push_back({iteration,e.least_squares_cost,trial_cost,damping,gain,pg,accept,trial_e.status,
-                               predicted,actual,step_norm,subproblem.iterations});
+                               predicted,actual,step_norm,subproblem.iterations,
+                               e.data_cost,e.regularization_cost,trial_e.data_cost,trial_e.regularization_cost});
         if(accept) {
             result.q=trial; result.evaluation=std::move(trial_e); ++result.accepted;
             damping*=std::max(1./3.,1-std::pow(2*gain-1,3)); damping=std::max(damping,1e-15); growth=2;
@@ -176,7 +180,7 @@ LMResult bounded_lm(const LeastSquaresFunction& function,const Eigen::VectorXd& 
     return result;
 }
 LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initial,const LMOptions& options,
-                  const std::vector<int>& fixed_vs_layers) {
+                  const std::vector<int>& fixed_vs_layers,const VsRegularization* regularization) {
     const auto& p=problem.parameters();
     const auto n=p.lower().size();
     std::vector<bool> fixed(n,false);
@@ -186,9 +190,21 @@ LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initi
     }
     if(static_cast<Eigen::Index>(fixed_vs_layers.size())==n)
         throw std::invalid_argument("LM requires at least one free Vs layer");
+    auto full_evaluate=[&](const Eigen::VectorXd& q) {
+        auto e=problem.evaluate(q);
+        if(e.status==EvaluationStatus::valid && regularization && regularization->active()) {
+            const auto penalty=regularization->evaluate(q);
+            const auto rows=e.residual.size(),extra=penalty.residual.size();
+            e.residual.conservativeResize(rows+extra);e.residual.tail(extra)=penalty.residual;
+            e.jacobian.conservativeResize(rows+extra,n);e.jacobian.bottomRows(extra)=penalty.jacobian;
+            e.regularization_cost=.5*penalty.residual.squaredNorm();
+            e.least_squares_cost=e.data_cost+e.regularization_cost;
+        }
+        return e;
+    };
     // Preserve the original path and its invalid-initial diagnostics.
     if(fixed_vs_layers.empty() || !p.contains(initial))
-        return bounded_lm([&](const Eigen::VectorXd& q){return problem.evaluate(q);},initial,p.lower(),p.upper(),options);
+        return bounded_lm(full_evaluate,initial,p.lower(),p.upper(),options);
     std::vector<int> free;
     for(int i=0;i<n;++i) if(!fixed[i]) free.push_back(i);
     auto select=[&](const Eigen::VectorXd& q) {
@@ -202,7 +218,7 @@ LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initi
         return q;
     };
     auto evaluate=[&](const Eigen::VectorXd& x) {
-        auto e=problem.evaluate(expand(x));
+        auto e=full_evaluate(expand(x));
         if(e.status==EvaluationStatus::valid) {
             Eigen::MatrixXd j(e.jacobian.rows(),free.size());
             for(size_t i=0;i<free.size();++i) j.col(i)=e.jacobian.col(free[i]);
@@ -214,9 +230,15 @@ LMResult invert_lm(const DispersionProblem& problem,const Eigen::VectorXd& initi
     result.q=expand(result.q);
     // Restore the full Jacobian from the retained kernels, without another
     // forward evaluation or altering evaluation/iteration counts.
-    if(result.evaluation.status==EvaluationStatus::valid)
+    if(result.evaluation.status==EvaluationStatus::valid) {
         result.evaluation.jacobian=problem.likelihood().whiten_jacobian(
             p.phase_jacobian(result.q,result.evaluation.forward));
+        if(regularization && regularization->active()) {
+            const auto penalty=regularization->evaluate(result.q);
+            auto& j=result.evaluation.jacobian;const auto rows=j.rows();
+            j.conservativeResize(rows+penalty.jacobian.rows(),n);j.bottomRows(penalty.jacobian.rows())=penalty.jacobian;
+        }
+    }
     return result;
 }
 }

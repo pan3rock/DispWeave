@@ -17,7 +17,11 @@
     "src/dunkin_derivative.cpp": "88af6168e61e64dd97cfb334bd7833a456e41e1b7e4c935e32d4787102faf303",
     "include/dispersion_kernel.hpp": "412125ebee6f84a8536b42fd8008a9c31fc47d2f41d2e3f92f3d5908cd53cc43",
     "include/dunkin_derivative.hpp": "07f6534fa02e12f67c87f25b47ee9621d1fa5e4f83733134bae6b05f71716c42",
-    "include/model.hpp": "d5899b062f13550ff66da4664a2db4310427262778e723f8cda03a6a09f3a780"
+    "include/model.hpp": "d5899b062f13550ff66da4664a2db4310427262778e723f8cda03a6a09f3a780",
+    "include/model_builder.hpp": "fdf08114a3d57b99377b98b602395d7c606c7a9ef73456c2703f7f8fe4e35344",
+    "src/model_builder.cpp": "43a578026f5bf47028e1fc5d0109c2fee891b39c9d313c510d29d8454fe2d32f",
+    "include/regularization.hpp": "890f608f796c249d4cdf17b98b3b7f9ae78e07a48d7447ff36a5c863be285410",
+    "src/regularization.cpp": "68d18e475a3792b59c78baf4eae9fe2e3598bb20c21aafc13fcf99e9a80084ac"
   },
   "upstream_sha256": {
     "src/dispersion.cpp": "c939a9674ead6c37f3bd50ec2bdf77144fbdaeb42022b2f2bf9ff87cd518f898",
@@ -34,7 +38,11 @@
     "src/dunkin_derivative.cpp": "88af6168e61e64dd97cfb334bd7833a456e41e1b7e4c935e32d4787102faf303",
     "include/dispersion_kernel.hpp": "412125ebee6f84a8536b42fd8008a9c31fc47d2f41d2e3f92f3d5908cd53cc43",
     "include/dunkin_derivative.hpp": "07f6534fa02e12f67c87f25b47ee9621d1fa5e4f83733134bae6b05f71716c42",
-    "include/model.hpp": "d5899b062f13550ff66da4664a2db4310427262778e723f8cda03a6a09f3a780"
+    "include/model.hpp": "d5899b062f13550ff66da4664a2db4310427262778e723f8cda03a6a09f3a780",
+    "include/model_builder.hpp": "fdf08114a3d57b99377b98b602395d7c606c7a9ef73456c2703f7f8fe4e35344",
+    "src/model_builder.cpp": "43a578026f5bf47028e1fc5d0109c2fee891b39c9d313c510d29d8454fe2d32f",
+    "include/regularization.hpp": "45c3890941fb09b13690d4ea36e011bace6f4b61e4831538def88ffa853e49cd",
+    "src/regularization.cpp": "41953cecabfa7b57baff9125409163c758ca282daf9efe91211d38d3413a02be"
   },
   "patches": "PATCHES.md"
 }

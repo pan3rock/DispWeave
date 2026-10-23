@@ -41,6 +41,7 @@ DataEvaluation DispersionProblem::evaluate(const Eigen::VectorXd& q,bool gradien
         e.residual=likelihood_.whiten(prediction-likelihood_.data().phase_velocity,scale);
         e.log_likelihood=likelihood_.log_likelihood(prediction,scale);
         e.least_squares_cost=.5*e.residual.squaredNorm();
+        e.data_cost=e.least_squares_cost;
         if(gradient) {
             if(!e.forward.all_sensitivities_valid()) {e.status=EvaluationStatus::gradient_failure; e.message="Valid roots but unavailable sensitivity"; return e;}
             e.jacobian=likelihood_.whiten_jacobian(parameters_.phase_jacobian(q,e.forward),scale);

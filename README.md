@@ -19,7 +19,8 @@ M8a 正演、M8b 接收函数、M8c 组合目标、M8d 端到端实验均已验�
 已同步修复 DispWeave/invLM 默认 Dunkin 后端的已定位近邻根漏检，见 [修复验收](docs/clustered-root-repair.md)。
 地壳反演仍未整体收敛，fast_scalar 在该困难模型上仍漏根；不能将局部修复视为全域正演可靠性证明。
 已完成 [地壳半空间/深部分层 A/B/C 对照](docs/crust-depth-controls.md)：固定半空间不足以消除跳变，
-合并均匀深部后的三个可计算终态通过局部导数检查，但仍未收敛。
+合并均匀深部后的无正则化对照仍未收敛。后续已接入 [经验物性与显式正则化](docs/material-regularization.md)，
+C 组加入参考阻尼后，固定物性/Brocher05 均为 3/4 收敛，剩余初值未解析。
 
 已提供 invLM Dunkin 正演、能量核与隐式导数、逐行根/梯度诊断、固定 Vs 参数化、
 完整协方差似然和明确测度的后验目标，并已接入自有有界 LM、多初值与失败诊断。
@@ -107,7 +108,10 @@ python scripts/plot_inversion.py results/synthetic
 若没有初值通过收敛标准，返回码 **4**，不能将末次模型当成已收敛解。
 `runs.txt` 的 `termination` 区分 `converged`、`stalled`、`failed`；小步停滞不视为成功。
 观测列为 `frequency_hz phase_km_s mode sigma_km_s`；可提供完整协方差。
-当前固定层顶与密度，反演 Vs，Vp 固定或按指定 Vp/Vs 随动。
+当前固定层顶、反演 Vs，Vp/密度可固定，或声明 `vs2model` 使用 Brocher05、Gardner、
+NearSurface 等 invLM 经验关系及完整链式导数。`inversion.regularization` 显式指定类型和 lambda，
+支持参考阻尼、扰动平滑、Vs 平滑；默认关闭，数据/正则化代价分别输出。
+可运行示例为 `examples/inversion/brocher_regularized.toml`，定义与验收见上述物性/正则化报告。
 `[inversion] fixed_vs_layers = [2]` 可将零基第 2 层的 Vs 固定为 `model.vs[2]`；
 对应的每个 `starts_vs` 分量必须匹配。输出保留全部层，梯度终止条件仅针对自由参数。
 该选项目前用于 `invert/synthetic`，HMC/NUTS 会显式拒绝，见上述地壳对照报告。
@@ -138,7 +142,8 @@ python scripts/plot_hmc.py results/hmc
 ```
 
 同一 `hmc` 命令可读取实际观测。先验在配置中明确指定为物理 Vs 或 log Vs 均匀分布；
-当前固定层顶与密度，支持固定 Vp 或固定 Vp/Vs。质量矩阵是无约束坐标中**动量的协方差**。
+当前固定层顶，支持固定物性、固定 Vp/Vs 及 `vs2model` 经验关系。质量矩阵是无约束坐标中**动量的协方差**。
+LM 正则化不自动转成采样先验；采样配置中须关闭该惩罚并明确指定概率先验。
 输出包含每条链样本、预热标记、接受率、能量异常和根/梯度失败；无效初值返回 1，
 正式采样出现异常或零接受返回 5。返回 0 不表示已经证明收敛。
 后验条件于给定参数化，不包含层数不确定性；ESS/R-hat 与后验预测已在 M6a 接入；质量矩阵适应已在 M6b 接入；NUTS 使用下述独立命令。

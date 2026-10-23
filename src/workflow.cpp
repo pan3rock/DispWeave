@@ -22,6 +22,33 @@ Eigen::VectorXd vector(const toml::value& table,const char* key) {
     const auto a=toml::find<std::vector<double>>(table,key);
     return Eigen::Map<const Eigen::VectorXd>(a.data(),a.size());
 }
+ElasticRelation read_relation(const toml::value& inv) {
+    ElasticRelation r;
+    const double legacy_ratio=toml::find_or<double>(inv,"vp_vs_ratio",0.);
+    r.kind=toml::find_or<std::string>(inv,"vs2model",legacy_ratio!=0?"constant_ratio":"fixvprho");
+    r.vp_vs_ratio=toml::find_or<double>(inv,"vp_vs_ratio",r.vp_vs_ratio);
+    if((r.kind=="fixvprho" && legacy_ratio!=0) || (r.kind=="brocher05" && inv.contains("vp_vs_ratio")))
+        throw std::invalid_argument("vp_vs_ratio conflicts with selected vs2model");
+    if(r.kind!="gardner" && (inv.contains("gardner_alpha") || inv.contains("gardner_beta")))
+        throw std::invalid_argument("Gardner coefficients require vs2model=gardner");
+    if(r.kind!="constant_rho" && inv.contains("constant_density"))
+        throw std::invalid_argument("constant_density requires vs2model=constant_rho");
+    r.gardner_alpha=toml::find_or<double>(inv,"gardner_alpha",r.gardner_alpha);
+    r.gardner_beta=toml::find_or<double>(inv,"gardner_beta",r.gardner_beta);
+    r.density=toml::find_or<double>(inv,"constant_density",r.density);
+    return r;
+}
+void save_relation(std::ostream& out,const ElasticRelation& r) {
+    out<<"vs2model="<<r.kind<<'\n';
+    if(r.kind!="fixvprho" && r.kind!="brocher05") out<<"vp_vs_ratio="<<r.vp_vs_ratio<<'\n';
+    if(r.kind=="gardner") out<<"gardner_alpha="<<r.gardner_alpha<<"\ngardner_beta="<<r.gardner_beta<<'\n';
+    if(r.kind=="constant_rho") out<<"constant_density="<<r.density<<'\n';
+}
+VsRegularization read_regularization(const toml::value& inv,const LayeredModel& model) {
+    if(!inv.contains("regularization")) return {model.depth,model.vs,"none",0};
+    const auto r=toml::find(inv,"regularization");
+    return {model.depth,model.vs,toml::find<std::string>(r,"type"),toml::find<double>(r,"lambda")};
+}
 RJPrior read_rj_prior(const toml::value& p) {
     RJPrior prior;prior.min_layers=toml::find<int>(p,"min_layers");prior.max_layers=toml::find<int>(p,"max_layers");
     prior.depth_limit=toml::find<double>(p,"depth_limit");prior.min_spacing=toml::find<double>(p,"min_spacing");
@@ -90,7 +117,9 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     const auto table=toml::find(document,"model");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")}; model.validate();
     const auto inv=toml::find(document,"inversion");
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
+    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
+    model=parameters.reference_model();
+    const auto regularization=read_regularization(inv,model);
     const auto starts=toml::find<std::vector<std::vector<double>>>(inv,"starts_vs");
     if(starts.empty()) throw std::invalid_argument("At least one starts_vs row required");
     for(const auto& start:starts)
@@ -145,7 +174,7 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     std::vector<LMResult> runs;
     for(const auto& start:starts) {
         Eigen::VectorXd q=Eigen::Map<const Eigen::VectorXd>(start.data(),start.size()).array().log();
-        runs.push_back(invert_lm(problem,q,options,fixed));
+        runs.push_back(invert_lm(problem,q,options,fixed,&regularization));
     }
     int best=-1;
     for(size_t i=0;i<runs.size();++i)
@@ -157,9 +186,11 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     std::filesystem::copy_file(config_path,output/"config.toml"); save_data(output,data);
     auto summary=output_file(output/"runs.txt");
     summary<<"# run converged cost evaluations accepted rejected forward_failures gradient_failures box_iterations projected_gradient bound_parameters termination reason\n";
+    auto costs=output_file(output/"costs.txt");costs<<"# run data_cost regularization_cost total_cost\n";
     // Each start and final iterate is saved even if no run converged.
     for(size_t i=0;i<runs.size();++i) {
         const auto& r=runs[i]; const auto prefix="run_"+std::to_string(i);
+        costs<<i<<' '<<r.evaluation.data_cost<<' '<<r.evaluation.regularization_cost<<' '<<r.evaluation.least_squares_cost<<'\n';
         int bounds=0;
         if(parameters.contains(r.q))
             for(Eigen::Index k=0;k<r.q.size();++k)
@@ -169,14 +200,20 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
         auto trace=output_file(output/(prefix+"_trace.txt"));
         trace<<"# iteration cost trial_cost damping gain_ratio projected_gradient accepted trial_status predicted_reduction actual_reduction step_norm box_iterations\n";
         for(const auto& t:r.trace) trace<<t.iteration<<' '<<t.cost<<' '<<t.trial_cost<<' '<<t.damping<<' '<<t.gain_ratio<<' '<<t.projected_gradient<<' '<<t.accepted<<' '<<status(t.trial_status)<<' '<<t.predicted_reduction<<' '<<t.actual_reduction<<' '<<t.step_norm<<' '<<t.box_iterations<<'\n';
+        auto cost_trace=output_file(output/(prefix+"_cost_trace.txt"));
+        cost_trace<<"# iteration data_cost regularization_cost trial_data_cost trial_regularization_cost\n";
+        for(const auto& t:r.trace) cost_trace<<t.iteration<<' '<<t.data_cost<<' '<<t.regularization_cost<<' '<<t.trial_data_cost<<' '<<t.trial_regularization_cost<<'\n';
         auto m=output_file(output/(prefix+"_model.txt"));
         m<<"# depth_km reference_vs initial_vs final_vs final_vp rho; reference is truth only for synthetic\n";
+        const bool valid_model=parameters.contains(r.q);
+        const auto decoded=valid_model?parameters.decode(r.q):model;
         for(Eigen::Index k=0;k<model.vs.size();++k) {
-            const double vs=std::exp(r.q[k]); const double vp=parameters.contains(r.q)?parameters.decode(r.q).vp[k]:NAN;
-            m<<model.depth[k]<<' '<<model.vs[k]<<' '<<starts[i][k]<<' '<<vs<<' '<<vp<<' '<<model.rho[k]<<'\n';
+            const double vs=std::exp(r.q[k]);
+            const double vp=valid_model?decoded.vp[k]:NAN,rho=valid_model?decoded.rho[k]:NAN;
+            m<<model.depth[k]<<' '<<model.vs[k]<<' '<<starts[i][k]<<' '<<vs<<' '<<vp<<' '<<rho<<'\n';
         }
         if(!r.evaluation.forward.rows.empty())
-            write_forward_result(output/(prefix+"_prediction.txt"),{parameters.decode(r.q),data.queries},r.evaluation.forward);
+            write_forward_result(output/(prefix+"_prediction.txt"),{decoded,data.queries},r.evaluation.forward);
         auto diag=output_file(output/(prefix+"_diagnostic.txt"));
         diag<<"termination="<<to_string(r.termination)<<"\nreason="<<r.reason<<"\nstatus="<<status(r.evaluation.status)<<"\nmessage="<<r.evaluation.message<<'\n';
     }
@@ -185,7 +222,10 @@ int run_inversion(const std::filesystem::path& config_path,const std::filesystem
     metadata<<"version="<<DW_VERSION<<"\ncompiler="<<DW_COMPILER<<"\nbuild="<<DW_BUILD_TYPE<<"\ninvlm="<<DW_INVLM_COMMIT
             <<"\ndependencies=Eigen 3.4.1; toml11 4.4.0; CLI11 2.4.2\nbackend=dunkin\nsensitivity="<<method_name
             <<"\nroot_accuracy=refined\nsynthetic="<<synthetic<<"\nseed="<<seed<<"\nadd_noise="<<noise<<"\nbest_run="<<best
-            <<"\nseconds="<<seconds<<"\nparameterization=fixed depths/rho; log Vs; bounded data least squares\n";
+            <<"\nseconds="<<seconds<<"\nparameterization=fixed depths; log Vs; bounded penalized least squares\n";
+    save_relation(metadata,parameters.relation());
+    metadata<<"regularization_type="<<regularization.type()<<"\nregularization_lambda="<<regularization.weight()
+            <<"\nobjective=data_cost+regularization_cost; Gaussian log likelihood excludes regularization\n";
     metadata<<"free_vs_parameters="<<model.vs.size()-fixed.size()<<"\nfixed_vs_layers=";
     for(size_t i=0;i<fixed.size();++i) metadata<<(i?",":"")<<fixed[i];
     metadata<<"\nfixed_vs_values=model.vs; starts must match\nprojected_gradient_coordinates=free log Vs, scaled by support widths\n";
@@ -205,7 +245,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     if(!toml::find_or<std::vector<int>>(inv,"fixed_vs_layers",{}).empty())
         throw std::invalid_argument("fixed_vs_layers currently supported only by invert/synthetic");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
+    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
+    model=parameters.reference_model();
+    if(read_regularization(inv,model).active())
+        throw std::invalid_argument("LM regularization is not a sampler prior; declare the posterior prior explicitly");
     const auto method_name=toml::find_or<std::string>(inv,"sensitivity","implicit");
     if(method_name!="energy" && method_name!="implicit") throw std::invalid_argument("Unknown sensitivity");
     InvLMForward backend; const auto data=read_observations(data_path,cov_path);
@@ -310,9 +353,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept
             <<"\ndivergence_threshold="<<options.divergence_threshold
             <<"\nmetric_adaptation="<<adaptation_name<<"\nprior="<<prior_name<<"\nsensitivity="<<method_name
-            <<"\nparameterization=fixed layer tops/rho; log Vs; logistic box\nposterior=conditional on supplied parameterization\n"
+            <<"\nparameterization=fixed layer tops; log Vs; logistic box\nposterior=conditional on supplied parameterization\n"
             <<"mass_convention=momentum covariance in z coordinates\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
+    save_relation(metadata,parameters.relation());
     std::cout<<"chains="<<initial.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';
     return issues?5:0;
 }
@@ -469,7 +513,7 @@ int run_predictive(const std::filesystem::path& run,const std::filesystem::path&
     const auto document=toml::parse((run/"config.toml").string());
     const auto table=toml::find(document,"model"),inv=toml::find(document,"inversion");
     LayeredModel model{vector(table,"depth"),vector(table,"vs"),vector(table,"vp"),vector(table,"rho")};
-    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),toml::find_or<double>(inv,"vp_vs_ratio",0.));
+    FixedVs parameters(model,vector(inv,"lower_vs"),vector(inv,"upper_vs"),read_relation(inv));
     const auto data=read_observations(run/"observations.txt",run/"covariance.txt");
     InvLMForward backend;DispersionProblem problem(backend,parameters,data);
     std::vector<std::pair<int,std::filesystem::path>> files;
@@ -511,6 +555,7 @@ int run_predictive(const std::filesystem::path& run,const std::filesystem::path&
     metadata<<"version="<<DW_VERSION<<"\nseed="<<seed<<"\nsource_run="<<std::filesystem::absolute(run).string()
             <<"\nselected_per_chain="<<per_chain<<"\nselection=floor(j * chain_draws / per_chain); j starts at 0"
             <<"\nfailures="<<failures<<"\nposterior=conditional on supplied parameterization; fixed observed covariance\n";
+    save_relation(metadata,parameters.relation());
     std::cout<<"predictive_draws="<<samples.size()<<" failures="<<failures<<'\n';return failures?5:0;
 }
 }

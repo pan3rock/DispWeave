@@ -21,6 +21,7 @@ enum class EvaluationStatus { valid, outside_support, forward_failure, gradient_
 struct DataEvaluation {
     EvaluationStatus status=EvaluationStatus::numerical_failure;
     double log_likelihood=NAN, least_squares_cost=NAN;
+    double data_cost=NAN, regularization_cost=0;
     Eigen::VectorXd residual;
     Eigen::MatrixXd jacobian;
     ForwardResult forward;

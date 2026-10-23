@@ -1,10 +1,11 @@
 # DispWeave local changes to invLM
 
 Base commit: `86ad6fa5aaec3f44c6ddcac3d69b27a2f13c2e88`.
-The DispWeave local modifications described here affect `src/dispersion.cpp`
-and `include/dispersion.hpp`; other imported physics files are unchanged by these patches.
+The DispWeave local modifications described here affect `src/dispersion.cpp`,
+`include/dispersion.hpp` and the Config adapter in `regularization.hpp/.cpp`;
+other imported files are unchanged by these patches.
 `provenance.json` preserves both original and local file hashes.
-The original invLM working tree is unchanged.
+The original invLM tree is modified only where explicitly stated below.
 
 ## Rayleigh search lower bound
 
@@ -77,3 +78,15 @@ A saved crustal model, independent P/SV boundary matching, modal-prefix and
 perturbation regressions demonstrate the repair for the default Dunkin backend.
 FAST_SCALAR still fails this fixture; this change is not a completeness proof.
 See `docs/clustered-root-repair.md` for validation, overhead and remaining issues.
+
+## Elastic relations and explicit regularization (2026-10-23)
+
+Imported `model_builder.hpp/.cpp` and `regularization.hpp/.cpp` from the recorded
+base commit 86ad6fa (identical to these files in local invLM 5fd7f27).
+ModelBuilder formulas and analytical derivatives are unchanged. From
+Regularization only the native Config-dependent constructor/conversion helper
+and its include/forward declarations were removed; the Settings constructor,
+residuals and derivatives are unchanged. No Ceres/configuration dependency was
+introduced. The DispWeave adapter exposes explicit single-weight reference,
+perturbation-smooth and Vs-smooth penalties; it does not expose automatic weight
+selection or interface-adaptive weighting. See `docs/material-regularization.md`.
