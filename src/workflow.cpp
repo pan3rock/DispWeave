@@ -325,6 +325,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
         if(kernel!="slice" && kernel!="multinomial") throw std::invalid_argument("Unknown NUTS kernel");
         options.kernel=kernel=="slice"?NUTSKernel::slice:NUTSKernel::multinomial;
         options.find_initial_step_size=toml::find_or<bool>(cfg,"find_initial_step_size",false);
+        options.metric_shrinkage=toml::find_or<double>(cfg,"metric_shrinkage",0.);
     } else {
         options.leapfrog_steps=toml::find_or<int>(cfg,"leapfrog_steps",options.leapfrog_steps);
         options.step_jitter=toml::find_or<double>(cfg,"step_jitter",options.step_jitter);
@@ -460,7 +461,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"\ninitial_metric="<<initial_metric_name
             <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws;
     if constexpr(nuts) metadata<<"\nsampler="<<(options.kernel==NUTSKernel::slice?"slice_nuts_hoffman_gelman_2014":"multinomial_nuts")
-        <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmax_depth="<<options.max_depth;
+        <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmetric_shrinkage="<<options.metric_shrinkage<<"\nmax_depth="<<options.max_depth;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;
     metadata<<"\ninitial_step_size="<<options.step_size
             <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept

@@ -12,6 +12,8 @@ struct NUTSOptions {
     std::uint64_t seed=2026,chain_id=0;
     NUTSKernel kernel=NUTSKernel::slice;
     bool find_initial_step_size=false; // Also search after each metric update.
+    // Pseudo-observations retaining the previous window's POSITION covariance.
+    double metric_shrinkage=0; // Zero preserves the original adaptation path.
     // Optional observation only; called after every transition, including warmup.
     std::function<void(int,const Eigen::VectorXd&,const NUTSTransition&)> progress;
 };

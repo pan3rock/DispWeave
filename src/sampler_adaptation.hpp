@@ -56,12 +56,31 @@ public:
     }
     Eigen::MatrixXd mass(MetricAdaptation type) const {
         const auto covariance=this->covariance(type);
+        return invert_covariance(covariance);
+    }
+    // Weighted covariance persistence, as in BlackJAX imm_shrinkage_to_previous.
+    // This blends inverse masses (position covariances), not momentum masses.
+    Eigen::MatrixXd covariance(MetricAdaptation type,const Eigen::MatrixXd& previous,double pseudo_count) const {
+        if(!std::isfinite(pseudo_count) || pseudo_count<0 || previous.rows()!=mean_.size()
+           || previous.cols()!=mean_.size() || !previous.allFinite())
+            throw std::invalid_argument("Invalid covariance shrinkage");
+        if(pseudo_count==0) return covariance(type);
+        const double total=count_+5.+pseudo_count;
+        Eigen::MatrixXd old=previous;
+        if(type==MetricAdaptation::diagonal) old=previous.diagonal().asDiagonal();
+        Eigen::MatrixXd result=((count_+5.)/total)*covariance(type)+(pseudo_count/total)*old;
+        return .5*(result+result.transpose()).eval();
+    }
+    Eigen::MatrixXd mass(MetricAdaptation type,const Eigen::MatrixXd& previous,double pseudo_count) const {
+        return invert_covariance(covariance(type,previous,pseudo_count));
+    }
+private:
+    Eigen::MatrixXd invert_covariance(const Eigen::MatrixXd& covariance) const {
         Eigen::LLT<Eigen::MatrixXd> factor(covariance);
         if(factor.info()!=Eigen::Success) throw std::runtime_error("Adapted covariance not positive definite");
         Eigen::MatrixXd mass=factor.solve(Eigen::MatrixXd::Identity(mean_.size(),mean_.size()));
         return .5*(mass+mass.transpose()).eval();
     }
-private:
     int count_=0;
     Eigen::VectorXd mean_;
     Eigen::MatrixXd sum_;

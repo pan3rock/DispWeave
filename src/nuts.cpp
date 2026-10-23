@@ -18,11 +18,18 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
     if(density.status!=EvaluationStatus::valid || !std::isfinite(density.value)
        || density.gradient.size()!=initial.size() || !density.gradient.allFinite()) throw std::invalid_argument("Invalid initial NUTS density or gradient");
     const bool adapt_metric=o.metric_adaptation!=MetricAdaptation::none;
+    if(!std::isfinite(o.metric_shrinkage) || o.metric_shrinkage<0 || (o.metric_shrinkage>0 && !adapt_metric))
+        throw std::invalid_argument("metric_shrinkage must be nonnegative and requires metric adaptation");
     if(adapt_metric && !o.adapt_step_size) throw std::invalid_argument("Metric adaptation requires step adaptation");
     const auto windows=adapt_metric?detail::warmup_windows(o.warmup):std::vector<detail::WarmupWindow>{};
     std::size_t window=0;
     detail::CovarianceAccumulator covariance(initial.size());
     EuclideanMetric metric=initial_metric;
+    Eigen::MatrixXd previous_covariance;
+    if(o.metric_shrinkage>0) {
+        previous_covariance=initial_metric.mass().llt().solve(Eigen::MatrixXd::Identity(initial.size(),initial.size()));
+        previous_covariance=.5*(previous_covariance+previous_covariance.transpose()).eval();
+    }
     std::seed_seq seeds{std::uint32_t(o.seed),std::uint32_t(o.seed>>32),std::uint32_t(o.chain_id),std::uint32_t(o.chain_id>>32)};
     std::mt19937_64 rng(seeds);
     Eigen::VectorXd q=initial;
@@ -77,7 +84,11 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
             if(window<windows.size() && i>=windows[window].begin) {
                 covariance.add(q);
                 if(i+1==windows[window].end) {
-                    const auto mass=covariance.mass(o.metric_adaptation);metric=EuclideanMetric(mass);
+                    const auto mass=o.metric_shrinkage>0?
+                        covariance.mass(o.metric_adaptation,previous_covariance,o.metric_shrinkage):covariance.mass(o.metric_adaptation);
+                    if(o.metric_shrinkage>0)
+                        previous_covariance=covariance.covariance(o.metric_adaptation,previous_covariance,o.metric_shrinkage);
+                    metric=EuclideanMetric(mass);
                     out.metric_updates.push_back({i+1,covariance.count(),mass});
                     covariance=detail::CovarianceAccumulator(initial.size());++window;
                     if(o.find_initial_step_size) search(i+1);

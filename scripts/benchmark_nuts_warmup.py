@@ -63,9 +63,14 @@ def main():
     p.add_argument('--warmup', type=int, default=300)
     p.add_argument('--draws', type=int, default=100)
     p.add_argument('--timeout', type=float, default=120)
+    p.add_argument('--metric-shrinkage', type=float, default=0,
+                   help='Pseudo-count retaining previous position covariance; zero is the original experiment')
+    p.add_argument('--modern-only', action='store_true', help='Run only multinomial plus step search, both original starts')
     args = p.parse_args()
     if args.warmup < 150 or args.draws < 1 or not 0 < args.timeout <= 120:
         p.error('Need warmup >=150, draws >=1, timeout in (0,120] seconds')
+    if not np.isfinite(args.metric_shrinkage) or args.metric_shrinkage < 0:
+        p.error('metric-shrinkage must be finite and nonnegative')
     ref = args.reference.resolve(); out = args.output.resolve(); out.mkdir()
     base = read_config(ref/'nuts.toml')
     assert len(base['model']['vs']) == 45 and len(base['inversion']['starts_vs']) == 4
@@ -78,13 +83,16 @@ def main():
     exe = out/'dispweave'; shutil.copy2(args.exe.resolve(), exe)
     shutil.copyfile(Path(__file__), out/Path(__file__).name)
     jobs = []
-    for label, kernel, search in VARIANTS:
+    variants = VARIANTS[-1:] if args.modern_only else VARIANTS
+    for label, kernel, search in variants:
         for chain in [0, 1]:
             cfg = copy.deepcopy(base)
             cfg['inversion']['starts_vs'] = [base['inversion']['starts_vs'][chain]]
             cfg['nuts'].update(kernel=kernel, find_initial_step_size=search,
                                warmup=args.warmup, draws=args.draws, chain_id_offset=chain,
                                record_progress=True, record_failures=True)
+            if args.metric_shrinkage:
+                cfg['nuts']['metric_shrinkage'] = args.metric_shrinkage
             path = out/f'{label}-{chain}.toml'; write_config(path, cfg)
             jobs.append((label, chain, path))
     protocol = dict(interpretation='Warmup ablation pilot, not a new posterior acceptance run',
@@ -94,13 +102,14 @@ def main():
         seed=base['nuts']['seed'], target_accept=base['nuts']['target_accept'],
         initial_step=base['nuts']['step_size'], initial_metric=base['nuts']['initial_metric'],
         metric_adaptation=base['nuts']['metric_adaptation'],
-        variants=[dict(label=a, kernel=b, step_search=c) for a, b, c in VARIANTS],
+        variants=[dict(label=a, kernel=b, step_search=c) for a, b, c in variants],
+        metric_shrinkage=args.metric_shrinkage,
         source_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
         binary_sha256=digest(exe), script_sha256=digest(Path(__file__)),
         inputs={name:digest(inputs/name) for name in ['nuts.toml', 'observations.txt', 'covariance.txt']},
         configs={path.name:digest(path) for _, _, path in jobs},
         timeout_accounting='Completed-transition evaluation sums are lower bounds: exclude searches, initial calls, and interrupted transition',
-        incomplete_policy='Report all six jobs; no retries, budget extensions, pooled ESS or posterior acceptance')
+        incomplete_policy='Report all declared jobs; no retries, budget extensions, pooled ESS or posterior acceptance')
     save_json(out/'protocol.json', protocol)
 
     def run(job):
@@ -137,7 +146,7 @@ def main():
             record['step_search_evaluations'] = costs['step_search_evaluations']
             samples = np.loadtxt(dest/'chain_0_vs.txt', ndmin=2)
             assert samples.shape == (args.draws, 45) and np.isfinite(samples).all()
-        if label == 'slice' and args.warmup == 300:
+        if label == 'slice' and args.warmup == 300 and args.metric_shrinkage == 0:
             old, _ = progress_rows(ref/f'nuts/chain_{chain}_progress.txt', 45)
             count = min(250, len(rows))
             # The 300 and 1000 warmup schedules share their first three windows.
@@ -149,7 +158,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         records = list(pool.map(run, jobs))
-    assert len(records) == 6
+    assert len(records) == 2*len(variants)
     save_json(out/'summary.json', dict(protocol=protocol, chains=records,
         complete_chains=sum(r['complete'] for r in records), accepted_as_new_posterior=False))
 

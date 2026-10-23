@@ -201,6 +201,9 @@ python scripts/plot_predictive.py results/nuts-predictive
 warmup/质量更新后的步长搜索；旧配置默认不变。与静态 HMC 共享目标密度、边界变换、
 步长和分窗口质量适应。配置使用 `[nuts]`，`max_depth` 默认 10、范围 1–20。
 NUTS 不接受 `leapfrog_steps` 或 `step_jitter`。默认质量适应仍为 `none`，示例显式选择 `diagonal`。
+可选 `metric_shrinkage = 25.0` 在质量适应窗口之间保留协方差信息，默认 0；
+见 [Stan / NumPyro / BlackJAX / PyMC 对照与限时试验](docs/nuts-implementation-audit.md)。
+短测改善了现代内核的预热进度，尚未完成地壳正式后验验收。
 输出保留全部正式状态，trace 同时包含预热标记、树深、树深截断、最大绝对能量误差与失败类型。
 正式采样有发散、无效计算、树深截断或整链未移动时返回 5，结果仍保存；返回 0 不保证充分混合。
 诊断脚本额外汇总树深和梯度评估代价。NUTS 的 `accepted` 是候选替换指示，不是额外 Metropolis 检验。

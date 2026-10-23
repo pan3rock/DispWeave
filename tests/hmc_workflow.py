@@ -101,6 +101,13 @@ with tempfile.TemporaryDirectory() as tmp:
         bad_kernel = work / 'bad-kernel.toml'
         bad_kernel.write_text(content.replace('[nuts]', '[nuts]\nkernel = "unknown"'))
         assert 'Unknown NUTS kernel' in sample(work / 'bad-kernel', cfg=bad_kernel, codes=(1,)).stderr
+        shrink = work / 'shrink.toml'
+        shrink.write_text(modern.read_text().replace('[nuts]', '[nuts]\nmetric_shrinkage = 25.0'))
+        sample(work / 'shrink', cfg=shrink)
+        assert 'metric_shrinkage=25' in (work / 'shrink/metadata.txt').read_text()
+        assert (work / 'shrink/chain_0_mass.txt').read_bytes() != (work / 'modern-a/chain_0_mass.txt').read_bytes()
+        shrink.write_text(shrink.read_text().replace('metric_shrinkage = 25.0', 'metric_shrinkage = -1.0'))
+        assert 'metric_shrinkage' in sample(work / 'bad-shrink', cfg=shrink, codes=(1,)).stderr
         capped = work / 'capped.toml'
         capped.write_text(content.replace('max_depth = 10', 'max_depth = 1').replace('step_size = 0.03', 'step_size = 0.000001').replace('adapt_step_size = true', 'adapt_step_size = false').replace('metric_adaptation = "diagonal"', 'metric_adaptation = "none"'))
         sample(work / 'capped', cfg=capped, codes=(5,))
