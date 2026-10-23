@@ -1,0 +1,30 @@
+{
+  "source_commit": "bd5eae2",
+  "frequency_hz": 0.1612,
+  "requested_mode": 2,
+  "description": "Unmodified physical trial models recovered during bounded reference-prior NUTS. Numerical absence evidence is documented separately; fixtures do not redefine the posterior support.",
+  "models": [
+    {
+      "file": "crust-cutoff-formal.txt",
+      "sha256": "d3a9a96ec26525eea4833c64742060be63533c09265f5dfe2565fbb8d709bad2",
+      "source": "results/crust-nuts-failure-replay/failed-trial.toml",
+      "source_sha256": "4d7b149f6d11c209616e756f6eba9bffffa70db8aa9bd8cc255343a3652dc86b",
+      "identity": {
+        "chain": 2,
+        "formal_draw": 1108,
+        "target_call": 31754
+      }
+    },
+    {
+      "file": "crust-cutoff-warmup.txt",
+      "sha256": "77e68ac2b449f737ce6f7f81d3b500218d95666402ddd4c7ddef202a7a09f383",
+      "source": "results/crust-nuts-conservative/chain-0-failed-trial-audit/call-108216/forward.toml",
+      "source_sha256": "22ce276797b993e4677381c96b0e9d1a3a87d49f32743c6e19a136f8a3985cf0",
+      "identity": {
+        "chain": 0,
+        "target_call": 108216,
+        "phase": "warmup"
+      }
+    }
+  ]
+}

@@ -34,6 +34,9 @@ if(BUILD_TESTING)
   if(Python3_Interpreter_FOUND)
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy" RESULT_VARIABLE DW_NUMPY_STATUS OUTPUT_QUIET ERROR_QUIET)
     if(DW_NUMPY_STATUS EQUAL 0)
+      add_test(NAME rayleigh_mode_audit COMMAND ${Python3_EXECUTABLE}
+        ${PROJECT_SOURCE_DIR}/tests/rayleigh_mode_tests.py $<TARGET_FILE:rayleigh_clustered_regression>)
+      set_tests_properties(rayleigh_mode_audit PROPERTIES ENVIRONMENT "OPENBLAS_NUM_THREADS=1")
       if(Python3_VERSION VERSION_GREATER_EQUAL 3.11)
         add_test(NAME crust_nuts_diagnostics COMMAND ${Python3_EXECUTABLE}
           ${PROJECT_SOURCE_DIR}/tests/crust_nuts_tests.py)
