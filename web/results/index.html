@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="DispWeave 本地结果：直接查看 NUTS 模型区间、频散拟合、采样轨迹及 LM 对照。">
+  <meta name="description" content="DispWeave 本地结果：查看目标、参考、LM 与最新 NUTS 后验，以及观测数据、预测和推荐配置。">
   <title>DispWeave · 反演结果</title>
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <style>
@@ -62,80 +62,55 @@
 <main>
   <header>
     <h1>DispWeave · 反演结果</h1>
-    <p>地壳合成数据 · 125 个观测点 · 2026-10-24 结果快照。图直接展开，点击图片可打开原图。</p>
-    <nav aria-label="结果导航">
-      <a href="#nuts-model">NUTS 模型</a>
-      <a href="#nuts-fit">频散拟合</a>
-      <a href="#nuts-traces">采样轨迹</a>
-      <a href="#lm">LM 对照</a>
-      <a href="#data">原始数据</a>
-      <a href="#more">补充图</a>
-    </nav>
+    <p>地壳合成数据 · 125 个观测点 · 最新完整验收：0.95＋步长搜索。仅本地查看。</p>
+    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
   </header>
-
-  <p class="status"><strong>NUTS：原四个初值全部完成，四链验收通过。</strong>
-    每链预热 1000、正式 2000，共 8000 个正式状态；正式期数值失败、发散、树深截断均为 0。另记录 4 次已核查的模态支持域拒绝。</p>
-
+  <div class="status"><strong>四链验收通过，采样约 5 分钟。</strong>
+    每链预热 1000、正式 1000，共 4000 个正式状态。最大 R̂ = 1.00352，最低 bulk / tail ESS ≈ 1695 / 1990。
+    正式期无发散、数值失败或树深截断，另有 1 次合法模态支持域拒绝。
+    <p>相对原 0.99 的相同样本数，含预热的最低 bulk / tail ESS／评估提高约 <strong>2.30 / 3.79 倍</strong>。
+    <a href="../../docs/nuts-original-095-search.md">完整验收与比较口径</a></p>
+  </div>
   <figure id="nuts-model">
-    <figcaption>
-      <div class="figure-heading"><h2>1. NUTS 模型区间与目标模型</h2><div class="downloads"><a href="../../results/crust-target-final/target-nuts.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-target-final/target-nuts.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>蓝色：四条链的逐点后验 95% 区间与中位数；橙色：合成目标；灰虚线：参考模型；绿色：LM 解。右图放大浅部。</p>
-    </figcaption>
-    <a class="image-link" href="../../results/crust-target-final/target-nuts.png" target="_blank" rel="noopener" aria-label="打开 NUTS 模型区间原图"><img src="../../results/crust-target-final/target-nuts.png" alt="NUTS 样本区间与合成目标、参考模型和 LM 解的全深度及浅部对照；四链验收通过。" fetchpriority="high"></a>
+    <figcaption><div class="figure-heading"><h2>1. 目标、参考、LM 与 NUTS 后验</h2><div class="downloads"><a href="../../results/crust-results-recommended/target-nuts.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-results-recommended/target-nuts.pdf" target="_blank" rel="noopener">PDF</a></div></div><p>橙色：合成目标；灰虚线：参考模型；绿色：LM；蓝色：本次 NUTS 中位数与逐点 95% 区间。右图放大浅部。</p></figcaption>
+    <a class="image-link" href="../../results/crust-results-recommended/target-nuts.png" target="_blank" rel="noopener" aria-label="打开1. 目标、参考、LM 与 NUTS 后验原图"><img src="../../results/crust-results-recommended/target-nuts.png" alt="合成目标、参考、LM 和本次四链 NUTS 后验的全深度及浅部对照。" fetchpriority="high"></a>
   </figure>
-
   <figure id="nuts-fit">
-    <figcaption>
-      <div class="figure-heading"><h2>2. NUTS 频散拟合与残差</h2><div class="downloads"><a href="../../results/crust-nuts-final/predictive.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-final/predictive.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>上排：四个模态的观测和预测区间；下排：标准化残差。浅蓝色含观测噪声，深蓝色为潜在频散曲线区间；均为逐点区间。</p>
-    </figcaption>
-    <a class="image-link" href="../../results/crust-nuts-final/predictive.png" target="_blank" rel="noopener" aria-label="打开 NUTS 频散拟合原图"><img src="../../results/crust-nuts-final/predictive.png" alt="四条链的四模态预测区间与观测，以及标准化残差。" loading="lazy"></a>
+    <figcaption><div class="figure-heading"><h2>2. NUTS 预测与观测数据</h2><div class="downloads"><a href="../../results/crust-results-recommended/predictive.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-results-recommended/predictive.pdf" target="_blank" rel="noopener">PDF</a></div></div><p>黑点：观测；深蓝色：潜在频散曲线 95% 区间；浅蓝色：包含噪声的预测区间。下排为标准化残差，400 个预测状态全部有效。</p></figcaption>
+    <a class="image-link" href="../../results/crust-results-recommended/predictive.png" target="_blank" rel="noopener" aria-label="打开2. NUTS 预测与观测数据原图"><img src="../../results/crust-results-recommended/predictive.png" alt="本次 NUTS 四模态预测区间、原始观测与标准化残差。" loading="lazy"></a>
   </figure>
-
-  <figure id="nuts-traces">
-    <figcaption>
-      <div class="figure-heading"><h2>3. NUTS 采样轨迹</h2><div class="downloads"><a href="../../results/crust-nuts-final/traces.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-nuts-final/traces.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>包含全部四条链。最大 R̂ = 1.00156，最低 bulk ESS ≈ 4353、tail ESS ≈ 3766。区间以固定界面、Brocher05、参考先验和假设噪声为条件。<a href="../../docs/crust-nuts-closeout.md">完整验证记录</a></p>
-    </figcaption>
-    <a class="image-link" href="../../results/crust-nuts-final/traces.png" target="_blank" rel="noopener" aria-label="打开 NUTS 采样轨迹原图"><img src="../../results/crust-nuts-final/traces.png" alt="全部四条链的指定参数轨迹。" loading="lazy"></a>
-  </figure>
-
-  <div class="section-title"><h2>LM 与合成数据对照</h2><p>当前 λ=100 的 5 个初值收敛到基本相同的解，拟合 RMS ≈ 0.019 km/s。结合噪声、数据约束与固定参数化评估结构差异。</p></div>
-
-  <figure id="lm">
-    <figcaption>
-      <div class="figure-heading"><h2>4. LM 恢复模型与目标模型</h2><div class="downloads"><a href="../../results/crust-target-comparison/target-recovery.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-target-comparison/target-recovery.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>橙色：44 层合成目标；灰虚线：45 层反演参考；绿色：λ=100 的 LM 解。各自保留原层界面。</p>
-    </figcaption>
-    <a class="image-link" href="../../results/crust-target-comparison/target-recovery.png" target="_blank" rel="noopener" aria-label="打开 LM 恢复模型原图"><img src="../../results/crust-target-comparison/target-recovery.png" alt="合成目标、参考模型与已有 LM 解的全深度和浅部 Vs 对照。" loading="lazy"></a>
-  </figure>
-
   <figure id="data">
-    <figcaption>
-      <div class="figure-heading"><h2>5. 原始合成数据与模型预测</h2><div class="downloads"><a href="../../results/crust-target-comparison/synthetic-data.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-target-comparison/synthetic-data.pdf" target="_blank" rel="noopener">PDF</a></div></div>
-      <p>黑点：原始观测；橙色：目标模型预测；灰虚线：参考预测；绿色：LM 预测。误差棒 σ=0.02 km/s 为反演假设，源文件没有误差列。</p>
-    </figcaption>
-    <a class="image-link" href="../../results/crust-target-comparison/synthetic-data.png" target="_blank" rel="noopener" aria-label="打开原始合成数据与预测原图"><img src="../../results/crust-target-comparison/synthetic-data.png" alt="125 个原始合成观测与目标、参考、LM 预测的四模态对照及残差。" loading="lazy"></a>
+    <figcaption><div class="figure-heading"><h2>3. 原始合成数据与目标、参考、LM 预测</h2><div class="downloads"><a href="../../results/crust-results-recommended/synthetic-data.png" target="_blank" rel="noopener">原图</a><a href="../../results/crust-results-recommended/synthetic-data.pdf" target="_blank" rel="noopener">PDF</a></div></div><p>黑点为原始观测；误差棒 σ=0.02 km/s 是反演假设，源数据没有误差列。目标保留原始物性和层界面。</p></figcaption>
+    <a class="image-link" href="../../results/crust-results-recommended/synthetic-data.png" target="_blank" rel="noopener" aria-label="打开3. 原始合成数据与目标、参考、LM 预测原图"><img src="../../results/crust-results-recommended/synthetic-data.png" alt="125 个合成观测与原始目标、参考及 LM 频散预测。" loading="lazy"></a>
   </figure>
-
+  <p class="note">后验以固定界面、Brocher05 物性关系、参考先验（每层 σ=0.1 km/s）和假设观测噪声为条件。
+    图中参考模型不是合成目标；先验中心与目标的作用不同。数据约束程度请结合补充区的先验／后验对照判断。</p>
+  <section class="sources" id="config" aria-labelledby="config-title">
+    <h2 id="config-title">推荐配置与复现</h2>
+    <p>本算例采用 slice NUTS、目标接受率 0.95、合理步长搜索及标准密集矩阵适应。
+      <a href="../../results/crust-results-recommended/inputs/nuts.toml">完整配置</a> ·
+      <a href="../../results/crust-results-recommended/inputs/observations.txt">观测</a> ·
+      <a href="../../results/crust-results-recommended/inputs/covariance.txt">协方差</a> ·
+      <a href="../../results/crust-results-recommended/RUN.txt">运行命令</a> ·
+      <a href="../../docs/nuts-recommended-use.md">使用说明</a></p>
+    <p>源文件：<a href="../../results/crust-target-comparison/data.txt">合成数据 data.txt</a> ·
+      <a href="../../results/crust-target-comparison/model_data.txt">目标 model_data.txt</a> ·
+      <a href="../../results/crust-target-comparison/mref.txt">参考 mref.txt</a>。
+      原 0.99 结果保留，库级默认值未改。</p>
+  </section>
   <details id="more">
     <summary>补充图与报告</summary>
     <ul class="supplement-list">
-      <li><a href="../../results/crust-nuts-final/prior-posterior.png" target="_blank" rel="noopener">NUTS 先验 / 后验区间</a> · <a href="../../results/crust-nuts-final/prior-posterior.pdf" target="_blank" rel="noopener">PDF</a><span>固定参数化下的条件后验</span></li>
-      <li><a href="../../results/crust-nuts-final/correlation.png" target="_blank" rel="noopener">NUTS 参数相关矩阵</a> · <a href="../../results/crust-nuts-final/correlation.pdf" target="_blank" rel="noopener">PDF</a><span>固定参数化下的条件后验</span></li>
-      <li><a href="../../results/crust-regularization-scan/structure.png" target="_blank" rel="noopener">不同正则化权重的模型</a> · <a href="../../results/crust-regularization-scan/structure.pdf" target="_blank" rel="noopener">PDF</a></li>
-      <li><a href="../../results/crust-regularization-scan/lambda-comparison.png" target="_blank" rel="noopener">正则化权重敏感性</a> · <a href="../../results/crust-regularization-scan/lambda-comparison.pdf" target="_blank" rel="noopener">PDF</a></li>
-      <li><a href="../../results/crust-regularization-scan/residuals.png" target="_blank" rel="noopener">正则化分模态残差</a> · <a href="../../results/crust-regularization-scan/residuals.pdf" target="_blank" rel="noopener">PDF</a></li>
-      <li><a href="../../results/crust-mode-audit-refined/cutoff-continuation.png" target="_blank" rel="noopener">模态截止核查</a> · <a href="../../results/crust-mode-audit-refined/cutoff-continuation.pdf" target="_blank" rel="noopener">PDF</a><span>有限域数值证据，非通用无根证明</span></li>
+      <li><a href="../../results/crust-results-recommended/prior-posterior.png" target="_blank" rel="noopener">先验／后验区间与标准差比</a> · <a href="../../results/crust-results-recommended/prior-posterior.pdf" target="_blank" rel="noopener">PDF</a></li>
+      <li><a href="../../results/crust-results-recommended/traces.png" target="_blank" rel="noopener">四链采样轨迹</a> · <a href="../../results/crust-results-recommended/traces.pdf" target="_blank" rel="noopener">PDF</a></li>
+      <li><a href="../../results/crust-results-recommended/correlation.png" target="_blank" rel="noopener">后验参数相关性</a> · <a href="../../results/crust-results-recommended/correlation.pdf" target="_blank" rel="noopener">PDF</a></li>
+      <li><a href="../../results/crust-results-recommended/target-recovery.png" target="_blank" rel="noopener">LM 与目标模型单独对照</a> · <a href="../../results/crust-results-recommended/target-recovery.pdf" target="_blank" rel="noopener">PDF</a></li>
+      <li><a href="../../results/nuts-original-095-search/efficiency.png" target="_blank" rel="noopener">有效样本效率对比</a> · <a href="../../results/nuts-original-095-search/efficiency.pdf" target="_blank" rel="noopener">PDF</a></li>
+      <li><a href="../../results/crust-target-final/target-nuts.png" target="_blank" rel="noopener">原 0.99 四链后验（8000 状态）</a> · <a href="../../docs/crust-nuts-closeout.md">原验收记录</a></li>
     </ul>
-    <p class="note"><a href="../../docs/crust-reference-validation.md">LM 参考模型验证</a> · <a href="../../docs/crust-regularization-validation.md">正则化对照</a> · <a href="../../docs/crust-nuts-closeout.md">NUTS 四链验证记录</a> · <a href="../../docs/crust-mode-domain.md">模态截止核查</a> · <a href="../../docs/crust-target-comparison.md">目标模型对照说明</a></p>
+    <p class="note"><a href="../../docs/crust-reference-validation.md">LM 验证</a> · <a href="../../docs/crust-regularization-validation.md">正则化比较</a> · <a href="../../docs/crust-mode-domain.md">模态支持域</a> · <a href="../../docs/crust-target-comparison.md">目标与反演参数化的区别</a></p>
   </details>
-
-  <div class="sources">
-    <p>源文件：<a href="../../results/crust-target-comparison/data.txt" target="_blank" rel="noopener">合成数据 data.txt</a> · <a href="../../results/crust-target-comparison/model_data.txt" target="_blank" rel="noopener">目标 model_data.txt</a> · <a href="../../results/crust-target-comparison/mref.txt" target="_blank" rel="noopener">参考 mref.txt</a></p>
-    <p>目标使用原始 Vp / ρ；反演固定参考界面并采用 Brocher05。图中“参考”是先验中心，不是目标模型。</p>
-  </div>
-  <footer>本地结果页。只展示已有结果；更新图文件后刷新即可。图片不存在时，请检查原始 results 目录。</footer>
+  <footer>无需联网、构建或 JavaScript。更新已有图后刷新即可；图片依赖本项目 results 目录。</footer>
 </main>
 </body>
 </html>

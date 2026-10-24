@@ -7,8 +7,9 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-本地结果网页：[反演结果](web/results/index.html)，首先直接展示 NUTS 模型、拟合与轨迹，再看 LM 和合成数据对照；其余图和报告保留链接。
+本地结果网页：[反演结果](web/results/index.html)，三张主图展示目标/参考/LM/最新 NUTS、频散拟合和原始数据；其余诊断折叠保留。
 使用方式见 [网页说明](web/results/README.md)，支持浏览器直接打开，无需联网或发布。
+[推荐配置与运行命令](docs/nuts-recommended-use.md) 已固定本算例通过验收的 0.95＋步长搜索设置。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
