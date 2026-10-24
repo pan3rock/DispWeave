@@ -9,9 +9,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def plot_confirmation(directory,summary):
+    fig,axes=plt.subplots(2,2,figsize=(11,7))
+    fields=['mean_difference_in_combined_mcse','rhat','ess_bulk','ess_tail']
+    titles=['Absolute mean shift / combined MCSE (descriptive)',
+            'Rank / folded split R-hat','Bulk ESS','Tail ESS']
+    for (label,g),color in zip(summary['comparison'].items(),['#d55e00','#0072b2']):
+        if not g['complete']:continue
+        for ax,field in zip(axes.flat,fields):
+            ax.plot(np.arange(len(g['parameters'])),[d[field] for d in g['parameters']],
+                    '.-',color=color,label=label,lw=1,markersize=4)
+    for ax,title in zip(axes.flat,titles):
+        ax.set_title(title,fontsize=10);ax.set_xlabel('Vs layer index; last four are derived quantities')
+        ax.axvspan(44.5,48.5,color='grey',alpha=.1);ax.grid(alpha=.2)
+    axes[0,1].axhline(1.01,color='black',ls='--',lw=1)
+    for ax in axes[1]:ax.axhline(400,color='black',ls='--',lw=1)
+    axes[0,0].legend(fontsize=9)
+    fig.suptitle('Fixed-metric candidate confirmation: 4 x 1,000 draws per setting; new seed')
+    fig.text(.5,.018,'Reference states are reused: mean comparisons are descriptive. Passing these checks does not validate dispersed-start adaptation.',
+             ha='center',fontsize=8)
+    fig.tight_layout(rect=(0,.04,1,.95));fig.savefig(directory/'step-size-confirmation.png',dpi=160)
+    fig.savefig(directory/'step-size-confirmation.pdf')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('directory',type=Path);a=p.parse_args()
     summary=json.loads((a.directory/'summary.json').read_text())
+    if summary['protocol'].get('confirm_candidates',False):
+        plot_confirmation(a.directory,summary)
+        return
     fig,axes=plt.subplots(2,2,figsize=(10,7))
     for kernel,color in [('slice','#0072b2'),('multinomial','#d55e00')]:
         x=[];steps=[];lo=[];hi=[];calls=[];ess_cost=[];ess_time=[];flags=[]

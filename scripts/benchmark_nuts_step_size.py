@@ -2,7 +2,8 @@
 """Fixed-metric acceptance-target comparison from saved posterior states.
 
 Four declared chains per kernel/target; never pool incomplete groups or silently
-remove failed trajectories. ESS estimates from 200 draws are exploratory.
+remove failed trajectories. The default pilot uses 200 draws; confirmation uses
+1000 draws and a new seed, still conditional on frozen posterior geometry.
 """
 import argparse
 import copy
@@ -40,7 +41,12 @@ def main():
     p.add_argument('--exe',type=Path,required=True)
     p.add_argument('--reference',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--confirm-candidates',action='store_true',
+        help='Confirm multinomial 0.90 and slice 0.95 with 1000 draws/chain and seed 20261025')
     a=p.parse_args();out=a.output.resolve();out.mkdir();ref=a.reference.resolve()
+    draws=1000 if a.confirm_candidates else 200
+    timeout=300 if a.confirm_candidates else 150
+    seed=20261025 if a.confirm_candidates else 20261024
     inputs=out/'inputs';inputs.mkdir()
     base=read_config(ref/'nuts.toml')
     assert len(base['model']['vs'])==45 and len(base['inversion']['starts_vs'])==4
@@ -60,10 +66,11 @@ def main():
     exe=out/'dispweave';shutil.copy2(a.exe.resolve(),exe)
     shutil.copyfile(Path(__file__),out/Path(__file__).name)
     groups=[(kernel,target) for target in [.90,.95,.99] for kernel in ['slice','multinomial']]
+    if a.confirm_candidates:groups=[('multinomial',.90),('slice',.95)]
     jobs=[]
-    # Rotate the six settings over the four starting states to distribute order effects.
+    # Rotate the settings over the four starting states to distribute order effects.
     for c in range(4):
-        order=groups[c:]+groups[:c]
+        offset=c%len(groups);order=groups[offset:]+groups[:offset]
         if c%2:order=list(reversed(order))
         for kernel,target in order:
             label=f'{kernel}-{round(100*target)}';cfg=copy.deepcopy(base)
@@ -72,18 +79,20 @@ def main():
             opt.update(kernel=kernel,target_accept=target,step_size=step,mass=mass.tolist(),
                 metric_adaptation='none',metric_shrinkage=0.,metric_max_stiffness_ratio=0.,
                 conservative_warmup=False,conservative_metric_restart=False,find_initial_step_size=False,
-                warmup=100,draws=200,max_depth=10,adapt_step_size=True,seed=20261024,
+                warmup=100,draws=draws,max_depth=10,adapt_step_size=True,seed=seed,
                 chain_id_offset=c,record_progress=True,record_failures=True)
             path=inputs/f'{label}-{c}.toml';write_config(path,cfg)
             jobs.append((label,kernel,target,c,path))
     protocol=dict(interpretation='Fixed mass, posterior starts, step-size adaptation only; exploratory ESS, not new posterior acceptance',
-        groups=[dict(kernel=k,target_accept=t) for k,t in groups],chains=4,warmup=100,draws=200,
-        seed=20261024,workers=4,timeout_per_chain=150,total_wall_budget_seconds=900,
+        groups=[dict(kernel=k,target_accept=t) for k,t in groups],chains=4,warmup=100,draws=draws,
+        confirm_candidates=a.confirm_candidates,seed=seed,workers=4,timeout_per_chain=timeout,
+        total_wall_budget_seconds=len(groups)*timeout,
+        conditional_diagnostic_thresholds=dict(max_rhat=1.01,min_bulk_ess=400,min_tail_ess=400,formal_divergences=0,formal_invalid=0,formal_depth_caps=0),
         initial_step=step,common_mass='Accepted reference chain 0 final momentum covariance',
         common_starts='Last physical Vs state of each of the four accepted reference chains',
         adaptation='Ordinary dual averaging; no initial search; frozen metric; all experimental options disabled',
         ranking='Report failures first, then minimum bulk/tail ESS over all 45 Vs + 4 derived quantities; no automatic default change',
-        uncertainty='200 draws/chain: report first/second-half diagnostics and per-observable efficiency; no significance claim',
+        uncertainty=f'{draws} draws/chain: report first/second-half diagnostics and per-observable efficiency; no significance claim',
         timing='ESS/s uses summed complete chain wall seconds INCLUDING warmup; no formal-only wall timer',
         cost='Both formal-only and including-warmup ESS/evaluation denominators; incomplete totals are lower bounds',
         reference_mean_check='Combined MCSE only descriptive: starting states reused from reference, 49 correlated comparisons',
@@ -99,14 +108,14 @@ def main():
         cmd=[str(exe),'nuts','--config',str(path),'--data',str(inputs/'observations.txt'),
             '--covariance',str(inputs/'covariance.txt'),'--output',str(dest)]
         with (out/f'{label}-{c}.log').open('w') as log:
-            try:code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=150).returncode
+            try:code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=timeout).returncode
             except subprocess.TimeoutExpired:code='timeout'
         elapsed=time.perf_counter()-begin
         rows,partial=progress_rows(dest/'chain_0_progress.txt',45)
         warm=[r for r in rows if r[1]=='1'];formal=[r for r in rows if r[1]=='0']
         assert len(warm)==min(100,len(rows))
         record=dict(label=label,kernel=kernel,target_accept=target,chain=c,returncode=code,seconds=elapsed,
-            complete=code in (0,5) and len(warm)==100 and len(formal)==200,
+            complete=code in (0,5) and len(warm)==100 and len(formal)==draws,
             warmup=phase_stats(warm),production=phase_stats(formal),partial_progress_lines=partial)
         if formal:
             steps=[float(r[6]) for r in formal];assert len(set(steps))==1
@@ -114,7 +123,7 @@ def main():
         if record['complete']:
             trace=np.loadtxt(dest/'chain_0_trace.txt',dtype=str,ndmin=2)
             samples=np.loadtxt(dest/'chain_0_vs.txt',ndmin=2)
-            assert trace.shape==(300,10) and samples.shape==(200,45) and np.isfinite(samples).all()
+            assert trace.shape==(100+draws,10) and samples.shape==(draws,45) and np.isfinite(samples).all()
             assert np.array_equal(np.loadtxt(dest/'chain_0_mass.txt'),np.loadtxt(dest/'chain_0_initial_mass.txt'))
             np.testing.assert_allclose(np.loadtxt(dest/'chain_0_mass.txt'),mass,rtol=1e-14,atol=1e-14)
             np.testing.assert_array_equal(np.loadtxt(dest/'prior_parameters.txt')[:,1],base['model']['vs'])
@@ -152,8 +161,12 @@ def main():
         invalid=sum(row['production']['invalid_transitions'] for row in r)
         div=sum(row['production']['divergences'] for row in r)
         caps=sum(row['production']['depth_caps'] for row in r)
+        numeric=invalid==div==caps==0 and all(row['production']['candidate_replacements']>0 for row in r)
+        mixing=all(np.isfinite([d['rhat'],d['ess_bulk'],d['ess_tail']]).all() and d['rhat']<=1.01
+            and min(d['ess_bulk'],d['ess_tail'])>=400 for d in stats)
         comparison[label]=dict(complete=True,parameters=stats,
-            numerical_passed=invalid==div==caps==0 and all(row['production']['candidate_replacements']>0 for row in r),
+            conditional_diagnostics_passed=numeric and mixing,mixing_passed=mixing,
+            numerical_passed=numeric,
             formal_divergences=div,formal_invalid=invalid,formal_depth_caps=caps,
             formal_support_rejections=sum(row['production']['support_rejections'] for row in r),
             max_rhat=max(d['rhat'] for d in stats),min_bulk_ess=min(d['ess_bulk'] for d in stats),
@@ -165,7 +178,7 @@ def main():
             max_mean_difference_in_combined_mcse=max(d['mean_difference_in_combined_mcse'] for d in stats),
             halves=[dict(parameters=statistics(x[:,begin:end],base),
                 formal_evaluations=sum(int(np.loadtxt(out/f'{label}-{c}/chain_0_trace.txt',dtype=str)[100+begin:100+end,7].astype(int).sum()) for c in range(4)))
-                for begin,end in [(0,100),(100,200)]])
+                for begin,end in [(0,draws//2),(draws//2,draws)]])
     save_json(out/'summary.json',dict(protocol=protocol,chains=records,comparison=comparison,new_posterior_accepted=False))
     print({label:{k:v for k,v in d.items() if k not in ['parameters','halves']} for label,d in comparison.items()},flush=True)
 
