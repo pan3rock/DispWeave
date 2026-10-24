@@ -18,6 +18,7 @@ def main():
     p.add_argument('--exe',type=Path,required=True)
     p.add_argument('--source',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--compare-metrics',action='store_true',help='Compare pre/post update masses with 100 warmup + 300 draws, 300s per run')
     a=p.parse_args();out=a.output.resolve();out.mkdir();src=a.source.resolve()
     inputs=out/'inputs';inputs.mkdir()
     for name in ['nuts.toml','observations.txt','covariance.txt']:
@@ -39,21 +40,32 @@ def main():
     exe=out/'dispweave';shutil.copy2(a.exe.resolve(),exe)
     shutil.copyfile(Path(__file__),out/Path(__file__).name)
     variants=[('ordinary-50',False,50),('search-50',True,50),('search-150',True,150)]
+    masses={label:mass for label,_,_ in variants}
+    draws,timeout,seed=200,120,20261026
+    if a.compare_metrics:
+        variants=[('before',True,100),('after',True,100)]
+        x=np.array([r[8:] for r in rows[250:450]],float)
+        cov=200/205*np.cov(x.T)+.005/205*np.eye(45)
+        before=np.linalg.solve(cov,np.eye(45));before=(before+before.T)/2
+        np.testing.assert_allclose(before,np.loadtxt(src/'last-metric-audit/mass-before.txt'),rtol=1e-10,atol=1e-10)
+        masses={'before':before,'after':mass}
+        np.savetxt(inputs/'mass-before.txt',before,fmt='%.17g')
+        draws,timeout,seed=300,300,20261027
     jobs=[]
     for c in range(4):
-        order=variants[c%3:]+variants[:c%3]
+        order=variants[c%len(variants):]+variants[:c%len(variants)]
         for label,search,warmup in order:
             cfg=copy.deepcopy(base);cfg['inversion']['starts_vs']=[start.tolist()]
-            cfg['nuts'].update(initial_metric='supplied',mass=mass.tolist(),kernel='slice',
+            cfg['nuts'].update(initial_metric='supplied',mass=masses[label].tolist(),kernel='slice',
                 metric_adaptation='none',metric_shrinkage=0.,metric_max_stiffness_ratio=0.,
                 conservative_warmup=False,conservative_metric_restart=False,
-                find_initial_step_size=search,step_size=step,warmup=warmup,draws=200,
-                seed=20261026,chain_id_offset=c,adapt_step_size=True)
+                find_initial_step_size=search,step_size=step,warmup=warmup,draws=draws,
+                seed=seed,chain_id_offset=c,adapt_step_size=True)
             path=inputs/f'{label}-{c}.toml';write_config(path,cfg)
             jobs.append((label,c,warmup,path))
     protocol=dict(checkpoint='chain 0 state after transition 949; reconstructed post-950 mass',
-        variants=variants,repetitions=4,common_start=True,seed=20261026,draws=200,
-        workers=4,timeout_per_job_seconds=120,nominal_worker_sampling_budget_seconds=360,
+        variants=variants,compare_metrics=a.compare_metrics,repetitions=4,common_start=True,seed=seed,draws=draws,
+        workers=4,timeout_per_job_seconds=timeout,nominal_worker_sampling_budget_seconds=len(variants)*timeout,
         initial_step=step,ranking='minimum bulk ESS / all target evaluations including search, warmup, preflight',
         interpretation='Short conditional restart experiment; identical starting point, not dispersed-start convergence validation; ESS provisional',
         incomplete_policy='No retries/extensions or pooled ESS for incomplete group',
@@ -68,10 +80,10 @@ def main():
         with (out/f'{label}-{c}.log').open('w') as log:
             try:
                 code=subprocess.run([str(exe),'nuts','--config',str(path),'--data',str(inputs/'observations.txt'),
-                    '--covariance',str(inputs/'covariance.txt'),'--output',str(dest)],stdout=log,stderr=subprocess.STDOUT,timeout=120).returncode
+                    '--covariance',str(inputs/'covariance.txt'),'--output',str(dest)],stdout=log,stderr=subprocess.STDOUT,timeout=timeout).returncode
             except subprocess.TimeoutExpired:code='timeout'
         elapsed=time.perf_counter()-begin;r,partial=progress_rows(dest/'chain_0_progress.txt',45)
-        record=dict(label=label,replicate=c,seconds=elapsed,returncode=code,complete=code in (0,5) and len(r)==warmup+200,
+        record=dict(label=label,replicate=c,seconds=elapsed,returncode=code,complete=code in (0,5) and len(r)==warmup+draws,
             partial_lines=partial,warmup=phase_stats(r[:warmup]),production=phase_stats(r[warmup:]))
         if len(r)>warmup:
             assert len(set(row[6] for row in r[warmup:]))==1
@@ -82,7 +94,7 @@ def main():
             assert cost['target_evaluations']==1+cost['transition_evaluations']+cost['step_search_evaluations']
             assert cost['metric_evaluations']==0
             record['cost']=cost;record['total_evaluations']=cost['target_evaluations']+cost['preflight_evaluations']
-            np.testing.assert_allclose(np.loadtxt(dest/'chain_0_mass.txt'),mass,rtol=1e-12,atol=1e-12)
+            np.testing.assert_allclose(np.loadtxt(dest/'chain_0_mass.txt'),masses[label],rtol=1e-12,atol=1e-12)
             np.testing.assert_array_equal(np.loadtxt(dest/'chain_0_mass.txt'),np.loadtxt(dest/'chain_0_initial_mass.txt'))
             np.testing.assert_array_equal(np.loadtxt(dest/'prior_parameters.txt')[:,1],base['model']['vs'])
             t=np.loadtxt(dest/'chain_0_trace.txt',dtype=str)
@@ -106,7 +118,7 @@ def main():
             max_rhat=max(s['rhat'] for s in stats),
             min_bulk_per_1000_total=min(s['ess_bulk'] for s in stats)/total*1000,
             min_tail_per_1000_total=min(s['ess_tail'] for s in stats)/total*1000,
-            parameters=stats,halves=[statistics(part,base) for part in [samples[:,:100],samples[:,100:]]])
+            parameters=stats,halves=[statistics(part,base) for part in [samples[:,:draws//2],samples[:,draws//2:]]])
     save_json(out/'summary.json',dict(records=records,groups=groups,posterior_accepted=False))
 
 

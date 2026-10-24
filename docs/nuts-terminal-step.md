@@ -67,3 +67,6 @@ MPLCONFIGDIR=/tmp/dw-matplotlib python scripts/plot_nuts_terminal_step.py result
 新脚本做语法检查、真实数值运行及独立输入/输出审计，不重复未受影响的 C++ 回归。
 原始数据、配置、脚本、生产二进制及依赖哈希保存在本地 `results/nuts-terminal-step/`。
 本轮仅用已有最大能量误差诊断；没有新增逐状态总能量输出，因此没有计算 E-BFMI。
+
+后续 [矩阵隔离对照](nuts-metric-pair.md) 八次全部完成，发现新矩阵虽然状态生成更慢，
+主体有效样本效率反而改善，修正了只从步长及调用数判断退化的倾向。
