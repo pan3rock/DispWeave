@@ -65,6 +65,25 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
         for suffix in ['vs','z','trace','mass','metric_updates']:
             assert (out/f'chain_0_{suffix}.txt').read_bytes()==(outputs[0]/f'chain_1_{suffix}.txt').read_bytes()
         if algorithm=='nuts':
+            guarded=copy.deepcopy(cfg)
+            guarded['nuts'].update(kernel='multinomial',metric_adaptation='dense',metric_shrinkage=25.,
+                find_initial_step_size=True,conservative_warmup=True,metric_max_stiffness_ratio=4.)
+            guard_path=work/'guarded.toml';write_config(guard_path,guarded)
+            guard_out=work/'guarded'
+            run('nuts','--config',guard_path,'--data',work/'data/observations.txt','--output',guard_out,codes=(0,5))
+            np.testing.assert_array_equal(np.loadtxt(guard_out/'prior_parameters.txt')[:,1],cfg['model']['vs'])
+            for c in range(2):
+                decisions=np.loadtxt(guard_out/f'chain_{c}_metric_decisions.txt',ndmin=2)
+                assert decisions.shape==(1,5) and decisions[0,0]==90
+                assert bool(decisions[0,1])==(decisions[0,4]<=4.)
+                cost=dict(line.split('=') for line in (guard_out/f'chain_{c}_cost.txt').read_text().splitlines())
+                assert int(cost['guard_evaluations'])==1
+                assert int(cost['target_evaluations'])==1+int(cost['transition_evaluations'])+int(cost['step_search_evaluations'])
+                searches=np.loadtxt(guard_out/f'chain_{c}_step_size_searches.txt',dtype=str,ndmin=2)
+                assert len(searches)==1+int(decisions[0,1])
+                trace=np.loadtxt(guard_out/f'chain_{c}_trace.txt',dtype=str,skiprows=1)
+                assert np.all(trace[100:,3]==trace[100,3])
+            assert 'conservative_warmup=1' in (guard_out/'metadata.txt').read_text()
             # Recover an interrupted first chain while preserving a completed second chain.
             recovery=work/'recovery';recovery.mkdir()
             recovery_cfg=copy.deepcopy(cfg);recovery_cfg['nuts']['record_failures']=True

@@ -117,4 +117,27 @@ inline StepSizeSearch find_step_size(const LogDensity& target,const Eigen::Vecto
     }
     throw std::runtime_error("Unable to bracket a reasonable step size within 50 probes");
 }
+// Experimental warmup-only conservative search: four common momenta, no
+// expansion, at most 12 trials (48 target calls). Never changes the position.
+inline StepSizeSearch find_conservative_step(const LogDensity& target,const Eigen::VectorXd& q,const DensityEvaluation& density,
+        const EuclideanMetric& metric,std::mt19937_64& rng,double step,int iteration) {
+    std::vector<HamiltonianState> starts;
+    for(int j=0;j<4;++j) starts.push_back({q,metric.momentum(rng),density});
+    int evaluations=0;
+    for(int attempt=0;attempt<12;++attempt) {
+        bool acceptable=true;
+        for(const auto& start:starts) {
+            const double joint0=density.value-metric.kinetic(start.momentum);
+            if(!std::isfinite(joint0)) throw std::runtime_error("Nonfinite conservative search Hamiltonian");
+            const auto trial=leapfrog(target,start,metric,step,1);evaluations+=trial.evaluations;
+            const double delta=trial.status==EvaluationStatus::valid?
+                trial.state.density.value-metric.kinetic(trial.state.momentum)-joint0:-INFINITY;
+            acceptable=acceptable && std::isfinite(delta) && delta>=std::log(.8);
+        }
+        if(acceptable) return {iteration,evaluations,step,EvaluationStatus::valid};
+        step*=.5;
+        if(step==0) break;
+    }
+    throw std::runtime_error("Unable to find a conservative step within 12 trials");
+}
 }

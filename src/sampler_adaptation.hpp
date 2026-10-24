@@ -1,12 +1,13 @@
 #pragma once
 #include "dispweave/hmc.hpp"
 #include <Eigen/Cholesky>
+#include <Eigen/Eigenvalues>
 #include <cmath>
 #include <stdexcept>
 namespace dw::detail {
 class DualAveraging {
 public:
-    DualAveraging(double step,double target):target_(target),average_(std::log(step)),mu_(std::log(10.)+std::log(step)) {}
+    DualAveraging(double step,double target,double center_scale=10.):target_(target),average_(std::log(step)),mu_(std::log(center_scale)+std::log(step)) {}
     double averaged_step() const {return std::exp(average_);}
     double update(double acceptance,bool finish) {
         const double t=++count_,eta=1/(t+10.);
@@ -21,6 +22,22 @@ private:
     double target_,average_,mu_,hbar_=0;
     int count_=0;
 };
+// Largest local squared frequency of M^-1 G. G is a supplied SPD curvature
+// proxy; this check does not establish global posterior geometry.
+inline double local_stiffness(const EuclideanMetric& metric,const Eigen::MatrixXd& curvature) {
+    if(curvature.rows()!=metric.size() || curvature.cols()!=metric.size() || !curvature.allFinite()
+       || !curvature.isApprox(curvature.transpose(),1e-10))
+        throw std::invalid_argument("Invalid local curvature for metric guard");
+    Eigen::LLT<Eigen::MatrixXd> curvature_factor(curvature);
+    if(curvature_factor.info()!=Eigen::Success) throw std::invalid_argument("Metric guard requires positive definite curvature");
+    const Eigen::MatrixXd mass=metric.mass();Eigen::LLT<Eigen::MatrixXd> factor(mass);
+    const Eigen::MatrixXd left=factor.matrixL().solve(curvature);
+    const Eigen::MatrixXd scaled=factor.matrixL().solve(left.transpose()).transpose();
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eig(.5*(scaled+scaled.transpose()).eval(),Eigen::EigenvaluesOnly);
+    if(eig.info()!=Eigen::Success || !eig.eigenvalues().allFinite() || eig.eigenvalues().maxCoeff()<=0)
+        throw std::runtime_error("Unable to evaluate local metric stiffness");
+    return eig.eigenvalues().maxCoeff();
+}
 struct WarmupWindow {int begin,end;}; // zero-based half-open iteration range
 inline std::vector<WarmupWindow> warmup_windows(int warmup) {
     if(warmup<20) throw std::invalid_argument("Metric adaptation needs at least 20 warmup iterations");

@@ -2,6 +2,11 @@
 #include "hmc.hpp"
 namespace dw {
 struct NUTSTransition;
+struct MetricDecision {
+    int warmup_iteration;
+    bool accepted;
+    double old_stiffness,candidate_stiffness;
+};
 enum class NUTSKernel { slice, multinomial };
 // The legacy slice kernel remains the default for reproducible existing runs.
 struct NUTSOptions {
@@ -14,6 +19,10 @@ struct NUTSOptions {
     bool find_initial_step_size=false; // Also search after each metric update.
     // Pseudo-observations retaining the previous window's POSITION covariance.
     double metric_shrinkage=0; // Zero preserves the original adaptation path.
+    bool conservative_warmup=false; // Shrink-only search; DA centered on the starting step.
+    double metric_max_stiffness_ratio=0; // 0 disables the local-curvature guard; otherwise >=1.
+    std::function<Eigen::MatrixXd(const Eigen::VectorXd&)> local_curvature;
+    std::function<void(const MetricDecision&)> metric_progress;
     // Optional observation only; called after every transition, including warmup.
     std::function<void(int,const Eigen::VectorXd&,const NUTSTransition&)> progress;
 };
@@ -33,6 +42,7 @@ struct NUTSResult {
     std::vector<NUTSTransition> transitions;
     std::vector<MetricUpdate> metric_updates;
     std::vector<StepSizeSearch> step_size_searches;
+    std::vector<MetricDecision> metric_decisions;
     double step_size;
 };
 NUTSResult sample_nuts(const LogDensity&,const Eigen::VectorXd&,const EuclideanMetric&,const NUTSOptions& = {});

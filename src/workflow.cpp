@@ -326,6 +326,10 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
         options.kernel=kernel=="slice"?NUTSKernel::slice:NUTSKernel::multinomial;
         options.find_initial_step_size=toml::find_or<bool>(cfg,"find_initial_step_size",false);
         options.metric_shrinkage=toml::find_or<double>(cfg,"metric_shrinkage",0.);
+        options.conservative_warmup=toml::find_or<bool>(cfg,"conservative_warmup",false);
+        options.metric_max_stiffness_ratio=toml::find_or<double>(cfg,"metric_max_stiffness_ratio",0.);
+        if(options.metric_max_stiffness_ratio>0 && prior_name!="reference_gaussian_vs")
+            throw std::invalid_argument("Local Gauss-Newton metric guard requires reference_gaussian_vs");
     } else {
         options.leapfrog_steps=toml::find_or<int>(cfg,"leapfrog_steps",options.leapfrog_steps);
         options.step_jitter=toml::find_or<double>(cfg,"step_jitter",options.step_jitter);
@@ -373,19 +377,32 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     bool issues=false;
     for(size_t chain=0;chain<initial.size();++chain) {
         options.chain_id=static_cast<std::uint64_t>(chain_offset)+chain;
-        const EuclideanMetric chain_metric=[&] {
-            if(initial_metric_name=="supplied") return metric;
-            const auto t=box.forward(initial[chain]);const auto e=problem.evaluate(t.q,true);
-            if(e.status!=EvaluationStatus::valid) throw std::runtime_error("Unresolved initial metric Jacobian");
+        const auto local_gauss_newton=[&](const Eigen::VectorXd& z) -> Eigen::MatrixXd {
+            const auto t=box.forward(z);const auto e=problem.evaluate(t.q,true);
+            if(e.status!=EvaluationStatus::valid) throw std::runtime_error("Unresolved Gauss-Newton metric Jacobian");
             const Eigen::MatrixXd j=e.jacobian*t.derivative.asDiagonal();
             Eigen::MatrixXd m=j.transpose()*j;
             m.diagonal().array()+=(t.q.array().exp()*t.derivative.array()/prior_sigma.array()).square();
-            return EuclideanMetric(m);
+            return m;
+        };
+        const EuclideanMetric chain_metric=[&] {
+            if(initial_metric_name=="supplied") return metric;
+            return EuclideanMetric(local_gauss_newton(initial[chain]));
         }();
         auto initial_mass_file=output_file(output/("chain_"+std::to_string(chain)+"_initial_mass.txt"));
         initial_mass_file<<chain_metric.mass()<<'\n';
         std::ofstream failed;
         std::ofstream progress;
+        std::ofstream decisions;int guard_evaluations=0;
+        if constexpr(nuts) if(options.metric_max_stiffness_ratio>0) {
+            decisions=output_file(output/("chain_"+std::to_string(chain)+"_metric_decisions.txt"));
+            decisions<<"# warmup_iteration accepted old_stiffness candidate_stiffness ratio; one additional Jacobian per decision\n";
+            options.local_curvature=[&](const Eigen::VectorXd& z) {++guard_evaluations;return local_gauss_newton(z);};
+            options.metric_progress=[&](const MetricDecision& d) {
+                decisions<<d.warmup_iteration<<' '<<d.accepted<<' '<<d.old_stiffness<<' '<<d.candidate_stiffness
+                         <<' '<<d.candidate_stiffness/d.old_stiffness<<std::endl;
+            };
+        }
         if constexpr(nuts) if(toml::find_or<bool>(cfg,"record_progress",false)) {
             progress=output_file(output/("chain_"+std::to_string(chain)+"_progress.txt"));
             progress<<"# iteration warmup status divergent depth evaluations step acceptance z[all parameters]\n";
@@ -421,6 +438,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             cost<<"target_evaluations="<<evaluation_index<<"\ntransition_evaluations="<<transitions
                 <<"\nstep_search_evaluations="<<probes<<"\ninitial_evaluations=1\npreflight_evaluations=1\nmetric_evaluations="
                 <<(initial_metric_name=="start_gauss_newton"?1:0)<<'\n';
+            if(options.metric_max_stiffness_ratio>0) cost<<"guard_evaluations="<<guard_evaluations<<'\n';
         }
         auto final_mass=output_file(output/("chain_"+std::to_string(chain)+"_mass.txt"));final_mass<<r.mass<<'\n';
         auto updates=output_file(output/("chain_"+std::to_string(chain)+"_metric_updates.txt"));
@@ -461,7 +479,9 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
             <<"\ninitial_metric="<<initial_metric_name
             <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws;
     if constexpr(nuts) metadata<<"\nsampler="<<(options.kernel==NUTSKernel::slice?"slice_nuts_hoffman_gelman_2014":"multinomial_nuts")
-        <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmetric_shrinkage="<<options.metric_shrinkage<<"\nmax_depth="<<options.max_depth;
+        <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmetric_shrinkage="<<options.metric_shrinkage<<"\nmax_depth="<<options.max_depth
+        <<"\nconservative_warmup="<<options.conservative_warmup
+        <<"\nmetric_max_stiffness_ratio="<<options.metric_max_stiffness_ratio;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;
     metadata<<"\ninitial_step_size="<<options.step_size
             <<"\nadapt_step_size="<<options.adapt_step_size<<"\ntarget_accept="<<options.target_accept
