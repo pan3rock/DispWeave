@@ -23,6 +23,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [联合速度提议对照](docs/rj-joint-refresh.md) 已完成：热链隔离未复现，但联合接受率仅 0.157%、失败率升至 8.05%，整体仍未验收。默认关闭，并暂停继续内核调参。
 [冻结相关联合提议](docs/rj-correlated-proposal.md) 已完成：联合接受率 20.84%，深度最低 bulk/tail ESS≈968/716，30/31 点通过；K=2 和一个深度点 R-hat 仍超标。计入旧训练样本成本，保留为默认关闭的有效候选。
 [剩余差异定位](docs/rj-remaining-diagnosis.md) 已完成：未发现单次超长停留；层数占比和 K=3/4 内部分布都有差异。仅分析旧轨迹，建议冻结配置后独立复验，暂不增加机制。
+[冻结配置独立复验](docs/rj-correlated-replication.md) 已完成：K=2/3/4 指示量通过，联合接受率20.45%，深度30/31点通过；停止本轮通用调参，仍保留完整后验未验收结论。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
