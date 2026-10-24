@@ -324,5 +324,29 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_data_discrimination.py --output results/rj-data-discrimination-new",
     "audit": "python scripts/audit_rj_data_discrimination.py results/rj-data-discrimination-new",
     "analyze_only": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_data_discrimination.py --output results/rj-data-discrimination --analyze-only"
+  },
+  "mode1_followup": {
+    "source": "results/rj-mode1-followup",
+    "report": "docs/rj-structure-paths.md#第一高阶窄频段复核",
+    "selection": "64 original + 64 disjoint physical states from same chains, balanced by chain/family; target separately.",
+    "prediction_model_calls": 129,
+    "prediction_queries": 1290,
+    "independent_model_frequency_scans": 90,
+    "scan_backend_fundamental_evaluations": 90,
+    "new_samples": 0,
+    "sha256": {
+      "scripts/check_rj_mode1_followup.py": "55162e4d7e76fd69871f668344f50aae7e6a93d0a7bde294e11d249bb5e3f875",
+      "scripts/audit_rj_mode1_followup.py": "d02bdac2d246d146068e6df5beb4310e0440ba7b0fa41cc775a0f63f6d4beb79",
+      "results/rj-mode1-followup/protocol.json": "17f05235415b8b447309ede38fd4308c79fd64d11b29af48624e5791e2c15482",
+      "results/rj-mode1-followup/selection.json": "d57c349c92d6f3122c5a82a673b2e2e5b32b61a864d7ec9102e8f97761288510",
+      "results/rj-mode1-followup/summary.json": "05830a2226810eb8c1b53c04007ca2cecf35617ff2d680c81a895cba37dcb282",
+      "results/rj-mode1-followup/audit.json": "958dce52da5db3964d39bd5d00ded383d7ba8113119d4e4c663c730d8aaeef0b",
+      "results/rj-mode1-followup/scan-models.txt": "bdc3b632e816f4f328eb00f97bdba2006ed05b0ec17304d7179781b76ab7d5a2",
+      "results/rj-mode1-followup/commands.json": "1d618d3b7eec6975c1e86098f0cfd567ab68971a2cd4d1ee51f4a725b6f48a59"
+    },
+    "build": "cmake --build build --target rj_forward_audit -j 2",
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_mode1_followup.py --output results/rj-mode1-followup-new",
+    "audit": "python scripts/audit_rj_mode1_followup.py results/rj-mode1-followup-new",
+    "analyze_only": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_mode1_followup.py --output results/rj-mode1-followup --analyze-only"
   }
 }

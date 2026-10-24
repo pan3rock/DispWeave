@@ -63,16 +63,16 @@
 </head>
 <body>
 <main>
-<header><h1>DispWeave · 阶段结果</h1><p>合成数据 · 仅本地查看 · 主体反演复用已有结果；新增观测筛查完成 65 次正演，无新采样。</p>
+<header><h1>DispWeave · 阶段结果</h1><p>合成数据 · 仅本地查看 · 主体反演复用已有结果；最新高阶观测复核完成，无新采样。</p>
 <nav aria-label="结果导航"><a href="#rj-lvz">低速夹层</a><a href="#two-layer">两层对照</a><a href="#fixed">固定层结果</a><a href="#config">复现入口</a><a href="history.html">历史诊断</a></nav></header>
 <div class="status"><strong>RJMCMC 本轮到此收尾：能解释数据、恢复主要特征；完整定量后验尚未验收。</strong>
 <p>停止当前通用调参与界面重排研究。层数和额外界面的样本占比不能当作可靠的精确概率。<a href="../../docs/rj-predictive-closeout.md#当前阶段总览">阶段结论与复现清单</a></p></div>
 <section id="rj-lvz" class="section-title"><h2>三层低速夹层：恢复了什么？</h2><p>12 个基阶观测，σ=0.03 km/s；目标界面 0.8/1.8 km，Vs=1.6/1.0/2.3 km/s。RJ 允许 1–4 层、界面自由变化。绿色为目标；各图颜色以图内图例为准。</p></section>
 <figure id="lvz-result"><figcaption><h2>低速夹层位置、速度区间与数据拟合</h2><p>正式样本约 98.3% 含低速夹层；条件顶部/底部中位数为 0.803/1.785 km。400 个预测全部有效。但深度仅 3/31 点通过诊断，最大 R̂≈1.050；这些区间和事件比例是未完全收敛样本的描述。图内两层 LM 拟合无噪声目标，属于受限结构对照。<a href="../../docs/rj-lvz-transfer.md">报告</a></p></figcaption><a class="image-link" href="../../results/rj-lvz-transfer/transfer.png" target="_blank" rel="noopener"><img src="../../results/rj-lvz-transfer/transfer.png" alt="低速夹层位置、速度区间与数据拟合" loading="lazy"></a></figure>
 <p class="note">额外界面可位于夹层上方或下方；已有两类预测中位曲线最大差约 0.33σ（B 类仅 23 个预测模型）。约 97% 的已观察结构切换经过 K=3，因此暂不增加重排机制。<a href="../../results/rj-structure-paths/comparison.png">结构与预测图</a> · <a href="../../docs/rj-structure-paths.md">路径依据与限制</a></p>
-<details id="data-discrimination"><summary>新增观测筛查：第一高阶 0.6 Hz 有线索，暂不启动新反演</summary>
-<p class="note">已有 A/B 两类各取32个模型，按链均衡；本次65次正演，无新采样。第一高阶0.6 Hz的中位数差约4.53σ，四链方向一致，但类内区间仍重叠，相邻频点未共同通过预设规则。基阶扩频未显示稳健区分能力；4个高阶查询有缺失或未解析状态，不参与评分。噪声0.03 km/s为假设，不代表实际高阶拾取精度。<a href="../../docs/rj-structure-paths.md#后续数据辨别力筛查扩频与高阶模态">方案、数值与限制</a></p>
-<a class="image-link" href="../../results/rj-data-discrimination/discrimination.png" target="_blank" rel="noopener"><img src="../../results/rj-data-discrimination/discrimination.png" alt="两类结构在原频段、低频、高频和前两个高阶模态上的预测区间与分散校正差异。" loading="lazy"></a>
+<details id="data-discrimination"><summary>新增观测复核：第一高阶 0.60–0.80 Hz 值得进入有限预算对照</summary>
+<p class="note">原组与另一组各64个已有模型，在0.60–0.80 Hz的5个连续网格点共同通过差异筛选，四链方向一致；两组物理模型不重合，但仍来自相同相关链。9个代表模型在5个频点的独立根核查通过（45/45），mode=1与第二根最大差约3.9×10⁻¹⁴ km/s。区间仍重叠，噪声0.03 km/s为假设，不代表已唯一辨认结构。本轮129次预测调用，另有两档根扫描，无新链。<a href="../../docs/rj-structure-paths.md#第一高阶窄频段复核">方案、审计与限制</a> · <a href="../../results/rj-data-discrimination/discrimination.png">上一轮宽频初筛</a></p>
+<a class="image-link" href="../../results/rj-mode1-followup/followup.png" target="_blank" rel="noopener"><img src="../../results/rj-mode1-followup/followup.png" alt="第一高阶加密频点：原组和另一组的两类模型预测区间、噪声单位差异与分散校正差异，0.60至0.80赫兹网格点共同通过。" loading="lazy"></a>
 </details>
 <section id="two-layer" class="section-title"><h2>两层算例：目标、LM、NUTS 与 RJMCMC</h2><p>另一组 12 点合成数据，σ=0.03 km/s。LM/NUTS 已知并固定目标界面 1.5 km；RJ 允许 1–4 层并移动界面。以下图按各自实验展示，不能据此作公平的方法优劣排名。</p></section>
 <figure id="rj-uncertainty"><figcaption><h2>目标、LM 与两次冻结提议 RJ 的结构区间</h2><p>两次各使用全部 100000 个正式冷状态，分别汇总。主界面附近区间宽，额外分层不唯一；浅层速度在本参数化下较集中。深部受半空间与界面上限约束，区间收窄不代表任意深部结构可辨。完整后验仍未验收。</p></figcaption><a class="image-link" href="../../results/rj-predictive-closeout/model-uncertainty.png" target="_blank" rel="noopener"><img src="../../results/rj-predictive-closeout/model-uncertainty.png" alt="目标、LM 与两次冻结提议 RJ 的结构区间" loading="lazy"></a></figure>
