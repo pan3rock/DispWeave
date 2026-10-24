@@ -37,7 +37,7 @@ def plots(output, target, reference, recovered, data, predictions, quantiles, ch
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.rcParams.update({'font.size': 10, 'axes.spines.top': False, 'axes.spines.right': False})
-    target_color, reference_color, lm_color = '#b65b2d', '#7f8789', '#28745d'
+    target_color, reference_color, lm_color = '#b65b2d', '#7f8789', '#cc3377'
     bottom = max(350., target['depth'][-1]+20, reference['depth'][-1]+20)
 
     def stairs(ax, model, label, color, style='-', width=1.8):
@@ -54,7 +54,7 @@ def plots(output, target, reference, recovered, data, predictions, quantiles, ch
     for ax, depth in zip(axes, [bottom, 45]):
         stairs(ax, target, 'Supplied synthetic target (model_data.txt)', target_color, width=2.1)
         stairs(ax, reference, 'Inversion reference (mref.txt)', reference_color, '--', 1.5)
-        stairs(ax, recovered, 'Existing LM result (lambda=100, run 0)', lm_color)
+        stairs(ax, recovered, 'Existing LM result (lambda=100, run 0)', lm_color, '--', 2.0)
         ax.set(xlabel='Vs (km/s)', ylabel='Depth (km)', ylim=(depth, 0),
                title='Full model / native interfaces' if depth == bottom else 'Shallow structure / native interfaces')
         ax.grid(alpha=.18)
@@ -73,7 +73,7 @@ def plots(output, target, reference, recovered, data, predictions, quantiles, ch
         for name, label, color, style in [
                 ('target', 'Target: original Vp/rho', target_color, '-'),
                 ('reference', 'Reference: Brocher05', reference_color, '--'),
-                ('lm', 'Existing LM result', lm_color, '-')]:
+                ('lm', 'Existing LM result', lm_color, '--')]:
             values = predictions[name][idx]
             axes[0, col].plot(frequency, values, color=color, linestyle=style, linewidth=1.4, label=label)
             axes[1, col].plot(frequency, (values-observed)/data[idx, 3], color=color, linestyle=style, linewidth=1.2)
@@ -92,11 +92,11 @@ def plots(output, target, reference, recovered, data, predictions, quantiles, ch
     for ax, depth in zip(axes, [bottom, 45]):
         ax.fill_betweenx(z, np.r_[quantiles[0], quantiles[0, -1]],
                          np.r_[quantiles[2], quantiles[2, -1]], step='post',
-                         color='#4593bc', alpha=.23, label=f'{chains} chains: pointwise sample 95%')
+                         color='#0077bb', alpha=.10, label=f'{chains} chains: pointwise sample 95%')
         sample = dict(depth=reference['depth'], vs=quantiles[1])
-        stairs(ax, sample, 'Posterior median' if accepted else 'Sample median (diagnostic only)', '#3481b1', width=1.4)
+        stairs(ax, sample, 'Posterior median' if accepted else 'Sample median (diagnostic only)', '#0077bb', width=2.0)
         stairs(ax, reference, 'Inversion reference (mref.txt)', reference_color, '--', 1.4)
-        stairs(ax, recovered, 'Existing LM result (lambda=100)', lm_color, width=1.3)
+        stairs(ax, recovered, 'Existing LM result (lambda=100)', lm_color, '--', width=2.0)
         stairs(ax, target, 'Supplied synthetic target', target_color, width=2.1)
         ax.set(xlabel='Vs (km/s)', ylabel='Depth (km)', ylim=(depth, 0),
                title='Full model / native interfaces' if depth == bottom else 'Shallow structure / native interfaces')
