@@ -11,12 +11,13 @@ from joint_results import read_config
 
 out=Path(sys.argv[1]);protocol=json.loads((out/'protocol.json').read_text());source=Path(protocol['source'])
 selected=json.loads((out/'selection.json').read_text());summary=json.loads((out/'summary.json').read_text())
+cold=protocol.get('selection_kind')=='cold_by_ladder_K'
 strata=defaultdict(list);model_lookup={};response_lookup={};total=0;temperature_failures=Counter()
 for c in range(4):
     chosen_by_slot=defaultdict(set)
     for s in selected:
         if s['ladder']==c:chosen_by_slot[s['temperature_slot']].add(s['evaluation'])
-    for t in range(4):
+    for t in ([0] if cold else range(4)):
         folder=source/f'rj/ladder_{c}'
         trace=rows(folder/f'temperature_{t}_local_trace.txt')
         formal={int(r[9]) for r in trace if r[0]=='0' and r[3]=='1' and r[4] in ['forward_failure','numerical_failure']}
@@ -28,16 +29,27 @@ for c in range(4):
             if r[2]!='valid':strata[c,int(models[ev][2]),q].append((t,ev))
             if ev in chosen_by_slot[t]:response_lookup[c,t,ev,q]=r
         for ev in chosen_by_slot[t]:model_lookup[c,t,ev]=models[ev]
-assert total==json.loads((source/'summary.json').read_text())['formal_forward_failures']
+base=json.loads((source/'summary.json').read_text())
+assert total==(sum(r['production']['forward_failures']+r['production']['numerical_failures'] for r in base['sampler'] if r['temperature']==1) if cold else base['formal_forward_failures'])
 expected=[]
-for q in range(14):
+if cold:
+    assert len(selected)<=16 and all(s['temperature_slot']==0 for s in selected)
     for c in range(4):
-        found=False
-        for offset in range(4):
-            k=(q+c+offset)%4+1
-            candidates=strata.get((c,k,q),[])
-            if candidates:
-                t,ev=sorted(candidates)[len(candidates)//2];expected.append((c,t,ev,k,q,len(candidates)));found=True;break
+        for k in range(1,5):
+            qs=sorted(q for cc,kk,q in strata if cc==c and kk==k)
+            if not qs:continue
+            preferred=[q for q in qs if int(protocol['queries'][q][1])==(c+k)%2]
+            choices=preferred or qs;q=choices[(c+k)%len(choices)]
+            candidates=strata[c,k,q];t,ev=sorted(candidates)[len(candidates)//2]
+            expected.append((c,t,ev,k,q,len(candidates)))
+else:
+    for q in range(14):
+        for c in range(4):
+            for offset in range(4):
+                k=(q+c+offset)%4+1
+                candidates=strata.get((c,k,q),[])
+                if candidates:
+                    t,ev=sorted(candidates)[len(candidates)//2];expected.append((c,t,ev,k,q,len(candidates)));break
 assert expected==[(s['ladder'],s['temperature_slot'],s['evaluation'],s['k'],s['query'],s['stratum_count']) for s in selected]
 counts=Counter();status_comparisons=0;max_phase_error=0.;positive_control_errors=[]
 truth=read_config(source/'truth.toml')
@@ -72,5 +84,5 @@ report=dict(passed=True,selected_pairs_verified=len(selected),formal_failed_cand
     all_saved_response_statuses_verified=status_comparisons,maximum_saved_valid_phase_error=max_phase_error,
     auxiliary_fundamental_matches_with_positive_root=len(positive_control_errors),max_auxiliary_first_root_error=max(positive_control_errors,default=None),
     categories_independently_verified=dict(counts),source_hashes_unchanged=True,new_forward_calls=0,
-    limitations='No selected T=1 candidates; stratified scan is not a random prevalence estimate or root absence certificate.')
+    limitations=('T=1 only, one pair per occupied ladder/K; not exhaustive or a physical absence certificate.' if cold else 'No selected T=1 candidates; stratified scan is not a random prevalence estimate or root absence certificate.'))
 (out/'independent-audit.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))

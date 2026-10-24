@@ -45,21 +45,26 @@ def select(source):
     return selected,inventory,empty,hashes,total
 
 
-def run(out):
+def run(out, selector=select, maximum_pairs=56, selection_kind="all_temperatures", selection_description=None, selector_script=None):
     out.mkdir(parents=True,exist_ok=False)
     for src,name in [(SOURCE/'dispweave','dispweave'),(Path('build/rj_forward_audit'),'rj_forward_audit'),(Path(__file__),'run-script.py')]:shutil.copy2(src,out/name)
-    selected,inventory,empty,hashes,total=select(SOURCE)
+    selected,inventory,empty,hashes,total=selector(SOURCE)
+    if selector_script is not None:
+        shutil.copy2(selector_script,out/'selector-script.py')
+        hashes[str(Path(selector_script).resolve())]=digest(Path(selector_script))
     for p in [SOURCE/'observations.txt',SOURCE/'rj.toml',SOURCE/'truth.toml',SOURCE/'summary.json',Path('benchmarks/rj_forward_audit.cpp'),Path('tests/independent_reference.hpp')]:hashes[str(p.resolve())]=digest(p)
     obs=np.loadtxt(SOURCE/'observations.txt');assert obs.shape==(14,4)
     save(out/'selection.json',selected);save(out/'inventory.json',dict(formal_failed_models=total,strata=inventory,empty_query_ladder_cells=empty))
-    protocol=dict(source=str(SOURCE.resolve()),maximum_pairs=56,actual_pairs=len(selected),queries=obs[:,[0,2]].tolist(),scan_segments=[5000,10000],
-        selection='One failed model per observed query and ladder; cyclic K priority 1+(q+c+j)%4, j=0..3; first occupied K, sorted (temperature slot,evaluation), choose floor(N/2). Formal failures only; no fit selection, no fill of empty cells.',
+    protocol=dict(source=str(SOURCE.resolve()),maximum_pairs=maximum_pairs,selection_kind=selection_kind,actual_pairs=len(selected),queries=obs[:,[0,2]].tolist(),scan_segments=[5000,10000],
+        selection=selection_description or 'One failed model per observed query and ladder; cyclic K priority 1+(q+c+j)%4, j=0..3; first occupied K, sorted (temperature slot,evaluation), choose floor(N/2). Formal failures only; no fit selection, no fill of empty cells.',
         budget=dict(full14_prediction_calls=len(selected),independent_model_frequency_scans=2*len(selected),scan_auxiliary_fundamental_evaluations=2*len(selected),new_samples=0),
         comparison='Use saved failure and fresh full-query production status at requested mode; compare required root ordinal (mode+1) to independently scanned ordered roots. Scanner auxiliary backend output is mode0 and is NOT the requested-mode check.',
         classify='If fresh status differs, mark reproduction discrepancy. If either scan reports failure or root counts/locations disagree >1e-6, mark reference inconclusive. Stable clean scans with enough roots are suspected production miss, not automatically proven. Otherwise no requested root found by finite scan, never physical-absence proof.',
         scan_domain='.5*min(Vs) to halfspace Vs*(1-1e-8); finite real trapped-wave sign-change scan, no global completeness guarantee.',
         stopping='Fixed sample, no widening or additional chains. If suspected mismatch occurs, inspect it before any solver change; no unsupported patch.',
         source_hashes=hashes,hashes={n:digest(out/n) for n in ['dispweave','rj_forward_audit','run-script.py','selection.json','inventory.json']})
+    assert len(selected)<=maximum_pairs
+    if selector_script is not None:protocol['hashes']['selector-script.py']=digest(out/'selector-script.py')
     save(out/'protocol.json',protocol);truth=read_config(SOURCE/'truth.toml');commands=[]
     for s in selected:
         i=s['row'];k=s['k'];z=s['model_state'][:k-1];v=np.array(s['model_state'][k-1:])

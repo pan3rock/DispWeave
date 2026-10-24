@@ -1,6 +1,6 @@
 # 三层低速夹层：固定预算迁移验证
 
-采样结论见“冻结新提议的独立种子复验与收尾”；文末新增失败候选有限核查，未改变后验未验收结论。此前各轮记录均保留。
+采样结论见“冻结新提议的独立种子复验与收尾”；文末冷槽补查已完成，这轮有限核查到此收尾，未改变后验未验收结论。此前各轮记录均保留。
 
 **当前方法能恢复本算例的低速夹层特征，但相同预算下的定量后验没有通过验收。**
 新算例的相关联合提议仍改善了部分深度混合，不过收益明显弱于此前两层算例。
@@ -403,6 +403,8 @@ python scripts/audit_rj_pt_transdim.py results/rj-mode-refit-replication-new
 
 ## 失败候选的有限独立求根核查
 
+本节保留最初56点核查；T=1遗漏已在文末“冷温度槽补查与核查收尾”中单独补查。
+
 **固定抽查的56个模型—频点对没有发现明确漏根线索；本轮不修改求解器，也不扩大扫描。**
 生产求解器重现了保存的失败状态；两档独立扫描一致，均未找到支持请求模态所需数量的根。
 这是抽查范围内的一致性，不是物理缺模态证明，也不解除完整后验的支持范围限制。
@@ -483,4 +485,69 @@ MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --outpu
 python scripts/check_rj_failure_audit.py results/rj-mode-failure-audit-new
 # 只重算已有扫描统计与图，不执行新正演
 MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit --analyze-only
+```
+
+
+## 冷温度槽补查与核查收尾
+
+**补查12个T=1失败候选后，未发现明确漏根或状态复现不一致。这轮有限可靠性检查到此结束。**
+已补上上一轮没有冷槽样本的覆盖缺口；不扩大扫描、不修改求解器、不启动新链。
+这不等于穷尽全部频点/层数组合，更不构成全域根完整性或物理缺模态证明。
+
+[冷槽核查图](../results/rj-cold-failure-audit/failure-audit.png) ·
+[固定方案](../results/rj-cold-failure-audit/protocol.json) ·
+[12个候选来源](../results/rj-cold-failure-audit/selection.json) ·
+[逐点结果](../results/rj-cold-failure-audit/summary.json) ·
+[独立核对](../results/rj-cold-failure-audit/independent-audit.json)
+
+### 最多16个，实际12个
+
+仅从同一种子2026103102的T=1正式期失败集合取样，共14603个候选。
+每条链、每个非空K取1个，最多4×4=16个；空层数不补齐。
+每个链c、层数K优先选择mode=(c+K)%2的失败查询，若该类无失败才使用另一类；
+在该类排序的失败查询中取索引`(c+K)%len`，再按评估编号取`floor(N/2)`处的候选。
+规则在新正演前固定，不读似然、不按新扫描结果替换候选。
+
+冷槽失败集合只有K=2/3/4，所以实际12个，各链3个，各K4个；没有K=1失败记录，
+不是将K=1认证为精确零后验概率。12个物理模型互不相同，全部来自T=1。
+基阶与第一高阶失败各6个，两类都得到覆盖。
+
+具体基阶频率为约0.20777、0.28778、0.39860 Hz；高阶点均为0.65 Hz。
+因此本次**未扫描冷槽0.60 Hz候选，也未覆盖全部基阶频点**。
+补齐的是冷温度槽这一维的遗漏，仍不是全频率×链×层数组合的穷举；未因选样分布追加实验。
+
+### 有限扫描结果
+
+每个候选重算完整14点响应，指定失败频率沿用5000/10000段独立P/SV扫描：
+
+- 6个基阶失败点：两档均未找到根。
+- 6个第一高阶失败点：3个找到1个根、3个没有根，均未找到所请求的第二根。
+- 两档根数与位置一致，参考扫描失败0，疑似生产漏根0，生产失败状态复现差异0。
+- 全部168个生产响应状态与保存记录一致；有效相速度最大差4.99e−13 km/s。
+- 对参考找到基阶根的3个组合，两档共6个附带生产基阶值与独立第一根最大差1.55e−15 km/s。
+
+只报告“有限扫描未找到请求根”，不将其改称“已证明物理缺模态”。
+扫描仍可能遗漏极近根或切触根，参考法的浮点条件也有适用范围。
+先前热槽56对和本次冷槽12对分别保留；不能将其合并成随机抽样的失败率估计。
+
+### 验证和停止边界
+
+本轮12次完整模型正演（168个查询）、24个独立模型—频率扫描，
+初始网格180024个世俗函数点，另有根细化和24次附带生产基阶评估；新增采样0。
+两项独立参考相关CTest通过，源文件hash不变。
+
+独立检查重新构建T=1分层集合、选样、物性、168个历史响应和根分类，全部通过。
+共享审计工具增加冷槽入口后，原56对独立审计结果逐字节重现，无额外正演；历史核查证据未被覆盖。
+本轮只增加选样与核查逻辑，没有修改C++求解器。
+
+目前没有明确不一致可供修复，按事先边界停止这轮核查。
+冻结提议与两次采样结果继续保留，完整后验仍未验收；不因增加了冷槽抽查而提升为全域可靠性认证。
+
+```sh
+cmake --build build --target rj_forward_audit -j 2
+ctest --test-dir build -R '^(independent|trapped_domain)$' --output-on-failure
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_cold_failures.py --output results/rj-cold-failure-audit-new
+python scripts/check_rj_failure_audit.py results/rj-cold-failure-audit-new
+# 仅重算已有结果图，不做新正演
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_cold_failures.py --output results/rj-cold-failure-audit --analyze-only
 ```

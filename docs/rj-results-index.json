@@ -494,5 +494,42 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit-new",
     "audit": "python scripts/check_rj_failure_audit.py results/rj-mode-failure-audit-new",
     "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit --analyze-only"
+  },
+  "cold_failure_root_audit": {
+    "source": "results/rj-cold-failure-audit",
+    "report": "docs/rj-lvz-transfer.md#冷温度槽补查与核查收尾",
+    "candidate_source": "results/rj-mode-refit-replication",
+    "maximum_pairs": 16,
+    "selected_pairs": 12,
+    "temperature": 1,
+    "layers": [
+      2,
+      3,
+      4
+    ],
+    "mode0_pairs": 6,
+    "mode1_pairs": 6,
+    "full_prediction_calls": 12,
+    "prediction_queries": 168,
+    "independent_model_frequency_scans": 24,
+    "auxiliary_fundamental_evaluations": 24,
+    "new_samples": 0,
+    "findings": "No requested roots found by either finite scan; no clear mismatch; cold-slot omission supplemented, study closed.",
+    "limitations": "High-mode cold samples only at .65 Hz. Not exhaustive or physical absence proof; full posterior remains unaccepted.",
+    "sha256": {
+      "scripts/audit_rj_cold_failures.py": "d3c5ddaa4abe2753ab06a98f5adf6f33f26ee146bfbc9d0465d904eca08fbc9b",
+      "scripts/audit_rj_mode_failures.py": "ec5dba805f6626587f8b58002ed0f7644ecb4fe412ccb65e3831d9e6476c5947",
+      "scripts/check_rj_failure_audit.py": "79d081a83bb2ede94e0a25f6ff865ed6128b0fdd3eba3333309075b6f17ba62d",
+      "results/rj-cold-failure-audit/protocol.json": "25b35e439143c6a6e7c6a130a725578d1f821071032c5d9994e4aca1dd726711",
+      "results/rj-cold-failure-audit/selection.json": "5a2b66a1bfa59a0c724d66ea7b14850f40d3e6959fcfdd8d6f7ba64a51b9ffd4",
+      "results/rj-cold-failure-audit/inventory.json": "08dcbe1eba36bee059bfdbce51cd5784772acf859812808272363e29fb3f237c",
+      "results/rj-cold-failure-audit/summary.json": "1d1a0273ac0670be906226265a633cf6a952f9a8f3a1e74d44e522cb9a1ca1c3",
+      "results/rj-cold-failure-audit/independent-audit.json": "353b801db974885e4bfd768ea1ec449a1227940a620b60e946c44aff32fe2a8e",
+      "results/rj-cold-failure-audit/regression.json": "8f74ab7bce5bbdd5617ac306ed44670bc7b0bbd66e7a16a7e549910c18a70fa3",
+      "results/rj-cold-failure-audit/commands.json": "99b153e97d773285de5154ca06890fe2baa743de0676af70dbc7d9905dcd512d"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_cold_failures.py --output results/rj-cold-failure-audit-new",
+    "audit": "python scripts/check_rj_failure_audit.py results/rj-cold-failure-audit-new",
+    "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_cold_failures.py --output results/rj-cold-failure-audit --analyze-only"
   }
 }
