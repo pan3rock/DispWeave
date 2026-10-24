@@ -18,6 +18,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [固定 K=2 的自由界面检查](docs/rj-fixed-k2.md) 四链通过；[K=3/4 检查](docs/rj-fixed-higher-k.md) 均失败，优先改进高层数内部结构探索，暂不重写 birth/death。
 [开源实现调研](docs/rj-open-source-review.md) 已核查近期 BayesBay/Eryn/openMCMC 与 BayHunter：保留当前正确性基线。[PT 对照已完成](docs/rj-tempering-validation.md)：K=4 最差 R-hat 从 1.706 降至 1.051，成本接近，但仍未达到验收线。
 [PT 慢变量分析](docs/rj-pt-bottleneck.md) 已定位第三界面相关结构访问不一致；暂不继续调固定 K=4，[原 K=1–4 PT 对照已完成](docs/rj-pt-transdim.md)：层数混合改善，深度仍未达标，发现第 0 梯最热链隔离及较多正演失败。
+[异常热链独立核查](docs/rj-hot-branch-audit.md) 已完成：17 个模型、两档根扫描未发现明确不一致；温度梯在早期预热已隔离，转向检查初始化/预热衔接，仍不解除正演限制。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
