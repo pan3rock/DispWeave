@@ -26,6 +26,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [冻结配置独立复验](docs/rj-correlated-replication.md) 已完成：K=2/3/4 指示量通过，联合接受率20.45%，深度30/31点通过；停止本轮通用调参，仍保留完整后验未验收结论。
 [RJ 后验预测与阶段收尾](docs/rj-predictive-closeout.md)：两次各400个预测模型无失败，均能解释12点合成观测；主界面附近与额外分层仍不确定。停止本轮通用调参，保留完整后验未验收结论。
 [三层低速夹层迁移验证](docs/rj-lvz-transfer.md)：使用新预运行训练提议，恢复了低速层特征，但正式深度仅3/31点通过、最大R-hat≈1.050；不能将两层算例表现推广为通用收敛保证。
+[低速夹层混合问题定位](docs/rj-lvz-mixing-diagnosis.md)：离线重建44万步、无新增正演；冷链K=4联合接受率仅0.61%，主要损失是越界和拟合变差，优先验证固定K的局部相关更新。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**

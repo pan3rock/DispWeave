@@ -96,6 +96,7 @@
   <figure id="rj-lvz">
     <figcaption>
       <div class="figure-heading"><h2>RJMCMC：三层低速夹层迁移验证</h2><a href="../../docs/rj-lvz-transfer.md">新算例报告</a></div>
+      <p><strong>剩余问题已定位：</strong>冷链K=4的联合提议接受率仅0.61%，约35.4%越界；有效候选的主要损失是拟合变差。夹层厚度与速度强相关，优先验证层内局部更新。此次只重建和分析旧轨迹，新增正演/采样均为0。<a href="../../results/rj-lvz-diagnosis/diagnosis.png" target="_blank" rel="noopener">参数相关性与拒绝分类图</a> · <a href="../../docs/rj-lvz-mixing-diagnosis.md">定位依据与下一步</a></p>
       <p>目标界面0.8/1.8 km，Vs=1.6/1.0/2.3 km/s。使用新算例自己的预运行训练提议，训练成本计入。约98.3%正式状态含低速夹层，位置中位数接近目标，400次预测均成功；但深度仅3/31点通过，最大R̂≈1.050。能恢复特征，定量后验仍未验收，没有继续调参。</p>
     </figcaption>
     <a class="image-link" href="../../results/rj-lvz-transfer/transfer.png" target="_blank" rel="noopener"><img src="../../results/rj-lvz-transfer/transfer.png" alt="新三层低速夹层算例：真值与填平对照、后验预测、层数占比、新预运行和正式验证速度区间，以及未通过的深度收敛诊断。" loading="lazy"></a>
