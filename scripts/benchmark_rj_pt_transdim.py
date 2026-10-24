@@ -25,9 +25,10 @@ def read_models(path, prior, draws):
     return rows
 
 
-def analyze(out,source):
+def analyze(out,source=None):
     cfg=read_config(out/'rj.toml');assert cfg==read_config(out/'rj/config.toml')
-    restored=copy.deepcopy(cfg);restored['rjmcmc']=read_config(source/'rj.toml')['rjmcmc'];restored.pop('rj_correlated_models',None);assert restored==read_config(source/'rj.toml')
+    if source is not None:
+        restored=copy.deepcopy(cfg);restored['rjmcmc']=read_config(source/'rj.toml')['rjmcmc'];restored.pop('rj_correlated_models',None);assert restored==read_config(source/'rj.toml')
     protocol=json.loads((out/'protocol.json').read_text())
     for name,h in protocol['hashes'].items():assert digest(out/name)==h
     start_steps=cfg['rjmcmc']['tempering'].get('cold_start_steps',0)
@@ -87,17 +88,20 @@ def analyze(out,source):
     for index in range(3):
         indicator=np.array([[float(int(r[1])>index+1 and np.argmax(np.abs(np.diff(r[3+int(r[1]):])))==index) for r in chain] for chain in cold])
         structural.append(dict(jump_at_interface=index+1,per_chain=indicator.mean(axis=1).tolist(),**diagnose(indicator)))
-    old=json.loads((source/'rj-diagnostics.json').read_text());oldcost=8
-    for c in range(4):oldcost+=int(np.sum(np.loadtxt(source/f'rj/chain_{c}_trace.txt',dtype=str,skiprows=1)[:,3]=='1'))
+    baseline={}
+    if source is not None:
+        old=json.loads((source/'rj-diagnostics.json').read_text());oldcost=8
+        for c in range(4):oldcost+=int(np.sum(np.loadtxt(source/f'rj/chain_{c}_trace.txt',dtype=str,skiprows=1)[:,3]=='1'))
+        baseline=dict(total_target_evaluations=oldcost,layer_probabilities=old['layer_probabilities'],depth_profiles=old['depth_profiles'],formal_evaluations=sum(s['target_evaluations'] for s in old['sampler']),formal_forward_failures=sum(s['forward_failures'] for s in old['sampler']))
     def good(d):return d['status']=='no_flag' and d['rhat']<=1.01 and min(d['ess_bulk'],d['ess_tail'])>=400
     ds=[p['diagnostics'] for p in probs]+profiles
     report=dict(accepted=False,mixing_passed=all(good(d) for d in ds),visited_K_mixing_passed=all(good(p['diagnostics']) for p in probs if p['probability']>0),depth_mixing_passed=all(good(p) for p in profiles),
         layer_probabilities=probs,depth_profiles=profiles,structural_indicators=structural,sampler=sampler,exchange=exchange,total_target_evaluations=cost,
         formal_evaluations=sum(s['production']['evaluations'] for s in sampler),formal_forward_failures=sum(s['production']['forward_failures'] for s in sampler),formal_numerical_failures=sum(s['production']['numerical_failures'] for s in sampler),
-        baseline=dict(total_target_evaluations=oldcost,layer_probabilities=old['layer_probabilities'],depth_profiles=old['depth_profiles'],formal_evaluations=sum(s['target_evaluations'] for s in old['sampler']),formal_forward_failures=sum(s['forward_failures'] for s in old['sampler'])),
+        baseline=baseline,
         interpretation='Unvisited K is not certified zero probability. Hot states are excluded from posterior diagnostics. Forward failures remain an unresolved support limitation.')
     report['accepted']=report['mixing_passed'] and report['formal_forward_failures']==0 and report['formal_numerical_failures']==0
-    if start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0) or cfg['rjmcmc'].get('correlated_probability',0):
+    if source is not None and (start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0) or cfg['rjmcmc'].get('correlated_probability',0)):
         previous=json.loads(Path('results/rj-pt-transdim/summary.json').read_text())
         report['previous_pt']={k:previous[k] for k in ['layer_probabilities','depth_profiles','exchange','total_target_evaluations','formal_forward_failures','formal_evaluations']}
     save_json(out/'summary.json',report)
@@ -116,8 +120,9 @@ def plot(out,report):
         axes[0].plot(range(1,5),[p['per_chain'][c] for p in probs],marker='o',color=color,label=f'Cold chain {c}')
         q=np.array([p['chain_quantiles'][c] for p in profiles]);axes[1].plot(q[:,1],depth,color=color)
     axes[0].set(xticks=range(1,5),xlabel='K (includes halfspace)',ylabel='Observed fraction');axes[0].legend(fontsize=8)
-    axes[1].plot([1,1,2.3,2.3],[0,1.5,1.5,5],color='#228833',ls='--',label='Target');axes[1].set(xlabel='Per-chain median Vs (km/s)',ylabel='Depth (km)',ylim=(5,0));axes[1].legend(fontsize=8)
-    axes[2].plot([p['rhat'] for p in old['depth_profiles']],depth,label='Original RJ',color='#0077bb')
+    target=read_config(out/'truth.toml')['model'];tz=np.array(target['depth']+[5.]);tv=np.array(target['vs'])
+    axes[1].plot(np.repeat(tv,2),np.repeat(tz,2)[1:-1],color='#228833',ls='--',label='Target');axes[1].set(xlabel='Per-chain median Vs (km/s)',ylabel='Depth (km)',ylim=(5,0));axes[1].legend(fontsize=8)
+    if old:axes[2].plot([p['rhat'] for p in old['depth_profiles']],depth,label='Original RJ',color='#0077bb')
     axes[2].plot([p['rhat'] for p in profiles],depth,label=label,color='#aa4499');axes[2].axvline(1.01,color='#222222',ls='--');axes[2].set(xlabel='Depth Vs R-hat',ylim=(5,0));axes[2].legend(fontsize=8)
     if 'previous_pt' in report:
         axes[2].plot([p['rhat'] for p in report['previous_pt']['depth_profiles']],depth,label='Previous PT',color='#777777',ls=':');axes[2].legend(fontsize=8)

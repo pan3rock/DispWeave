@@ -63,7 +63,7 @@
   <header>
     <h1>DispWeave · 反演结果</h1>
     <p>地壳合成数据 · 125 个观测点 · 最新完整验收：0.95＋步长搜索。仅本地查看。</p>
-    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#small-lvz">独立六层算例</a><a href="#rj-predictive">RJMCMC 结果</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
+    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#small-lvz">独立六层算例</a><a href="#rj-lvz">RJMCMC 结果</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
   </header>
   <div class="status"><strong>原地壳算例：固定层 NUTS 四链验收通过，采样约 5 分钟。</strong>
     每链预热 1000、正式 1000，共 4000 个正式状态。最大 R̂ = 1.00352，最低 bulk / tail ESS ≈ 1695 / 1990。
@@ -92,6 +92,13 @@
       <p><a href="../../docs/small-lvz-validation.md">完整结果与限制</a> · <a href="../../results/small-lvz-validation/truth.toml">目标模型</a> · <a href="../../results/small-lvz-validation/reference.toml">参考模型</a> · <a href="../../results/small-lvz-validation/observations.txt">合成观测</a> · <a href="../../results/small-lvz-validation/nuts.toml">采样配置</a></p>
     </figcaption>
     <a class="image-link" href="../../results/small-lvz-validation/comparison.png" target="_blank" rel="noopener" aria-label="打开六层低速模型验证原图"><img src="../../results/small-lvz-validation/comparison.png" alt="独立六层算例的目标、参考、LM、NUTS 后验，频散数据拟合与标准化残差。" loading="lazy"></a>
+  </figure>
+  <figure id="rj-lvz">
+    <figcaption>
+      <div class="figure-heading"><h2>RJMCMC：三层低速夹层迁移验证</h2><a href="../../docs/rj-lvz-transfer.md">新算例报告</a></div>
+      <p>目标界面0.8/1.8 km，Vs=1.6/1.0/2.3 km/s。使用新算例自己的预运行训练提议，训练成本计入。约98.3%正式状态含低速夹层，位置中位数接近目标，400次预测均成功；但深度仅3/31点通过，最大R̂≈1.050。能恢复特征，定量后验仍未验收，没有继续调参。</p>
+    </figcaption>
+    <a class="image-link" href="../../results/rj-lvz-transfer/transfer.png" target="_blank" rel="noopener"><img src="../../results/rj-lvz-transfer/transfer.png" alt="新三层低速夹层算例：真值与填平对照、后验预测、层数占比、新预运行和正式验证速度区间，以及未通过的深度收敛诊断。" loading="lazy"></a>
   </figure>
   <figure id="rj-predictive">
     <figcaption>
