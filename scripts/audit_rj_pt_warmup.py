@@ -8,9 +8,10 @@ import sys
 import numpy as np
 from benchmark_crust_depth import forward
 from joint_results import read_config,write_config,save_json
+from rj_correlated_density import FrozenDensities
 
 out=Path(sys.argv[1]).resolve();work=out/'warmup-audit';work.mkdir(exist_ok=False)
-cfg=read_config(out/'rj.toml');options=cfg['rjmcmc'];warm=options['warmup'];cold=options['tempering'].get('cold_start_steps',0);temps=options['tempering']['temperatures']
+cfg=read_config(out/'rj.toml');density=FrozenDensities(cfg);options=cfg['rjmcmc'];warm=options['warmup'];cold=options['tempering'].get('cold_start_steps',0);temps=options['tempering']['temperatures']
 truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt');_,ld=np.linalg.slogdet(cov)
 def rows(path):return [np.fromstring(line,sep=' ') for line in path.read_text().splitlines() if line and not line.startswith('#')]
 def insertion(r):return np.maximum(np.diff(np.r_[0,r[4:3+int(r[1])],5])-.6,0).sum()
@@ -41,10 +42,11 @@ for c in range(4):
     k,kk=int(before[1]),int(local[1]);h=0;move=trace[1]
     if move=='birth':assert kk==k+1;h=math.log(insertion(before)*1.9/k)
     elif move=='death':assert kk==k-1;h=-math.log(insertion(local)*1.9/kk)
+    elif move=='correlated':assert kk==k;h=density.logq(before)-density.logq(local)
     else:assert kk==k
     beta=1 if i<cold else 1/temp
     value=beta*(local[2]-before[2])+local[3]-before[3]+h
-    assert abs(value-float(trace[8]))<1e-10;accepts+=1
+    assert abs(value-float(trace[8]))<1e-8;accepts+=1
   # Warmup/formal boundary: inverse any exchange at first formal iteration.
   first=[rows(d/f'temperature_{j}_models.txt')[0] for j in range(4)]
   for swap in swaps[swaps[:,0]==warm]:

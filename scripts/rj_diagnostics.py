@@ -82,7 +82,7 @@ def analyze(directory, grid_points=51):
                      target_evaluations=sum(r['evaluated'] == '1' for r in rows),
                      actions={move: dict(proposals=sum(r['move'] == move for r in rows),
                                          accepted=sum(r['move'] == move and r['accepted'] == '1' for r in rows),
-                                         unavailable=sum(r['move'] == move and r['proposal_status'] == 'unavailable' for r in rows)) for move in ('birth', 'death', 'interface', 'velocity', 'velocity_refresh')})
+                                         unavailable=sum(r['move'] == move and r['proposal_status'] == 'unavailable' for r in rows)) for move in ('birth', 'death', 'interface', 'velocity', 'velocity_refresh', 'correlated')})
         sampler.append(entry)
     warning = (any(p['diagnostics']['status'] != 'no_flag' for p in probabilities) or
                any(p['status'] != 'no_flag' for p in profiles) or

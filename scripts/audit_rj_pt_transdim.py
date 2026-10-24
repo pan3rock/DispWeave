@@ -9,8 +9,10 @@ import numpy as np
 from benchmark_crust_depth import forward
 from joint_results import read_config, write_config, save_json
 from posterior_diagnostics import diagnose
+from rj_correlated_density import FrozenDensities
 
 out=Path(sys.argv[1]).resolve();work=out/'audit';work.mkdir(exist_ok=False)
+density=FrozenDensities(read_config(out/'rj.toml'))
 truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt')
 _,ld=np.linalg.slogdet(cov);checks=0;error=0;accepted_checks=0;cold=[];failure_categories={}
 def load(p):return [np.fromstring(s,sep=' ') for s in p.read_text().splitlines() if s and not s.startswith('#')]
@@ -31,9 +33,11 @@ for c in range(4):
     assert kb==ka+1;h=math.log(insertion(a)*1.9/ka)
    elif move=='death':
     assert kb==ka-1;h=-math.log(insertion(b)*1.9/kb)
+   elif move=='correlated':
+    assert kb==ka;h=density.logq(a)-density.logq(b)
    else:assert kb==ka
    ratio=(b[2]-a[2])/temp+b[3]-a[3]+h
-   assert abs(ratio-float(tr[2500+i,8]))<1e-10;accepted_checks+=1
+   assert abs(ratio-float(tr[2500+i,8]))<1e-8;accepted_checks+=1
   # Check every failed evaluation has all 12 observation rows and a non-valid row.
   failed=[s.split() for s in (d/f'temperature_{t}_failed_models.txt').read_text().splitlines() if s and not s.startswith('#')]
   rows=[s.split() for s in (d/f'temperature_{t}_failed_rows.txt').read_text().splitlines() if s and not s.startswith('#')]

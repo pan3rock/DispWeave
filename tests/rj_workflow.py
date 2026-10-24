@@ -103,6 +103,16 @@ with tempfile.TemporaryDirectory() as tmp:
         assert any(r[1]=='velocity_refresh' for r in trace)
         assert all(r[1]!='velocity' for r in trace)
     assert 'velocity_refresh_probability=1' in (work / 'refresh/metadata.txt').read_text()
+    corr=content.replace('[rjmcmc]', '[rjmcmc]\ncorrelated_probability = 0.4')
+    for k in range(1,5):
+        dim=2*k-1;mean=[5*(j+1)/k for j in range(k-1)]+[1.7]*k
+        cov=[[1.0 if i==j else 0.0 for j in range(dim)] for i in range(dim)]
+        corr+=f'\n[[rj_correlated_models]]\nlayers = {k}\n[[rj_correlated_models.components]]\nmean = {mean}\ncovariance = {cov}\n'
+    corrfile=work / 'corr.toml';corrfile.write_text(corr)
+    sample(work / 'corr', config=corrfile)
+    assert any(' correlated ' in f.read_text() for f in (work / 'corr').glob('*_trace.txt'))
+    badcorr=work / 'corr-bad.toml';badcorr.write_text(corr.replace('layers = 4', 'layers = 3'))
+    sample(work / 'corr-bad', config=badcorr, codes=(1,))
     (a / 'observations.txt').write_bytes(missing.read_bytes())
     run('rj-predict', '--run', a, '--output', work / 'failed-predict', '--draws-per-chain', 2, codes=(5,))
     failed = [r.split() for r in (work / 'failed-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]

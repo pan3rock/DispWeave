@@ -13,9 +13,19 @@ RJEvaluation evaluate(const RJLikelihood& likelihood,const RJState& state) {
 void validate(const RJPrior& prior,const RJState& initial,const RJOptions& o) {
     prior.validate();
     if(!prior.supports(initial) || o.warmup<0 || o.draws<1 || o.warmup>std::numeric_limits<int>::max()-o.draws
+       || !std::isfinite(o.correlated_probability) || o.correlated_probability<0 || o.correlated_probability>1
+       || o.correlated_probability+o.velocity_refresh_probability>1
        || !std::isfinite(o.velocity_refresh_probability) || o.velocity_refresh_probability<0 || o.velocity_refresh_probability>1
        || !std::isfinite(o.vs_step) || o.vs_step<=0 || !std::isfinite(o.interface_step) || o.interface_step<=0)
         throw std::invalid_argument("Invalid RJ initial state or sampler options");
+    if(o.correlated_probability>0) {
+        std::vector<int> counts(prior.max_layers-prior.min_layers+1,0);
+        for(const auto& model:o.correlated_models) {
+            if(model.layers()<prior.min_layers || model.layers()>prior.max_layers) throw std::invalid_argument("Correlated RJ model K outside prior");
+            ++counts[model.layers()-prior.min_layers];
+        }
+        for(int count:counts) if(count!=1) throw std::invalid_argument("Need exactly one correlated RJ density per K");
+    }
     // Birth/death changes K by one. Do not silently explore only one disconnected class.
     if((prior.layer_weights.array()<=0).any()) throw std::invalid_argument("RJ sampler needs positive layer weights throughout the declared range");
 }
@@ -42,7 +52,11 @@ public:
     RJTransition step(int iteration,double beta=1) {
         const int k=static_cast<int>(current.state.vs.size());
         auto move=static_cast<RJMove>(index(4));
-        if(move==RJMove::velocity && o.velocity_refresh_probability>0 && uniform()<o.velocity_refresh_probability) move=RJMove::velocity_refresh;
+        if(move==RJMove::velocity && o.velocity_refresh_probability+o.correlated_probability>0) {
+            const double u=uniform();
+            if(u<o.velocity_refresh_probability) move=RJMove::velocity_refresh;
+            else if(u<o.velocity_refresh_probability+o.correlated_probability) move=RJMove::correlated;
+        }
         RJProposal proposal{current.state,move};
         if(move==RJMove::birth) {
             if(k<prior.max_layers && rj_insertion_length(prior,current.state)>0) {
@@ -57,6 +71,8 @@ public:
                 proposal.index=index(k-1);proposal.state.interfaces[proposal.index]+=o.interface_step*normal(rng);
                 proposal.status=prior.supports(proposal.state)?RJProposalStatus::valid:RJProposalStatus::outside_support;
             }
+        } else if(move==RJMove::correlated) {
+            for(const auto& model:o.correlated_models) if(model.layers()==k) {proposal=model.draw(prior,current.state,rng);break;}
         } else if(move==RJMove::velocity_refresh) {
             Eigen::VectorXd vs(k);
             for(int j=0;j<k;++j) vs[j]=prior.vs_lower+(prior.vs_upper-prior.vs_lower)*uniform();

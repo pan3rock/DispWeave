@@ -27,7 +27,7 @@ def read_models(path, prior, draws):
 
 def analyze(out,source):
     cfg=read_config(out/'rj.toml');assert cfg==read_config(out/'rj/config.toml')
-    restored=copy.deepcopy(cfg);restored['rjmcmc']=read_config(source/'rj.toml')['rjmcmc'];assert restored==read_config(source/'rj.toml')
+    restored=copy.deepcopy(cfg);restored['rjmcmc']=read_config(source/'rj.toml')['rjmcmc'];restored.pop('rj_correlated_models',None);assert restored==read_config(source/'rj.toml')
     protocol=json.loads((out/'protocol.json').read_text())
     for name,h in protocol['hashes'].items():assert digest(out/name)==h
     start_steps=cfg['rjmcmc']['tempering'].get('cold_start_steps',0)
@@ -75,7 +75,7 @@ def analyze(out,source):
             phases={}
             for name,tt in [('warmup',tr[:warm]),('production',tr[warm:])]:
                 phases[name]=dict(evaluations=int(np.sum(tt[:,3]=='1')),forward_failures=int(np.sum((tt[:,3]=='1')&(tt[:,4]=='forward_failure'))),numerical_failures=int(np.sum((tt[:,3]=='1')&(tt[:,4]=='numerical_failure'))),
-                    moves={m:dict(proposals=int(np.sum(tt[:,1]==m)),accepted=int(np.sum((tt[:,1]==m)&(tt[:,5]=='1')))) for m in ['birth','death','interface','velocity','velocity_refresh']})
+                    moves={m:dict(proposals=int(np.sum(tt[:,1]==m)),accepted=int(np.sum((tt[:,1]==m)&(tt[:,5]=='1')))) for m in ['birth','death','interface','velocity','velocity_refresh','correlated']})
             k=np.array([int(r[1]) for r in states[t]])
             sampler.append(dict(ladder=c,temperature=temps[t],total_evaluations=calls,**phases,**residence(k,1,4),visited_2_4=residence(k,2,4) if np.all(k>=2) else None))
     meta=dict(line.split('=',1) for line in (out/'rj/metadata.txt').read_text().splitlines());assert cost==int(meta['total_target_evaluations'])
@@ -97,7 +97,7 @@ def analyze(out,source):
         baseline=dict(total_target_evaluations=oldcost,layer_probabilities=old['layer_probabilities'],depth_profiles=old['depth_profiles'],formal_evaluations=sum(s['target_evaluations'] for s in old['sampler']),formal_forward_failures=sum(s['forward_failures'] for s in old['sampler'])),
         interpretation='Unvisited K is not certified zero probability. Hot states are excluded from posterior diagnostics. Forward failures remain an unresolved support limitation.')
     report['accepted']=report['mixing_passed'] and report['formal_forward_failures']==0 and report['formal_numerical_failures']==0
-    if start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0):
+    if start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0) or cfg['rjmcmc'].get('correlated_probability',0):
         previous=json.loads(Path('results/rj-pt-transdim/summary.json').read_text())
         report['previous_pt']={k:previous[k] for k in ['layer_probabilities','depth_profiles','exchange','total_target_evaluations','formal_forward_failures','formal_evaluations']}
     save_json(out/'summary.json',report)
@@ -107,7 +107,7 @@ def analyze(out,source):
 
 def plot(out,report):
     cfg=read_config(out/'rj.toml');probs=report['layer_probabilities'];profiles=report['depth_profiles'];old=report['baseline'];depth=np.array([p['depth'] for p in profiles])
-    label='PT + joint Vs' if cfg['rjmcmc'].get('velocity_refresh_probability',0) else 'PT + cold start' if cfg['rjmcmc']['tempering'].get('cold_start_steps',0) else 'RJ + PT'
+    label='PT + correlated z/Vs' if cfg['rjmcmc'].get('correlated_probability',0) else 'PT + joint Vs' if cfg['rjmcmc'].get('velocity_refresh_probability',0) else 'PT + cold start' if cfg['rjmcmc']['tempering'].get('cold_start_steps',0) else 'RJ + PT'
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt

@@ -1,7 +1,7 @@
 #pragma once
 #include "rj_model.hpp"
 namespace dw {
-enum class RJMove { birth,death,interface,velocity,velocity_refresh };
+enum class RJMove { birth,death,interface,velocity,velocity_refresh,correlated };
 enum class RJProposalStatus { valid,unavailable,outside_support };
 struct RJProposal {
     RJState state;

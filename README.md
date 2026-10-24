@@ -21,6 +21,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [异常热链独立核查](docs/rj-hot-branch-audit.md) 已完成：17 个模型、两档根扫描未发现明确不一致；温度梯在早期预热已隔离，转向检查初始化/预热衔接，仍不解除正演限制。
 [预热记录与冷启动对照](docs/rj-pt-cold-start.md) 已完成：500 步 T=1 初始化未消除隔离，K=2 诊断反而变差；保留记录功能，停止预热长度扫描，默认策略不变。
 [联合速度提议对照](docs/rj-joint-refresh.md) 已完成：热链隔离未复现，但联合接受率仅 0.157%、失败率升至 8.05%，整体仍未验收。默认关闭，并暂停继续内核调参。
+[冻结相关联合提议](docs/rj-correlated-proposal.md) 已完成：联合接受率 20.84%，深度最低 bulk/tail ESS≈968/716，30/31 点通过；K=2 和一个深度点 R-hat 仍超标。计入旧训练样本成本，保留为默认关闭的有效候选。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
