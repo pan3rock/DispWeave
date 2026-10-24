@@ -14,6 +14,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [先验宽度敏感性](docs/crust-prior-sensitivity.md) 已完成四链验收：放宽至 0.2 后薄层区间明显扩大，19–23 km 层出现下界影响迹象。
 [本算例收尾判断](docs/crust-study-closeout.md)：已查明下界来自参考速度窗口；停止追加调参，局部幅度保留边界依赖的限制。
 [独立六层低速模型验证](docs/small-lvz-validation.md) 已完成：四链与导数检查通过；LM/NUTS 中心接近，但低速对比仍不确定，不追加调参。
+[RJMCMC 与固定界面 NUTS 对照](docs/rj-nuts-comparison.md) 已完成一次有限预算验证：NUTS 通过，RJ 的层数和界面混合未达标，保留警告基线。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
