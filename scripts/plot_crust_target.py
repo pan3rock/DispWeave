@@ -37,7 +37,7 @@ def plots(output, target, reference, recovered, data, predictions, quantiles, ch
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.rcParams.update({'font.size': 10, 'axes.spines.top': False, 'axes.spines.right': False})
-    target_color, reference_color, lm_color = '#b65b2d', '#7f8789', '#cc3377'
+    target_color, reference_color, lm_color = '#228833', '#7f8789', '#cc3377'
     bottom = max(350., target['depth'][-1]+20, reference['depth'][-1]+20)
 
     def stairs(ax, model, label, color, style='-', width=1.8):
