@@ -63,7 +63,7 @@
 </head>
 <body>
 <main>
-<header><h1>DispWeave · 阶段结果</h1><p>合成数据 · 仅本地查看 · 最新完成：冻结提议独立种子复验，改善重复出现，本轮阶段收尾。</p>
+<header><h1>DispWeave · 阶段结果</h1><p>合成数据 · 仅本地查看 · 最新完成：失败候选有限求根核查；采样结果保持，无新链。</p>
 <nav aria-label="结果导航"><a href="#rj-lvz">低速夹层</a><a href="#two-layer">两层对照</a><a href="#fixed">固定层结果</a><a href="#config">复现入口</a><a href="history.html">历史诊断</a></nav></header>
 <div class="status"><strong>RJMCMC 本轮到此收尾：能解释数据、恢复主要特征；完整定量后验尚未验收。</strong>
 <p>停止当前通用调参与界面重排研究。层数和额外界面的样本占比不能当作可靠的精确概率。<a href="../../docs/rj-predictive-closeout.md#当前阶段总览">阶段结论与复现清单</a></p></div>
@@ -73,6 +73,10 @@
 <details id="data-discrimination"><summary>新增观测复核：前期依据：第一高阶 0.60–0.80 Hz 窄频段复核</summary>
 <p class="note">原组与另一组各64个已有模型，在0.60–0.80 Hz的5个连续网格点共同通过差异筛选，四链方向一致；两组物理模型不重合，但仍来自相同相关链。9个代表模型在5个频点的独立根核查通过（45/45），mode=1与第二根最大差约3.9×10⁻¹⁴ km/s。区间仍重叠，噪声0.03 km/s为假设，不代表已唯一辨认结构。本轮129次预测调用，另有两档根扫描，无新链。<a href="../../docs/rj-structure-paths.md#第一高阶窄频段复核">方案、审计与限制</a> · <a href="../../results/rj-data-discrimination/discrimination.png">上一轮宽频初筛</a></p>
 <a class="image-link" href="../../results/rj-mode1-followup/followup.png" target="_blank" rel="noopener"><img src="../../results/rj-mode1-followup/followup.png" alt="第一高阶加密频点：原组和另一组的两类模型预测区间、噪声单位差异与分散校正差异，0.60至0.80赫兹网格点共同通过。" loading="lazy"></a>
+</details>
+<details id="failure-audit"><summary>可靠性边界：56个失败点未发现明确漏根线索，保留覆盖限制</summary>
+<p class="note">预定抽查的48个基阶点，两档扫描均未找到根；8个第一高阶点最多找到1个根，未找到第二根。784个生产响应状态与历史一致。有限扫描不能证明物理缺模态；选样实际来自T=2/4/8，未覆盖T=1冷槽，不据此推断所有失败候选。没有修改求解器，也未追加样本。<a href="../../docs/rj-lvz-transfer.md#失败候选的有限独立求根核查">选样、证据与限制</a></p>
+<a class="image-link" href="../../results/rj-mode-failure-audit/failure-audit.png" target="_blank" rel="noopener"><img src="../../results/rj-mode-failure-audit/failure-audit.png" alt="56个失败候选频点的有限核查：未发现扫描不一致，但未覆盖冷温度槽，不构成根不存在证明。" loading="lazy"></a>
 </details>
 <section id="two-layer" class="section-title"><h2>两层算例：目标、LM、NUTS 与 RJMCMC</h2><p>另一组 12 点合成数据，σ=0.03 km/s。LM/NUTS 已知并固定目标界面 1.5 km；RJ 允许 1–4 层并移动界面。以下图按各自实验展示，不能据此作公平的方法优劣排名。</p></section>
 <figure id="rj-uncertainty"><figcaption><h2>目标、LM 与两次冻结提议 RJ 的结构区间</h2><p>两次各使用全部 100000 个正式冷状态，分别汇总。主界面附近区间宽，额外分层不唯一；浅层速度在本参数化下较集中。深部受半空间与界面上限约束，区间收窄不代表任意深部结构可辨。完整后验仍未验收。</p></figcaption><a class="image-link" href="../../results/rj-predictive-closeout/model-uncertainty.png" target="_blank" rel="noopener"><img src="../../results/rj-predictive-closeout/model-uncertainty.png" alt="目标、LM 与两次冻结提议 RJ 的结构区间" loading="lazy"></a></figure>

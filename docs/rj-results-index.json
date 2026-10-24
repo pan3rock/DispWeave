@@ -466,5 +466,33 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/replicate_rj_mode_refit.py --output results/rj-mode-refit-replication-new",
     "subsequent_steps": "Generic PT analysis, frozen mixture and structural checks, seed comparison and formal audit as documented in report.",
     "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/compare_rj_mode_replication.py results/rj-mode-refit-replication"
+  },
+  "mode_failure_root_audit": {
+    "source": "results/rj-mode-failure-audit",
+    "report": "docs/rj-lvz-transfer.md#失败候选的有限独立求根核查",
+    "candidate_source": "results/rj-mode-refit-replication",
+    "selected_pairs": 56,
+    "full_prediction_calls": 56,
+    "prediction_queries": 784,
+    "independent_model_frequency_scans": 112,
+    "auxiliary_fundamental_evaluations": 112,
+    "new_samples": 0,
+    "findings": "No requested root found by either finite scan at all selected pairs; no suspected mismatch.",
+    "limitations": "Selected T=2/4/8 only; no T=1. Not random prevalence estimate, physical absence proof or full posterior certification.",
+    "sha256": {
+      "scripts/audit_rj_mode_failures.py": "8942ac92c7d7ae7ffda08a003785b8f4405a17c87c3730a1acf14e12d6465991",
+      "scripts/check_rj_failure_audit.py": "e899d178ebf454df74f150068308b28d72e400ce22c737c2c03a85d31f467310",
+      "results/rj-mode-failure-audit/protocol.json": "61bba79a4ecf0ab8d2736dfafaf4adff3e34ae7b24218726bae0d7c124812456",
+      "results/rj-mode-failure-audit/selection.json": "be9a2d52285dfca19e48d263ab932c935d27b5068c9119c97fd2a32a1e400882",
+      "results/rj-mode-failure-audit/inventory.json": "c0ccb518406071b7c9c52c0536722030e126a906d4925177f1a7867a30bb1ac9",
+      "results/rj-mode-failure-audit/summary.json": "90c709ed49d49d4a68219ef1d7dfdef79a8e5dde1386ff28e5f1da01fa0b15cf",
+      "results/rj-mode-failure-audit/independent-audit.json": "a1e586b106b6c14b5c46b09db10c744387ee87d723fc53b7f9da835bb73c549c",
+      "results/rj-mode-failure-audit/commands.json": "d6466deb7518d08a2557497dc13a64b4ddcfc8e71d82d84e0b5cd44257ac72c7",
+      "benchmarks/rj_forward_audit.cpp": "0309e9dda82cd706d62d468fc0e8dff11dff1e1631dd79d5a2ee77a387acf5b7",
+      "tests/independent_reference.hpp": "b3d0dec4e0366e16ac2e6fd18cdf1670cfcc7da07cf60b67e4d7be39ffbd48ae"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit-new",
+    "audit": "python scripts/check_rj_failure_audit.py results/rj-mode-failure-audit-new",
+    "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit --analyze-only"
   }
 }

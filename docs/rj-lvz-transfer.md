@@ -1,6 +1,6 @@
 # 三层低速夹层：固定预算迁移验证
 
-最新结论见文末“冻结新提议的独立种子复验与收尾”；此前重训练、12点/14点配对和原迁移记录均保留。
+采样结论见“冻结新提议的独立种子复验与收尾”；文末新增失败候选有限核查，未改变后验未验收结论。此前各轮记录均保留。
 
 **当前方法能恢复本算例的低速夹层特征，但相同预算下的定量后验没有通过验收。**
 新算例的相关联合提议仍改善了部分深度混合，不过收益明显弱于此前两层算例。
@@ -398,4 +398,89 @@ PY_ANALYZE
 MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_mode_refit.py results/rj-mode-refit-replication-new
 MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/compare_rj_mode_replication.py results/rj-mode-refit-replication-new
 python scripts/audit_rj_pt_transdim.py results/rj-mode-refit-replication-new
+```
+
+
+## 失败候选的有限独立求根核查
+
+**固定抽查的56个模型—频点对没有发现明确漏根线索；本轮不修改求解器，也不扩大扫描。**
+生产求解器重现了保存的失败状态；两档独立扫描一致，均未找到支持请求模态所需数量的根。
+这是抽查范围内的一致性，不是物理缺模态证明，也不解除完整后验的支持范围限制。
+**本次预定选样最终没有覆盖T=1冷温度槽**，因此尤其不能推广为对全部冷链失败候选的认证。
+
+[核查图](../results/rj-mode-failure-audit/failure-audit.png) ·
+[运行前方案](../results/rj-mode-failure-audit/protocol.json) ·
+[56个候选来源](../results/rj-mode-failure-audit/selection.json) ·
+[全部分层数量](../results/rj-mode-failure-audit/inventory.json) ·
+[逐点扫描结果](../results/rj-mode-failure-audit/summary.json) ·
+[独立来源与分类检查](../results/rj-mode-failure-audit/independent-audit.json)
+
+### 固定选样，不按拟合筛选
+
+仅使用种子2026103102的正式期失败候选，不取预热；以local trace的评估编号关联
+failed_models和failed_rows，覆盖四条温度梯及其全部温度槽的候选集合。
+该集合包含55191个失败模型评估，与此前16.64%的全温度正式失败率对应。
+
+在任何新正演前固定最多56对：每个观测查询q（0–13）、每条梯c（0–3）最多选1对。
+层数优先序为`1+(q+c+j)%4, j=0..3`，选第一个非空层数；该层内按
+`(temperature_slot, evaluation)`排序，取`floor(N/2)`处的记录。
+空的查询—梯组合不补齐；本次56个组合均有候选。规则不读取似然或新预测结果，不按结果替换模型。
+
+实际选中56个不同候选，也都是不同物理模型。覆盖情况：
+
+| 分类 | 选中数量 |
+|---|---:|
+| K=1 / 2 / 3 / 4 | 2 / 26 / 14 / 14 |
+| 原12个基阶查询 | 48 |
+| 新增两个mode=1查询 | 8 |
+| T=1 / 2 / 4 / 8 | 0 / 42 / 11 / 3 |
+
+总体失败候选按温度为T=1:14603、T=2:13066、T=4:12782、T=8:14740。
+排序取中位的预定规则使实际抽查落在T=2/4/8，冷温度的14603个候选未被抽查。
+此为选样覆盖不足，不代表T=1没有失败。本轮如实记录，未事后改规则或追加冷链样本。
+分层比例也不同于原失败集合，因此不能用“56/56一致”估计全部失败中真实缺模态的比例。
+
+### 请求模态与独立扫描逐点比较
+
+每个候选用冻结的生产二进制、refined根精度重算完整14点，保留全部状态；
+在选中的失败频率，以独立P/SV平面波法扫描5000和10000段。
+扫描域仍为`0.5*min(Vs)`至`Vs_halfspace*(1-1e-8)`，只涉及俘获实相速度根。
+
+对mode=0要求至少一个独立根；对mode=1要求至少两个，不能把找到基阶根误当成高阶已存在。
+扫描工具附带输出的生产基阶并非请求模态检查，本次请求模态以完整14点重算的对应行判断。
+预先规定：生产状态变化则记复现差异；任一参考扫描报错或两档根数/位置不一致则记不确定；
+两档稳定且根数足够才标为疑似漏根，仍须进一步确认才可修改求解器。
+
+实际结果：
+
+- 48个基阶失败点：两档独立扫描均未找到根。
+- 8个第一高阶失败点：4个找到1个根，另4个没有找到根；都不足以支持第二根。
+- 两档扫描的根数、根位置逐项一致，没有参考扫描失败；未出现疑似漏根或生产状态复现差异。
+- 对找到基阶根的4个组合，两档共8个附带基阶值与第一独立根最大差8.88e−16 km/s。
+
+此外，全部56×14=784个生产响应的状态都与历史记录一致；
+历史有效响应的相速度与重算值最大差4.99e−13 km/s。
+“未找到根”仍可能受有限网格、切触根、极近根或参考法数值条件限制；
+即使两档扫描一致，也不是根不存在的数学证明。
+
+### 成本、审计与结论边界
+
+本轮56次完整模型正演（784个请求查询），112个独立模型—频率扫描，
+初始扫描网格合计840112个世俗函数点，另有根细化；工具附带112次生产基阶评估，单列为审计开销。
+没有新采样、梯度计算、重训练或扩展候选。相关independent/trapped_domain两项CTest通过。
+
+独立检查重新构建全部分层候选，核对中位选样、物性输入、784个历史状态、两档根序和分类，
+与报告一致，源文件hash不变。本轮检查代码不修改C++内核。
+
+当前没有抽查证据支持修正某个具体漏根问题，因此不做推测性修补。
+本轮到此停止；保留“有限抽查未发现不一致”的结论，以及未覆盖冷槽、未完全混合、
+全域根完整性未认证的限制。前述冻结提议和两次采样结果继续保留，未因此升级为完整后验验收。
+
+```sh
+cmake --build build --target rj_forward_audit -j 2
+ctest --test-dir build -R '^(independent|trapped_domain)$' --output-on-failure
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit-new
+python scripts/check_rj_failure_audit.py results/rj-mode-failure-audit-new
+# 只重算已有扫描统计与图，不执行新正演
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/audit_rj_mode_failures.py --output results/rj-mode-failure-audit --analyze-only
 ```
