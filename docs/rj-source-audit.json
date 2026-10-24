@@ -1,0 +1,215 @@
+{
+  "review_date": "2026-10-24",
+  "scope": "Read-only algorithm/source assessment; no external code executed and no sampling changes",
+  "repositories": [
+    {
+      "name": "bayes-bay",
+      "repository": "https://github.com/fmagrini/bayes-bay",
+      "branch": "main",
+      "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+      "commit_date": "2026-07-13T15:29:30Z",
+      "license": "BSD-2-Clause",
+      "latest_github_release": null,
+      "release_date": null,
+      "release_query_status": 404,
+      "inspected_files": [
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "src/bayesbay/discretization/_voronoi.py",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/src/bayesbay/discretization/_voronoi.py",
+          "sha256": "c018ad3cb7d337e5c7fb1024455643172f50dbdc312d73e85e697329a1ee81f4"
+        },
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "src/bayesbay/discretization/_discretization.py",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/src/bayesbay/discretization/_discretization.py",
+          "sha256": "3d21c460d0db6c1833fe991b09f8165ae401d8ce71f14e34841fe95ccff7712e"
+        },
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "src/bayesbay/samplers/_samplers.py",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/src/bayesbay/samplers/_samplers.py",
+          "sha256": "c3149ac5d610be2c3a89b82d40fd60cc9bf3607606b0daefc57b46461f1dbceb"
+        },
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "src/bayesbay/_markov_chain.py",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/src/bayesbay/_markov_chain.py",
+          "sha256": "63e6afde49035f66c1da5e0c82840114ca296858768fa1023ab313c0d5eb3f7e"
+        },
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "CHANGELOG.md",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/CHANGELOG.md",
+          "sha256": "115e8d9fb52d3323d7b32208471679c696798249736945972639556d4165a448"
+        },
+        {
+          "repo": "fmagrini/bayes-bay",
+          "commit": "fd8af14706c834b083e4f3ba1db8a4d175de0b69",
+          "path": "LICENCE",
+          "url": "https://raw.githubusercontent.com/fmagrini/bayes-bay/fd8af14706c834b083e4f3ba1db8a4d175de0b69/LICENCE",
+          "sha256": "67d3e33e417adb5a6401ae682548fe5b9b5f426e8670a92fda85669d0d58efcd"
+        }
+      ]
+    },
+    {
+      "name": "BayHunter",
+      "repository": "https://github.com/jenndrei/BayHunter",
+      "branch": "master",
+      "commit": "af06830c266fb9790e4c4c59503c08aed2cf8023",
+      "commit_date": "2020-10-06T10:30:27Z",
+      "license": "GPL-3.0",
+      "latest_github_release": null,
+      "release_date": null,
+      "release_query_status": 404,
+      "inspected_files": [
+        {
+          "repo": "jenndrei/BayHunter",
+          "commit": "af06830c266fb9790e4c4c59503c08aed2cf8023",
+          "path": "src/SingleChain.py",
+          "url": "https://raw.githubusercontent.com/jenndrei/BayHunter/af06830c266fb9790e4c4c59503c08aed2cf8023/src/SingleChain.py",
+          "sha256": "dbfdab18c9a4e2d8c863b2ae267ef1cc90ecc50d1a9f5d4e2fd8a2a3748ca531"
+        },
+        {
+          "repo": "jenndrei/BayHunter",
+          "commit": "af06830c266fb9790e4c4c59503c08aed2cf8023",
+          "path": "src/Models.py",
+          "url": "https://raw.githubusercontent.com/jenndrei/BayHunter/af06830c266fb9790e4c4c59503c08aed2cf8023/src/Models.py",
+          "sha256": "c788f50a7f7d6c8397fae639dc44838266d873332f632323354b3376dba941d4"
+        },
+        {
+          "repo": "jenndrei/BayHunter",
+          "commit": "af06830c266fb9790e4c4c59503c08aed2cf8023",
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/jenndrei/BayHunter/af06830c266fb9790e4c4c59503c08aed2cf8023/README.md",
+          "sha256": "5294c8ec1de6b98e806d949f30c6e3bb0f7585b65b10a58348044bb67344eb61"
+        },
+        {
+          "repo": "jenndrei/BayHunter",
+          "commit": "af06830c266fb9790e4c4c59503c08aed2cf8023",
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/jenndrei/BayHunter/af06830c266fb9790e4c4c59503c08aed2cf8023/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ]
+    },
+    {
+      "name": "Eryn",
+      "repository": "https://github.com/lisa-analysis-tools/Eryn",
+      "branch": "main",
+      "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+      "commit_date": "2026-10-12T15:03:00Z",
+      "license": "Apache-2.0",
+      "latest_github_release": "v1.2.7",
+      "release_date": "2026-02-04T00:56:32Z",
+      "release_query_status": 200,
+      "inspected_files": [
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "src/eryn/moves/rj.py",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/src/eryn/moves/rj.py",
+          "sha256": "ea4ae327912cbe02d931332013dad2b638cab41216ea7c3cef2c1161b62d44e5"
+        },
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "src/eryn/moves/distgenrj.py",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/src/eryn/moves/distgenrj.py",
+          "sha256": "b334e0635558ae22756180c910e613fe49237b0938d81a17810799738d423bf7"
+        },
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "src/eryn/moves/tempering.py",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/src/eryn/moves/tempering.py",
+          "sha256": "7b67684fc8d5592b9a3e955428891642345edb44f48bdf30ef4c22f9dcfb6eea"
+        },
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "src/eryn/moves/multipletry.py",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/src/eryn/moves/multipletry.py",
+          "sha256": "29247a1fb60fcb9bfeab100bb785f78e519bb3d5132df4d22e44e92b641ca609"
+        },
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "src/eryn/moves/stretch.py",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/src/eryn/moves/stretch.py",
+          "sha256": "6ae2a378de5e95ff5fa8b475fa80de474a45d6f75a46728911072923498b8155"
+        },
+        {
+          "repo": "lisa-analysis-tools/Eryn",
+          "commit": "c317bf41705927a2de36dec4123f1a6924b64c90",
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/lisa-analysis-tools/Eryn/c317bf41705927a2de36dec4123f1a6924b64c90/LICENSE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        }
+      ]
+    },
+    {
+      "name": "openMCMC",
+      "repository": "https://github.com/sede-open/openMCMC",
+      "branch": "main",
+      "commit": "8bec80136c874b192d95910db2681d38bdcd17ca",
+      "commit_date": "2026-10-20T09:45:24Z",
+      "license": "Apache-2.0",
+      "latest_github_release": "v1.0.9",
+      "release_date": "2026-08-19T14:16:04Z",
+      "release_query_status": 200,
+      "inspected_files": [
+        {
+          "repo": "sede-open/openMCMC",
+          "commit": "8bec80136c874b192d95910db2681d38bdcd17ca",
+          "path": "src/openmcmc/sampler/reversible_jump.py",
+          "url": "https://raw.githubusercontent.com/sede-open/openMCMC/8bec80136c874b192d95910db2681d38bdcd17ca/src/openmcmc/sampler/reversible_jump.py",
+          "sha256": "522112c9fe6d83a2324ed66ea44530617636bd248bf47d04c7fb3b11d6de815f"
+        },
+        {
+          "repo": "sede-open/openMCMC",
+          "commit": "8bec80136c874b192d95910db2681d38bdcd17ca",
+          "path": "src/openmcmc/sampler/metropolis_hastings.py",
+          "url": "https://raw.githubusercontent.com/sede-open/openMCMC/8bec80136c874b192d95910db2681d38bdcd17ca/src/openmcmc/sampler/metropolis_hastings.py",
+          "sha256": "716e4ca83ab9e37d030a82b7c9f4f6be4f3618bf578665ada9c5f4867ac7df42"
+        },
+        {
+          "repo": "sede-open/openMCMC",
+          "commit": "8bec80136c874b192d95910db2681d38bdcd17ca",
+          "path": "LICENSE.md",
+          "url": "https://raw.githubusercontent.com/sede-open/openMCMC/8bec80136c874b192d95910db2681d38bdcd17ca/LICENSE.md",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    }
+  ],
+  "additional_literature": [
+    {
+      "url": "https://arxiv.org/abs/2512.12742",
+      "version": "v2, revised 2026-02-02",
+      "scope": "paper only; v1 linked code URL returned HTTP 404",
+      "code_url": "https://github.com/YinPingping111/TRJ_VINFs"
+    },
+    {
+      "url": "https://arxiv.org/abs/2607.21484",
+      "scope": "2026 paper describing Eryn-based t-roo; not source-audited",
+      "code_url": "https://github.com/AnnaPuecher/t_roo",
+      "code_web_result": "cache miss, not evidence of repository absence"
+    },
+    {
+      "url": "https://github.com/daviesl/trjp",
+      "scope": "2023 transport proposal reference repository README inspected, not full source-audited"
+    }
+  ],
+  "local_sources": {
+    "src/rj_model.cpp": "aacc1a10bb691b31ea02441d050c5b156f364579428d15775fc4091b667755f4",
+    "src/rj_proposal.cpp": "d8e3450f97f08e960e04e126ec7e17610f676e1e37b4109c4cecd092aa716bdd",
+    "src/rjmcmc.cpp": "99483a8206c4df12a642e9ae29f7b6a18c6b7f5e3be1e8f1e643a41925189e4f",
+    "src/rj_dispersion.cpp": "7b795bfbbc725ac6bf154b73722a3fa99b41dd4c198c53e7ff795cac5a8b0c42"
+  }
+}
