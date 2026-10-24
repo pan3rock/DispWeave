@@ -1,6 +1,6 @@
 # 三层低速夹层：固定预算迁移验证
 
-最新结果见文末“针对14点数据重训练冻结提议”；此前12点/14点配对实验和原迁移记录均保留。
+最新结论见文末“冻结新提议的独立种子复验与收尾”；此前重训练、12点/14点配对和原迁移记录均保留。
 
 **当前方法能恢复本算例的低速夹层特征，但相同预算下的定量后验没有通过验收。**
 新算例的相关联合提议仍改善了部分深度混合，不过收益明显弱于此前两层算例。
@@ -327,3 +327,75 @@ python scripts/audit_rj_pt_transdim.py results/rj-mode-refit-new
 ```
 
 后续只更新图表时，执行`analyze_rj_mode_refit.py`即可，不调用采样或正演。
+
+
+## 冻结新提议的独立种子复验与收尾
+
+**相对旧q的改善在第二个种子中重复出现；保留这套冻结提议，本轮阶段收尾。**
+两次仍未通过完整后验验收，不合并链掩盖分歧，不挑选较好的种子继续报告，
+也不再换种子、延长链或重训练来追逐门槛。这是当前14点合成算例的结果，不是通用稳定性认证。
+
+[两次独立结果图](../results/rj-mode-refit-replication/replication.png) ·
+[复验前方案](../results/rj-mode-refit-replication/design.json) ·
+[比较统计](../results/rj-mode-refit-replication/replication-summary.json) ·
+[仅种子变化与B类审计](../results/rj-mode-refit-replication/replication-audit.json) ·
+[正式期独立核查](../results/rj-mode-refit-replication/independent-audit.json)
+
+唯一配置变化为采样种子2026103101→2026103102。相同冻结q直接复制，不重新拟合；
+14点观测及协方差、二进制、先验、物性、四起点、提议比例和温度梯完全相同。
+同为4梯×4温度，每副本2500预热＋25000正式，440000次提议。
+复用原来的六项收益判据，参照仍是旧q的14点数据运行，未因看到新结果而改阈值。
+
+| 指标 | 旧q参照 | 新q首次 | 新q复验 |
+|---|---:|---:|---:|
+| B类R-hat | 1.15375 | 1.02634 | 1.00962 |
+| B类bulk/tail ESS | 18.0 / 18.0 | 168.4 / 168.4 | 517.4 / 517.4 |
+| 深度最大R-hat | 1.10653 | 1.02203 | 1.02556 |
+| 深度最低bulk/tail ESS | 27.0 / 16.9 | 411.5 / 176.1 | 266.9 / 134.3 |
+| 深度诊断通过 | 0/31 | 20/31 | 12/31 |
+| K=3/4指示量R-hat | 1.02915 | 1.00663 | 1.00446 |
+| 正式联合提议接受率 | 3.48% | 6.30% | 6.36% |
+| 正式期正演失败比例 | 16.41% | 16.71% | 16.64% |
+
+两次新q都达到原定的B类/深度R-hat超标部分下降至少25%、对应ESS至少翻倍的六项条件。
+“改善重复”是相对旧q而言，不意味着第二次每项都更好：复验B类更稳定，深度指标则略差。
+复验B类单项达到R-hat≤1.01、bulk/tail ESS≥400，但不能据此替代全模型诊断。
+深度仍有19点未通过，未访问K=1/2和missing_or_unresolved候选的支持范围限制继续保留。
+
+首次/复验的B类总体样本占比分别9.340%/7.519%，相差1.821个百分点。
+复验四链占比10.660%、5.036%、7.376%、7.004%；首次为7.380%、14.940%、5.336%、9.704%。
+这些是两次未完整收敛运行的分别汇总，不认证精确结构概率，也不合并估计一个“更准确”的数值。
+K=3占比分别49.857%/51.611%；最高占比也不表示唯一识别了三层结构。
+
+复验低速夹层顶部/底部/Vs条件中位数为0.852 km、1.718 km、0.923 km/s，
+逐项95%经验区间为[0.734,1.070]、[1.484,2.095]、[0.808,1.104]。
+首次中位数为0.856、1.748、0.942，区间端点仍有变化。
+剖面主特征接近，但局部幅度和额外结构权重的定量稳定性不能由相近中位数保证。
+
+### 核查与成本
+
+- 新复验364110次目标评估，采样写出约41.50秒；首次362171次。
+- 加共享的14点训练来源362547次、再加更早基阶q训练371844次，相关链路合计1460672次，训练只计一次。
+  不含所有历史探索与控制组，这不是项目总成本。
+- 本轮另外48个保留状态正演审计，新增预测正演0；没有再次拟合q或再生成噪声。
+- 配置解析核对仅种子不同；混合分量、输入与二进制逐字节/数值一致，输入hash不变。
+- 8个经验分量按原训练数据独立重算通过，仅用于校验，没有写回修改分量。
+- 73593个正式接受比、全部失败行和层数/深度诊断核对通过；48个审计模型重建似然最大差9.32e−11。
+- 旧/新两次共200000个冷状态以独立标量条件重新标记B类，时间序列诊断及六项收益判据一致。
+
+到这里，已回答“改善能否在另一种子下重复”：本次有限复验支持它。
+当前保留新q及两次结果，停止这条配置优化线；完整后验和真实数据泛化仍未认证。
+不因为复验深度通过点数较少就再运行第三个种子，也不以阶段收尾宣称统计验收完成。
+
+```sh
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/replicate_rj_mode_refit.py --output results/rj-mode-refit-replication-new
+MPLCONFIGDIR=/tmp/dispweave-mpl PYTHONPATH=scripts python - <<'PY_ANALYZE'
+from pathlib import Path
+from benchmark_rj_pt_transdim import analyze
+analyze(Path('results/rj-mode-refit-replication-new'))
+PY_ANALYZE
+# 只读核对冻结提议、结构诊断和与旧q的收益，不执行重新拟合或采样
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_mode_refit.py results/rj-mode-refit-replication-new
+MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/compare_rj_mode_replication.py results/rj-mode-refit-replication-new
+python scripts/audit_rj_pt_transdim.py results/rj-mode-refit-replication-new
+```

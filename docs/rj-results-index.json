@@ -430,5 +430,41 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_mode_refit.py --output results/rj-mode-refit-new",
     "subsequent_steps": "Generic PT analysis, analyze_rj_mode_refit.py, and formal audit as documented in report.",
     "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_mode_refit.py results/rj-mode-refit"
+  },
+  "mode_refit_seed_replication": {
+    "source": "results/rj-mode-refit-replication",
+    "report": "docs/rj-lvz-transfer.md#冻结新提议的独立种子复验与收尾",
+    "seed": 2026103102,
+    "reference_seed": 2026103101,
+    "only_change": "sampler seed; no refitting",
+    "new_target_evaluations": 364110,
+    "new_audit_model_forwards": 48,
+    "new_predictive_forwards": 0,
+    "two_new_q_runs_plus_shared_training": 1460672,
+    "improvement_repeated": true,
+    "full_posterior_accepted": false,
+    "sha256": {
+      "scripts/replicate_rj_mode_refit.py": "8e8b214a38a376172d30775f5d19cd28ae8d7690c419fbf5ed09d7f0888dc354",
+      "scripts/compare_rj_mode_replication.py": "120300518f6fdd3a40482be2faaadff16efff7776ac3d6d58b434e9387022aa1",
+      "scripts/analyze_rj_mode_refit.py": "cd84cc16492699771c8768858b499f9060b57f9d4f8dce14c1e6078ffec7bd87",
+      "scripts/benchmark_rj_pt_transdim.py": "380ab71540d177c250444ec6ffcd947d3b22b09bd3d9ac7ab1626e6ec0afb382",
+      "scripts/audit_rj_pt_transdim.py": "822ef767fde757ce1363b204dccf96283fc353e006e1943567b175a07445a137",
+      "results/rj-mode-refit-replication/rj.toml": "7997a6bbeb4cda2a3098650a6e2a397613788d5dabaebf3fb1e5a40806a3deb8",
+      "results/rj-mode-refit-replication/truth.toml": "6a56a6d5ec1564b89158404a82f00b65efada310e828f7a632c419805224d7b4",
+      "results/rj-mode-refit-replication/observations.txt": "a0e625a836bd96edd6f3335f4dd73e2f9d4f3b3471349bf9e09d205ac6dcb080",
+      "results/rj-mode-refit-replication/covariance.txt": "5dc81df403ab0844c31497355529d60c415086015a1061b2808de72cee310475",
+      "results/rj-mode-refit-replication/design.json": "3f4c046985dafc8d791bd07b2ed41a35d8975445513305ea22c4cb1a3f0ed455",
+      "results/rj-mode-refit-replication/protocol.json": "f91f45e9c65714cd1c04f173f8a1186d0657712ea8d9529cd0bd509fbee4c818",
+      "results/rj-mode-refit-replication/training.json": "125d4cfc488ac881e0c29ac3ec8164baa8f1f89a68810931568b2dcbe7ef1fea",
+      "results/rj-mode-refit-replication/summary.json": "f953ed2239019527d857978eec31940b0e9e0f6d9900f42f3c5fc313a534388d",
+      "results/rj-mode-refit-replication/refit-summary.json": "27f03a7c9b68371300afdc1fc89dd4c7ae28d987986bae2718edf73fa796959a",
+      "results/rj-mode-refit-replication/replication-summary.json": "d714d06c7fb76709afe8d43cb04429214268b130bf5222061981714a06562f64",
+      "results/rj-mode-refit-replication/training-audit.json": "c51e655b9f69208c964cfbdbc3213221517ae3852f6bd9c0263fb491e8eda41b",
+      "results/rj-mode-refit-replication/replication-audit.json": "c4612c317059285347bb32fc80a21134ece76ad4f8782df379e842444a719c17",
+      "results/rj-mode-refit-replication/independent-audit.json": "608284c5db94407f209854359e557173c5f91feeca3710126f1da32ca34cfaa2"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/replicate_rj_mode_refit.py --output results/rj-mode-refit-replication-new",
+    "subsequent_steps": "Generic PT analysis, frozen mixture and structural checks, seed comparison and formal audit as documented in report.",
+    "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/compare_rj_mode_replication.py results/rj-mode-refit-replication"
   }
 }
