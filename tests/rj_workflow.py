@@ -81,6 +81,20 @@ with tempfile.TemporaryDirectory() as tmp:
     run('rj-predict', '--run', work / 'pt', '--output', work / 'pt-predict', '--draws-per-chain', 2, codes=(0, 5))
     selected = [r.split() for r in (work / 'pt-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]
     assert [(int(r[1]), int(r[2])) for r in selected] == [(c, j*150//2) for c in range(3) for j in range(2)]
+    ptconfig.write_text(ptconfig.read_text()+'save_warmup = true\n')
+    sample(work / 'pt-recorded', config=ptconfig)
+    for file in (work / 'pt').rglob('*.txt'):
+        if file.name != 'metadata.txt':
+            assert file.read_bytes() == (work / 'pt-recorded' / file.relative_to(work / 'pt')).read_bytes()
+    ptconfig.write_text(ptconfig.read_text()+'cold_start_steps = 10\n')
+    sample(work / 'pt-initialized', config=ptconfig)
+    for c in range(3):
+        for t in range(4):
+            file=work / f'pt-initialized/ladder_{c}/temperature_{t}_warmup_models.txt'
+            rows=[r.split() for r in file.read_text().splitlines() if not r.startswith('#')]
+            assert [int(r[0]) for r in rows]==list(range(-1,60))
+        swaps=[r.split() for r in (work / f'pt-initialized/ladder_{c}/swaps.txt').read_text().splitlines() if not r.startswith('#')]
+        assert min(int(r[0]) for r in swaps)==19
     (a / 'observations.txt').write_bytes(missing.read_bytes())
     run('rj-predict', '--run', a, '--output', work / 'failed-predict', '--draws-per-chain', 2, codes=(5,))
     failed = [r.split() for r in (work / 'failed-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]

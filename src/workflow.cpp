@@ -539,6 +539,8 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
         const auto tc=toml::find(cfg,"tempering");RJPTOptions pt;pt.local=options;
         pt.temperatures=toml::find<std::vector<double>>(tc,"temperatures");
         pt.swap_every=toml::find_or<int>(tc,"swap_every",10);
+        pt.save_warmup=toml::find_or<bool>(tc,"save_warmup",false);
+        pt.cold_start_steps=toml::find_or<int>(tc,"cold_start_steps",0);
         bool issues=false;size_t calls=starts.size(); // Preflight evaluations above.
         for(size_t c=0;c<starts.size();++c) {
             const auto dir=output/("ladder_"+std::to_string(c));std::filesystem::create_directories(dir);
@@ -577,6 +579,18 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
                         f<<'\n';
                     }
                 }
+                if(pt.save_warmup) {
+                    auto f=output_file(dir/(prefix+"_warmup_models.txt"));
+                    f<<"# iteration K raw_log_likelihood log_prior interfaces Vs; initial=-1, then after updates/swaps; not posterior draws\n";
+                    auto write=[&](int i,const RJDraw& d) {
+                        f<<i<<' '<<d.state.vs.size()<<' '<<d.log_likelihood<<' '<<d.log_prior;
+                        for(double z:d.state.interfaces) f<<' '<<z;
+                        for(double v:d.state.vs) f<<' '<<v;
+                        f<<'\n';
+                    };
+                    write(-1,result.initial_states[t]);
+                    for(size_t i=0;i<result.warmup_draws[t].size();++i) write(static_cast<int>(i),result.warmup_draws[t][i]);
+                }
                 if(t==0) std::filesystem::copy_file(path,output/("chain_"+std::to_string(c)+"_models.txt"));
                 auto f=output_file(dir/(prefix+"_local_trace.txt"));
                 f<<"# warmup move proposal_status evaluated evaluation_status accepted layers_before layers_after_local log_accept_ratio evaluation_index layers_after_swap\n";
@@ -600,6 +614,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
         metadata<<"version="<<DW_VERSION<<"\nsampler=parallel_tempered_rjmcmc\nseed="<<options.seed
                 <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nswap_every="<<pt.swap_every<<"\ntemperatures=";
         for(double t:pt.temperatures) metadata<<t<<' ';
+        if(pt.save_warmup || pt.cold_start_steps) metadata<<"\nsave_warmup="<<pt.save_warmup<<"\ncold_start_steps="<<pt.cold_start_steps<<"\ninitialization=first cold_start_steps at T=1 without swaps; remaining warmup and production use declared fixed ladder";
         metadata<<"\ntarget=prior * likelihood^(1/T); fixed temperatures; no adaptation\nretained=post-swap fixed-temperature slots; top-level chains are T=1 only\nstarts=each independent ladder duplicates its supplied start across temperatures\ntotal_target_evaluations="<<calls
                 <<"\ndiagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
         std::cout<<"RJ PT ladders="<<starts.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';return issues?5:0;

@@ -33,6 +33,9 @@ struct RJPTOptions {
     RJOptions local;
     std::vector<double> temperatures{1,2,4,8};
     int swap_every=10;
+    bool save_warmup=false;
+    // Optional initialization phase within warmup: all slots at T=1, no swaps.
+    int cold_start_steps=0;
 };
 struct RJSwap {
     int iteration=0;
@@ -45,6 +48,8 @@ struct RJPTResult {
     // Draws are at fixed temperature slots AFTER swaps; local traces precede swaps.
     std::vector<RJResult> temperatures;
     std::vector<RJSwap> swaps;
+    std::vector<std::vector<RJDraw>> warmup_draws; // Per slot, after updates/swaps; optional.
+    std::vector<RJDraw> initial_states; // Cached initial evaluations, no extra calls.
     std::vector<std::vector<int>> replica_ids,layers_after_swaps; // Includes warmup.
 };
 double rj_swap_log_ratio(double temperature_i,double temperature_j,double log_like_i,double log_like_j);

@@ -35,6 +35,28 @@ int main(){try {
  o.local.warmup=20;o.local.draws=100;
  auto replay=sample_rj_tempering(std::vector<RJLikelihood>(4,f),p,std::vector<RJState>(4,start),o);
  for(size_t i=0;i<replay.replica_ids.size();++i)check(replay.replica_ids[i]==run.replica_ids[i],"Replica reproducibility");
+ o.save_warmup=true;
+ auto recorded=sample_rj_tempering(std::vector<RJLikelihood>(4,f),p,std::vector<RJState>(4,start),o);
+ check(recorded.replica_ids==replay.replica_ids,"Recording changed random stream");
+ for(size_t t=0;t<4;++t){
+  check(recorded.warmup_draws[t].size()==20,"Warmup retention count");
+  for(size_t i=0;i<100;++i)check(recorded.temperatures[t].draws[i].state.vs==replay.temperatures[t].draws[i].state.vs && recorded.temperatures[t].draws[i].state.interfaces==replay.temperatures[t].draws[i].state.interfaces,"Recording changed posterior");
+ }
+ o.cold_start_steps=10;
+ auto initialized=sample_rj_tempering(std::vector<RJLikelihood>(4,f),p,std::vector<RJState>(4,start),o);
+ for(size_t t=0;t<4;++t){
+  RJOptions local=o.local;local.chain_id=t;local.warmup=0;local.draws=10;
+  auto independent=sample_rjmcmc(f,p,start,local);
+  for(size_t i=0;i<10;++i)check(initialized.warmup_draws[t][i].state.vs==independent.draws[i].state.vs && initialized.warmup_draws[t][i].state.interfaces==independent.draws[i].state.interfaces,"Cold initialization differs from independent T1 kernel");
+ }
+ check(initialized.swaps.front().iteration==19,"Cold phase performed swaps");
+ for(const auto& swap:initialized.swaps){
+  if(!swap.warmup)continue;
+  const auto& lo=initialized.warmup_draws[swap.lower][swap.iteration];const auto& hi=initialized.warmup_draws[swap.upper][swap.iteration];
+  check(lo.log_likelihood==(swap.accepted?swap.log_like_upper:swap.log_like_lower) && hi.log_likelihood==(swap.accepted?swap.log_like_lower:swap.log_like_upper),"Warmup saved before exchange");
+ }
+ for(int steps:{-1,20,21}){o.cold_start_steps=steps;bool threw=false;try{sample_rj_tempering(std::vector<RJLikelihood>(4,f),p,std::vector<RJState>(4,start),o);}catch(const std::invalid_argument&){threw=true;}check(threw,"Bad initialization length accepted");}
+ o.cold_start_steps=0;
  RJLikelihood bad=[](const RJState& x){return RJEvaluation{x.vs[0]==2?EvaluationStatus::valid:EvaluationStatus::forward_failure,0};};
  auto failed=sample_rj_tempering(std::vector<RJLikelihood>(4,bad),p,std::vector<RJState>(4,start),o);
  for(const auto& temp:failed.temperatures)for(const auto& d:temp.draws)check(d.state.vs[0]==2,"Heat rescued invalid model");

@@ -97,8 +97,9 @@ double rj_swap_log_ratio(double ti,double tj,double li,double lj) {
 RJPTResult sample_rj_tempering(const std::vector<RJLikelihood>& targets,const RJPrior& prior,
                               const std::vector<RJState>& starts,const RJPTOptions& options) {
     const auto& temps=options.temperatures;const auto& o=options.local;
-    if(temps.empty() || targets.size()!=temps.size() || starts.size()!=temps.size() || temps[0]!=1 || options.swap_every<1)
-        throw std::invalid_argument("RJ tempering needs matching targets/starts, first temperature 1 and positive swap interval");
+    if(temps.empty() || targets.size()!=temps.size() || starts.size()!=temps.size() || temps[0]!=1 || options.swap_every<1
+       || options.cold_start_steps<0 || (options.cold_start_steps>0 && options.cold_start_steps>=o.warmup))
+        throw std::invalid_argument("Invalid RJ tempering ladder, swap interval or cold-start warmup length");
     for(size_t t=0;t<temps.size();++t) {
         if(!std::isfinite(temps[t]) || temps[t]<1 || (t>0 && temps[t]<=temps[t-1]))
             throw std::invalid_argument("RJ temperatures must be finite, >=1 and strictly increasing");
@@ -108,9 +109,12 @@ RJPTResult sample_rj_tempering(const std::vector<RJLikelihood>& targets,const RJ
         throw std::invalid_argument("RJ replica stream index overflow");
     std::vector<std::unique_ptr<Chain>> chains;
     RJPTResult result;result.temperatures.resize(temps.size());std::vector<int> ids;
+    if(options.save_warmup) result.warmup_draws.resize(temps.size());
     for(size_t t=0;t<temps.size();++t) {
         RJOptions local=o;local.chain_id=o.chain_id*temps.size()+t;
         chains.push_back(std::make_unique<Chain>(targets[t],prior,starts[t],local));ids.push_back(static_cast<int>(t));
+        result.initial_states.push_back(chains[t]->current);
+        if(options.save_warmup) result.warmup_draws[t].reserve(o.warmup);
         result.temperatures[t].draws.reserve(o.draws);
         result.temperatures[t].transitions.reserve(o.warmup+o.draws);
     }
@@ -119,8 +123,8 @@ RJPTResult sample_rj_tempering(const std::vector<RJLikelihood>& targets,const RJ
     int exchange=0;
     for(int iteration=0;iteration<o.warmup+o.draws;++iteration) {
         for(size_t t=0;t<temps.size();++t)
-            result.temperatures[t].transitions.push_back(chains[t]->step(iteration,1/temps[t]));
-        if((iteration+1)%options.swap_every==0) {
+            result.temperatures[t].transitions.push_back(chains[t]->step(iteration,iteration<options.cold_start_steps?1:1/temps[t]));
+        if(iteration>=options.cold_start_steps && (iteration-options.cold_start_steps+1)%options.swap_every==0) {
             const size_t first=temps.size()==2?0:exchange%2;
             for(size_t t=first;t+1<temps.size();t+=2) {
                 auto& a=chains[t]->current;auto& b=chains[t+1]->current;
@@ -139,6 +143,7 @@ RJPTResult sample_rj_tempering(const std::vector<RJLikelihood>& targets,const RJ
         for(size_t t=0;t<temps.size();++t) {
             layers.push_back(static_cast<int>(chains[t]->current.state.vs.size()));
             if(iteration>=o.warmup) result.temperatures[t].draws.push_back(chains[t]->current);
+            else if(options.save_warmup) result.warmup_draws[t].push_back(chains[t]->current);
         }
         result.layers_after_swaps.push_back(std::move(layers));
     }
