@@ -75,3 +75,6 @@ MPLCONFIGDIR=/tmp/dw-matplotlib python scripts/plot_nuts_terminal_step.py result
 仅矩阵不同、先验和边界不变、冻结矩阵、调用成本以及完整组的诊断重算。
 没有新增逐状态能量输出，本轮不提供 E-BFMI。原正式结果、默认配置及本地网页保持不变。
 本地证据保存在 `results/nuts-metric-pair/`。
+
+后续 [原始四链完整验收](nuts-original-095-search.md) 已通过，0.95＋搜索在该算例的完整流程
+中降低总评估成本，并改善 bulk/tail 有效样本效率，形成当前推荐配置。

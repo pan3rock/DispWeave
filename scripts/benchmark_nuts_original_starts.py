@@ -24,7 +24,11 @@ WINDOWS=[(0,250),(250,450),(450,950),(950,1000)]
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,required=True);p.add_argument('--reference',type=Path,required=True)
-    p.add_argument('--output',type=Path,required=True);a=p.parse_args()
+    p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--with-step-search',action='store_true',help='Search at startup and after each mass update')
+    p.add_argument('--timeout',type=float,default=600,help='Per-chain sampling time limit in seconds')
+    a=p.parse_args()
+    if not 0<a.timeout<=3600:p.error('timeout must be in (0, 3600] seconds')
     out=a.output.resolve();out.mkdir();ref=a.reference.resolve();inputs=out/'inputs';inputs.mkdir()
     base=read_config(ref/'nuts.toml')
     assert len(base['model']['vs'])==45 and len(base['inversion']['starts_vs'])==4
@@ -32,6 +36,7 @@ def main():
     assert base['nuts']['initial_metric']=='start_gauss_newton' and base['nuts']['metric_adaptation']=='dense'
     assert base['nuts'].get('kernel','slice')=='slice' and not base['nuts'].get('find_initial_step_size',False)
     config=copy.deepcopy(base);config['nuts'].update(target_accept=.95,draws=1000)
+    if a.with_step_search:config['nuts']['find_initial_step_size']=True
     write_config(out/'nuts.toml',config)
     for name in ['nuts.toml','observations.txt','covariance.txt']:
         shutil.copyfile(ref/name,inputs/name)
@@ -45,10 +50,11 @@ def main():
         write_config(path/'nuts.toml',cfg);jobs.append((c,path))
         for suffix in ['trace','vs','progress','initial_mass']:
             shutil.copyfile(ref/f'nuts/chain_{c}_{suffix}.txt',inputs/f'chain_{c}_{suffix}.txt')
-    protocol=dict(interpretation='Original-start online adaptation validation; only target acceptance changes; formal budget shortened to 1000',
+    protocol=dict(interpretation='Original-start validation at target .95, optional reasonable-step search, formal budget 1000',
         kernel='slice',target_accept=.95,seed=config['nuts']['seed'],warmup=1000,draws=1000,chains=4,
-        workers=4,timeout_per_chain=600,sampling_wall_budget_seconds=600,no_retries=True,
-        initial_metric='start_gauss_newton',metric_adaptation='dense',new_experimental_options='all disabled',
+        workers=4,timeout_per_chain=a.timeout,nominal_sampling_wall_budget_seconds=a.timeout,no_retries=True,
+        find_initial_step_size=a.with_step_search,
+        initial_metric='start_gauss_newton',metric_adaptation='dense',new_experimental_options='conservative policies, covariance persistence and stiffness guard disabled',
         reference_comparison='Stored target .99, all 1000 warmup + FIRST 1000 formal states per chain; no matched old wall timing available',
         acceptance=dict(max_rhat=1.01,min_bulk_ess=400,min_tail_ess=400,formal_divergences=0,formal_invalid=0,formal_depth_caps=0),
         posterior_checks=dict(derivatives='Middle retained state of each chain, two finite-difference scales and refined forward checks',predictive_states_per_chain=100),
@@ -79,7 +85,7 @@ def main():
         cmd=[str(exe),'nuts','--config',str(folder/'nuts.toml'),'--data',str(out/'observations.txt'),
              '--covariance',str(out/'covariance.txt'),'--output',str(folder/'nuts')]
         with (folder/'nuts.log').open('w') as log:
-            try:code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=600).returncode
+            try:code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=a.timeout).returncode
             except subprocess.TimeoutExpired:code='timeout'
         elapsed=time.perf_counter()-begin;dest=folder/'nuts'
         r,partial=progress_rows(dest/'chain_0_progress.txt',45)
@@ -91,8 +97,10 @@ def main():
             assert len(set(x[6] for x in formal))==1;record['frozen_step']=float(formal[0][6])
         if record['complete']:
             cost={k:int(v) for k,v in (line.split('=') for line in (dest/'chain_0_cost.txt').read_text().splitlines())}
-            assert cost['step_search_evaluations']==0 and cost['metric_evaluations']==1
-            assert cost['target_evaluations']==1+cost['transition_evaluations']==1+sum(int(x[5]) for x in r)
+            assert (cost['step_search_evaluations']>0)==a.with_step_search and cost['metric_evaluations']==1
+            assert cost['target_evaluations']==1+cost['transition_evaluations']+cost['step_search_evaluations']
+            assert cost['transition_evaluations']==sum(int(x[5]) for x in r)
+            record['cost']=cost
             record['total_evaluations']=cost['target_evaluations']+cost['preflight_evaluations']+cost['metric_evaluations']
             t=np.loadtxt(dest/'chain_0_trace.txt',dtype=str)
             for name,part in [('warmup',t[:1000]),('production',t[1000:])]:
@@ -111,7 +119,7 @@ def main():
         for c in range(1,4):assert (out/f'chain-{c}/nuts'/name).read_bytes()==first.read_bytes()
         shutil.copyfile(first,merged/name)
     for c in range(4):
-        for suffix in ['vs','z','trace','mass','metric_updates','initial_mass','progress','cost','failed_evaluations']:
+        for suffix in ['vs','z','trace','mass','metric_updates','initial_mass','progress','cost','failed_evaluations']+(['step_size_searches'] if a.with_step_search else []):
             shutil.copyfile(out/f'chain-{c}/nuts/chain_0_{suffix}.txt',merged/f'chain_{c}_{suffix}.txt')
     x=np.stack([np.loadtxt(merged/f'chain_{c}_vs.txt') for c in range(4)])
     new_stats=statistics(x,config)
