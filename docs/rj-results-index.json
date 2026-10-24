@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "scope": "已有本地实验索引；本次未执行任何重跑命令。",
+  "limitations": [
+    "results 为本地忽略目录，新克隆必须恢复本清单文件和源轨迹。",
+    "冻结二进制依赖原平台运行库；相同种子不保证不同平台逐位相同。",
+    "stage replay 复用已训练 q，不等价于从零重做训练；训练成本仍须计入。",
+    "输出目录必须不存在；命令产生新结果，返回成功不代表后验通过验收。"
+  ],
+  "experiments": [
+    {
+      "id": "two_layer_nuts",
+      "source": "results/rj-nuts-comparison",
+      "config": "results/rj-nuts-comparison/nuts.toml",
+      "seed": 20261025,
+      "warmup": 1000,
+      "draws": 1000,
+      "status": "固定界面 1.5 km，四链通过",
+      "report": "docs/rj-nuts-comparison.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-nuts-comparison/dispweave",
+        "nuts",
+        "--config",
+        "results/rj-nuts-comparison/nuts.toml",
+        "--data",
+        "results/rj-nuts-comparison/observations.txt",
+        "--covariance",
+        "results/rj-nuts-comparison/covariance.txt",
+        "--output",
+        "results/replay-two_layer_nuts-new"
+      ],
+      "sha256": {
+        "results/rj-nuts-comparison/nuts.toml": "9bcba6a2ec2f912026f112dc59f6e9e667d2ee7d9b6da4758ce2d62873d2ad5a",
+        "results/rj-nuts-comparison/observations.txt": "a6dd85304f08a56fd995b5cfcf86fce8d56aba36f96875cf68425e69e2b950b4",
+        "results/rj-nuts-comparison/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-nuts-comparison/truth.toml": "a488b1bde57228fe8ef0474cc399ae2f4715c87f0786f74890780a715cdc3125",
+        "results/rj-nuts-comparison/dispweave": "4919bb606284487df92012c5e19152e10eddb7c52a5b92e560ab832fd46fefd5",
+        "results/rj-nuts-comparison/protocol.json": "82f40ddfce6a951e7acbc27083c75d8fdce81498801d96fa8020595444bf2cc3",
+        "results/rj-nuts-comparison/run-script.py": "cb739d95d3314cad1a344a295669f05c45f3c25315081998cf7f577867c576bc",
+        "results/rj-nuts-comparison/summary.json": "b6ba5a754afbb832e23ef8489ac4b09ac687b5728da93e9fe8e7391f0df532a2"
+      }
+    },
+    {
+      "id": "two_layer_lm",
+      "source": "results/rj-predictive-closeout",
+      "config": "results/rj-predictive-closeout/lm.toml",
+      "seed": null,
+      "warmup": null,
+      "draws": null,
+      "status": "同数据、已知固定界面、四初值点估计",
+      "report": "docs/rj-predictive-closeout.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-predictive-closeout/dispweave",
+        "invert",
+        "--config",
+        "results/rj-predictive-closeout/lm.toml",
+        "--data",
+        "results/rj-predictive-closeout/observations.txt",
+        "--covariance",
+        "results/rj-predictive-closeout/covariance.txt",
+        "--output",
+        "results/replay-two_layer_lm-new"
+      ],
+      "sha256": {
+        "results/rj-predictive-closeout/lm.toml": "7acf5312585d2aa7331d771b3d9e330dd0c2cdb965acbfeee8e37a0b4ad11a98",
+        "results/rj-predictive-closeout/observations.txt": "a6dd85304f08a56fd995b5cfcf86fce8d56aba36f96875cf68425e69e2b950b4",
+        "results/rj-predictive-closeout/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-predictive-closeout/truth.toml": "a488b1bde57228fe8ef0474cc399ae2f4715c87f0786f74890780a715cdc3125",
+        "results/rj-predictive-closeout/dispweave": "fa3bb7f75010bd5178cc35017de040de160be58f7ab099aa95da6b29171cba7e",
+        "results/rj-predictive-closeout/protocol.json": "4d11ea19b986984dbc8c42a10fe748e28b48848586bd9ec583d3bf9c833bd4b2",
+        "results/rj-predictive-closeout/run-script.py": "ed3e24390b5646e9a8050f191a57cb36e1f1660637913300a09eb5f883605b2f",
+        "results/rj-predictive-closeout/summary.json": "d3129dc7f52f77c4df7a0da51aff9ef3f3934921943b8c71055d91f2a9c4c29d"
+      }
+    },
+    {
+      "id": "two_layer_rj",
+      "source": "results/rj-pt-correlated",
+      "config": "results/rj-pt-correlated/rj.toml",
+      "seed": 20261025,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "冻结相关提议，完整后验未验收",
+      "report": "docs/rj-correlated-proposal.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-pt-correlated/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-pt-correlated/rj.toml",
+        "--data",
+        "results/rj-pt-correlated/observations.txt",
+        "--covariance",
+        "results/rj-pt-correlated/covariance.txt",
+        "--output",
+        "results/replay-two_layer_rj-new"
+      ],
+      "sha256": {
+        "results/rj-pt-correlated/rj.toml": "4542fb042b24e9acbafeea4dbd4382a4fabbeacfcbcc4dc69b9aefe971290d69",
+        "results/rj-pt-correlated/observations.txt": "a6dd85304f08a56fd995b5cfcf86fce8d56aba36f96875cf68425e69e2b950b4",
+        "results/rj-pt-correlated/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-pt-correlated/truth.toml": "a488b1bde57228fe8ef0474cc399ae2f4715c87f0786f74890780a715cdc3125",
+        "results/rj-pt-correlated/dispweave": "fa3bb7f75010bd5178cc35017de040de160be58f7ab099aa95da6b29171cba7e",
+        "results/rj-pt-correlated/protocol.json": "7229fd8d5303a7d91eaf481a8a7df0c160c268cb27f86dbecf5d6c948825a858",
+        "results/rj-pt-correlated/training.json": "b9a805f1c4d835dc1302236003aa1ed2cd77486c0bc133e5fb5b0b45baae9ee1",
+        "results/rj-pt-correlated/run-script.py": "47834201666df9254cf2824b6b044943aa0ec883f64f45134474b2152a62a39a",
+        "results/rj-pt-correlated/summary.json": "9d98d4f0bfc593f6bc7f950363351fec54ea400a75994bc40c6d75891e621e2d"
+      }
+    },
+    {
+      "id": "two_layer_replication",
+      "source": "results/rj-pt-correlated-replication",
+      "config": "results/rj-pt-correlated-replication/rj.toml",
+      "seed": 20261026,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "只换种子；完整后验未验收",
+      "report": "docs/rj-correlated-replication.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-pt-correlated-replication/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-pt-correlated-replication/rj.toml",
+        "--data",
+        "results/rj-pt-correlated-replication/observations.txt",
+        "--covariance",
+        "results/rj-pt-correlated-replication/covariance.txt",
+        "--output",
+        "results/replay-two_layer_replication-new"
+      ],
+      "sha256": {
+        "results/rj-pt-correlated-replication/rj.toml": "57d6a7897391bf3e5d9d8356bc6cfe644aa28018ac56267ffc43fb68ce8a2285",
+        "results/rj-pt-correlated-replication/observations.txt": "a6dd85304f08a56fd995b5cfcf86fce8d56aba36f96875cf68425e69e2b950b4",
+        "results/rj-pt-correlated-replication/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-pt-correlated-replication/truth.toml": "a488b1bde57228fe8ef0474cc399ae2f4715c87f0786f74890780a715cdc3125",
+        "results/rj-pt-correlated-replication/dispweave": "fa3bb7f75010bd5178cc35017de040de160be58f7ab099aa95da6b29171cba7e",
+        "results/rj-pt-correlated-replication/protocol.json": "9372412e570e79ea62aa9507bc69129bb134fcd498fb0aacecad6713074d78d5",
+        "results/rj-pt-correlated-replication/training.json": "56d72f4ee014f6a407caff8172d140792c8f62ada6bd45dcabf094256569234d",
+        "results/rj-pt-correlated-replication/run-script.py": "7bfdbc9391c2962b89acc05b1a3f004222c920779ce14dd3f59882554f9888e3",
+        "results/rj-pt-correlated-replication/summary.json": "190d3c05b64138969d9ec7c67aa2c47c3ab34a14f0e2d5e6241a6e522f805ed5"
+      }
+    },
+    {
+      "id": "lvz_pilot",
+      "source": "results/rj-lvz-transfer/pilot",
+      "config": "results/rj-lvz-transfer/pilot/rj.toml",
+      "seed": 2026102801,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "本算例新预运行，仅训练，不并入正式后验",
+      "report": "docs/rj-lvz-transfer.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-lvz-transfer/pilot/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-lvz-transfer/pilot/rj.toml",
+        "--data",
+        "results/rj-lvz-transfer/pilot/observations.txt",
+        "--covariance",
+        "results/rj-lvz-transfer/pilot/covariance.txt",
+        "--output",
+        "results/replay-lvz_pilot-new"
+      ],
+      "sha256": {
+        "results/rj-lvz-transfer/pilot/rj.toml": "2859ef93e67d85d096306082c49cfbf6331e3dcd78bd25b9c8925e36d559bdb0",
+        "results/rj-lvz-transfer/pilot/observations.txt": "7d422b9dc4fa8d46cf215aa88030854963ffec1349cf54b0fa729eb7dcfacd7d",
+        "results/rj-lvz-transfer/pilot/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-lvz-transfer/pilot/truth.toml": "b671273c19bbbd70318ce72cbda1f4e921b36dee38d81ba6fc9c1f65fd71aa78",
+        "results/rj-lvz-transfer/pilot/dispweave": "fa3bb7f75010bd5178cc35017de040de160be58f7ab099aa95da6b29171cba7e",
+        "results/rj-lvz-transfer/pilot/protocol.json": "f9fe071d84145e8e3347de541e558005400d2271856a8f359ddef654cd5bf2b1",
+        "results/rj-lvz-transfer/pilot/summary.json": "68595d1a00277e276f812967e1f42343b9bbec8c6d94d005120edd35266f9711"
+      }
+    },
+    {
+      "id": "lvz_production",
+      "source": "results/rj-lvz-transfer/production",
+      "config": "results/rj-lvz-transfer/production/rj.toml",
+      "seed": 2026102802,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "低速特征恢复，完整后验未验收",
+      "report": "docs/rj-lvz-transfer.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-lvz-transfer/production/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-lvz-transfer/production/rj.toml",
+        "--data",
+        "results/rj-lvz-transfer/production/observations.txt",
+        "--covariance",
+        "results/rj-lvz-transfer/production/covariance.txt",
+        "--output",
+        "results/replay-lvz_production-new"
+      ],
+      "sha256": {
+        "results/rj-lvz-transfer/production/rj.toml": "de498ceea063a5a88d8dbf494461111f1e083bd60ea87deb2be405784450404c",
+        "results/rj-lvz-transfer/production/observations.txt": "7d422b9dc4fa8d46cf215aa88030854963ffec1349cf54b0fa729eb7dcfacd7d",
+        "results/rj-lvz-transfer/production/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-lvz-transfer/production/truth.toml": "b671273c19bbbd70318ce72cbda1f4e921b36dee38d81ba6fc9c1f65fd71aa78",
+        "results/rj-lvz-transfer/production/dispweave": "fa3bb7f75010bd5178cc35017de040de160be58f7ab099aa95da6b29171cba7e",
+        "results/rj-lvz-transfer/production/protocol.json": "d1dca450d39d8c7dc45f6bc08d815fd9fe08b113d186968fdd24ff70637136aa",
+        "results/rj-lvz-transfer/production/training.json": "61e57284169b542abd7561b7cc4e1dc471a05365c22fe50eb2cbc7cdf6eac4a2",
+        "results/rj-lvz-transfer/production/summary.json": "61504a5f052d28bd43f75c8d6cfca8bf9b4cebb20deb07aa96b1580bf3554a12"
+      }
+    },
+    {
+      "id": "k4_independent",
+      "source": "results/rj-local-k4/independent",
+      "config": "results/rj-local-k4/independent/rj.toml",
+      "seed": 2026102901,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "固定 K=4 配对基准，未通过",
+      "report": "docs/rj-local-k4.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-local-k4/independent/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-local-k4/independent/rj.toml",
+        "--data",
+        "results/rj-local-k4/independent/observations.txt",
+        "--covariance",
+        "results/rj-local-k4/independent/covariance.txt",
+        "--output",
+        "results/replay-k4_independent-new"
+      ],
+      "sha256": {
+        "results/rj-local-k4/independent/rj.toml": "a7658e444a2cf11e4d6dade6aff1ca3e33845ed1c8b24f68932a6cbf7031e4c4",
+        "results/rj-local-k4/independent/observations.txt": "7d422b9dc4fa8d46cf215aa88030854963ffec1349cf54b0fa729eb7dcfacd7d",
+        "results/rj-local-k4/independent/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-local-k4/independent/truth.toml": "b671273c19bbbd70318ce72cbda1f4e921b36dee38d81ba6fc9c1f65fd71aa78",
+        "results/rj-local-k4/independent/dispweave": "4f4fbb7f61b5ff3b29291b6227dfdc229f467c3f0870a9ad9cf72d6eb25ba69f",
+        "results/rj-local-k4/independent/protocol.json": "d026163225d8e1939c82693fda74ba4e752487245519776cb39a46f6768ed2df",
+        "results/rj-local-k4/independent/summary.json": "90e86b92d279782c9dff7ba685781ec48305ec09220dcde052e0f143fde1ab05"
+      }
+    },
+    {
+      "id": "k4_local",
+      "source": "results/rj-local-k4/local",
+      "config": "results/rj-local-k4/local/rj.toml",
+      "seed": 2026102901,
+      "warmup": 2500,
+      "draws": 25000,
+      "status": "尺度 0.2，效果变差，不采用",
+      "report": "docs/rj-local-k4.md",
+      "frozen_stage_replay_argv": [
+        "results/rj-local-k4/local/dispweave",
+        "rjmcmc",
+        "--config",
+        "results/rj-local-k4/local/rj.toml",
+        "--data",
+        "results/rj-local-k4/local/observations.txt",
+        "--covariance",
+        "results/rj-local-k4/local/covariance.txt",
+        "--output",
+        "results/replay-k4_local-new"
+      ],
+      "sha256": {
+        "results/rj-local-k4/local/rj.toml": "59b5bb178151c0ab968e61282a7b6b7720925bf876b51d4b04c47d40aa328208",
+        "results/rj-local-k4/local/observations.txt": "7d422b9dc4fa8d46cf215aa88030854963ffec1349cf54b0fa729eb7dcfacd7d",
+        "results/rj-local-k4/local/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+        "results/rj-local-k4/local/truth.toml": "b671273c19bbbd70318ce72cbda1f4e921b36dee38d81ba6fc9c1f65fd71aa78",
+        "results/rj-local-k4/local/dispweave": "4f4fbb7f61b5ff3b29291b6227dfdc229f467c3f0870a9ad9cf72d6eb25ba69f",
+        "results/rj-local-k4/local/protocol.json": "38552bb8b9cce30c3527656873b7bed2dd1fe9c5fef875984e4da8a4d05f9ad1",
+        "results/rj-local-k4/local/summary.json": "7a40e37ab057564e0cb7bd5e58dce6276c570caf6335e1dc34f8ba4f50899e30"
+      }
+    }
+  ],
+  "read_only_analysis_commands": [
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_predictive_closeout.py --output results/rj-predictive-closeout --analyze-only",
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_structure_paths.py results/rj-structure-paths",
+    "python scripts/audit_rj_structure_paths.py results/rj-structure-paths"
+  ],
+  "full_experiment_commands": [
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_correlated.py --output results/rj-pt-correlated-new",
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/replicate_rj_correlated.py --output results/rj-pt-correlated-replication-new",
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_lvz.py --output results/rj-lvz-transfer-new",
+    "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_local_k4.py --output results/rj-local-k4-new"
+  ],
+  "full_experiment_dependencies": [
+    "两层训练依赖 results/rj-pt-transdim 及 results/rj-nuts-comparison。",
+    "复验依赖 results/rj-pt-correlated；局部对照依赖 results/rj-lvz-transfer/production。",
+    "三层迁移依赖 results/rj-pt-correlated 的冻结二进制与配置；新预运行重新训练，不读取两层轨迹训练。",
+    "完整实验脚本还使用 build/dispweave 或已冻结二进制；具体步骤与审计见各 report。"
+  ],
+  "extra_inputs_sha256": {
+    "results/rj-lvz-transfer/design.json": "55c330510a6af686dd95e9f619dd5951d7b1697ec8556370ec0e381f82cf33a5",
+    "results/rj-local-k4/design.json": "d4858f17863b377e7d9895042f7d060b7c829f2949e30a0b9b83529d8021f13b",
+    "results/rj-structure-paths/summary.json": "7b2215f25c29ba792c6f450eafc698ef21509926e05dbc835797c36058240f7d",
+    "results/rj-structure-paths/audit.json": "a61afa5b5685610ced8fc312d744eae9169567849657485c05f3690df1ab0e21",
+    "results/rj-lvz-transfer/transfer-summary.json": "04a4f3fff19251a2b01fbc1c7c0d663ffe0cb1cd2be885195188ab9cf80ff559",
+    "scripts/benchmark_rj_correlated.py": "47834201666df9254cf2824b6b044943aa0ec883f64f45134474b2152a62a39a",
+    "scripts/replicate_rj_correlated.py": "7bfdbc9391c2962b89acc05b1a3f004222c920779ce14dd3f59882554f9888e3",
+    "scripts/benchmark_rj_lvz.py": "f1eaa99378ad7d49166b9f3a5adc7b27f9904b4517eba4ee87501efdb34b6533",
+    "scripts/benchmark_rj_local_k4.py": "0515d593aa360f42566b2066c850753308acafb065af9b6f3cf7329b0588101e",
+    "scripts/check_rj_predictive_closeout.py": "ed3e24390b5646e9a8050f191a57cb36e1f1660637913300a09eb5f883605b2f",
+    "scripts/analyze_rj_structure_paths.py": "8515301a58526eed7221f427f1be062efbd6375096d494be5326592be8aa857b",
+    "scripts/audit_rj_structure_paths.py": "dd11bf44e01ae706bb2dfbd0d6a2af40368cc1fc2f4533442fed6ec2da9e23e1"
+  },
+  "data_generation_seeds": {
+    "two_layer_noise": 2026102501,
+    "lvz_noise": 2026102800,
+    "two_layer_predictive_noise": [
+      2026102701,
+      2026102702
+    ]
+  }
+}

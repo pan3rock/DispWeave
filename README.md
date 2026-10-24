@@ -7,7 +7,8 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 
 ## 当前状态
 
-本地结果网页：[反演结果](web/results/index.html)，三张主图展示目标/参考/LM/最新 NUTS、频散拟合和原始数据；其余诊断折叠保留。
+本地结果网页：[反演结果](web/results/index.html)，按算例展示目标、LM/NUTS/RJMCMC结构与数据拟合，注明固定几何和变维反演的区别；固定层扩展结果折叠保留。
+[RJMCMC阶段收尾](docs/rj-predictive-closeout.md#当前阶段总览)：停止当前通用调参与界面重排研究，报告主要特征恢复和分层非唯一性；完整定量后验仍未验收。[复现索引](docs/rj-results-index.json) 保存配置、种子、输入hash和命令，[旧诊断页面](web/results/history.html) 保留历史证据。
 使用方式见 [网页说明](web/results/README.md)，支持浏览器直接打开，无需联网或发布。
 [推荐配置与运行命令](docs/nuts-recommended-use.md) 已固定本算例通过验收的 0.95＋步长搜索设置。
 [深度约束分析](docs/crust-depth-constraints.md) 区分单层速度与分段平均值：薄层细节先验依赖较强，部分宽区间平均速度明显收缩。
