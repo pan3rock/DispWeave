@@ -12,6 +12,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [推荐配置与运行命令](docs/nuts-recommended-use.md) 已固定本算例通过验收的 0.95＋步长搜索设置。
 [深度约束分析](docs/crust-depth-constraints.md) 区分单层速度与分段平均值：薄层细节先验依赖较强，部分宽区间平均速度明显收缩。
 [先验宽度敏感性](docs/crust-prior-sensitivity.md) 已完成四链验收：放宽至 0.2 后薄层区间明显扩大，19–23 km 层出现下界影响迹象。
+[本算例收尾判断](docs/crust-study-closeout.md)：已查明下界来自参考速度窗口；停止追加调参，局部幅度保留边界依赖的限制。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
