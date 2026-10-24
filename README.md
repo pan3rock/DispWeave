@@ -32,6 +32,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [结构表示与切换路径](docs/rj-structure-paths.md)：跨维链约97%的A/B切换经过K=3；已有预测差异小于噪声，但地下剖面不同。暂不开发重排提议，按分层非唯一性收尾，保留后验未验收限制。
 [新增观测辨别力筛查](docs/rj-structure-paths.md#后续数据辨别力筛查扩频与高阶模态)：64个已有模型与目标共65次正演；第一高阶0.6 Hz存在差异线索，但未形成通过预设规则的相邻频段。保留模态未解析和未收敛限制，不启动新链。
 [第一高阶窄频段复核](docs/rj-structure-paths.md#第一高阶窄频段复核)：两组选样在0.60–0.80 Hz的5个连续网格点共同通过，45/45代表模型—频率根核查通过；支持下一步有限预算新增数据对照，尚未运行新链，不宣称结构唯一。
+[新增两个高阶观测的配对反演](docs/rj-lvz-transfer.md#新增两个高阶观测的配对对照)：顶部/底部样本区间缩至基阶对照的44%/55%，但深度最大R-hat增至1.107、最低ESS下降，完整后验仍未验收；保留两组结果，不自动加长链或改内核。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**

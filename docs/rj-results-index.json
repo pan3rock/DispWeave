@@ -348,5 +348,52 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_mode1_followup.py --output results/rj-mode1-followup-new",
     "audit": "python scripts/audit_rj_mode1_followup.py results/rj-mode1-followup-new",
     "analyze_only": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_mode1_followup.py --output results/rj-mode1-followup --analyze-only"
+  },
+  "added_mode_paired_experiment": {
+    "source": "results/rj-added-mode",
+    "report": "docs/rj-lvz-transfer.md#新增两个高阶观测的配对对照",
+    "sampler_seed": 2026103001,
+    "noise_seed": 2026103000,
+    "added_frequencies": [
+      0.6,
+      0.65
+    ],
+    "mode": 1,
+    "proposals_per_arm": 440000,
+    "new_sampling_target_evaluations": 720835,
+    "shared_old_training_evaluations": 371844,
+    "prediction_model_calls": 200,
+    "retained_audit_model_calls": 96,
+    "target_model_calls": 1,
+    "full_posterior_accepted": false,
+    "sha256": {
+      "scripts/benchmark_rj_added_mode.py": "d639c124b126b5554e6aabdb190e1edc0829d9e1e68452d3e4d5bf7b420b64fc",
+      "scripts/analyze_rj_added_mode.py": "9888a950f4bc788bbe99a14829506e1b26465ea80362183bc14d0f5e23d33523",
+      "scripts/audit_rj_added_mode.py": "38e485f59b33d96596ae8c06dd5c66686cd0fe3d902097c0ab09018d59886b16",
+      "scripts/audit_rj_pt_transdim.py": "822ef767fde757ce1363b204dccf96283fc353e006e1943567b175a07445a137",
+      "scripts/benchmark_rj_pt_transdim.py": "380ab71540d177c250444ec6ffcd947d3b22b09bd3d9ac7ab1626e6ec0afb382",
+      "results/rj-added-mode/design.json": "b0f3df5ad274c7a07cfb83edb6a9da19f7808c6c7094552225f086f9008340f8",
+      "results/rj-added-mode/added-noise.txt": "f08695636de9dff3752ab061a5e54c45439f9bad47bf617e97d2f8e8e07dda3f",
+      "results/rj-added-mode/comparison-summary.json": "978f702937ac3d47f2b601ee66da2550234f964256f972a847b9dde940ee616d",
+      "results/rj-added-mode/comparison-audit.json": "f053a3dc617f7733e8f7883c9e32d7eae59682c145aca1986433abb51746cc7b",
+      "results/rj-added-mode/verification.json": "6cf1d25ebac1586e095d3d003a45527060f8b1d18c8d656b1c9cb37a93583720",
+      "results/rj-added-mode/baseline/rj.toml": "bcb4945eab2c6a8ad35be1e2bef90cb9419b353a55ab35aefabc72b1f3f8feb9",
+      "results/rj-added-mode/baseline/truth.toml": "b671273c19bbbd70318ce72cbda1f4e921b36dee38d81ba6fc9c1f65fd71aa78",
+      "results/rj-added-mode/baseline/observations.txt": "7d422b9dc4fa8d46cf215aa88030854963ffec1349cf54b0fa729eb7dcfacd7d",
+      "results/rj-added-mode/baseline/covariance.txt": "49dfdfb280a4c4cf4c6ae4f37e527f8d43b20909ad5d606d16497cf7d3ca61d9",
+      "results/rj-added-mode/baseline/protocol.json": "38759e88d89b890f6ef7a5b53a2307d3ce6232829bdda5a590184a88daef64bd",
+      "results/rj-added-mode/baseline/summary.json": "337df0ddbc7e70f7b90ca4febe5892aa0f7a1ea8047748ea8e30c52956780e37",
+      "results/rj-added-mode/baseline/independent-audit.json": "223ca0b8944df6d3ec9c5c41562747c248770f0984417ff0b5832edf397863f9",
+      "results/rj-added-mode/augmented/rj.toml": "bcb4945eab2c6a8ad35be1e2bef90cb9419b353a55ab35aefabc72b1f3f8feb9",
+      "results/rj-added-mode/augmented/truth.toml": "6a56a6d5ec1564b89158404a82f00b65efada310e828f7a632c419805224d7b4",
+      "results/rj-added-mode/augmented/observations.txt": "a0e625a836bd96edd6f3335f4dd73e2f9d4f3b3471349bf9e09d205ac6dcb080",
+      "results/rj-added-mode/augmented/covariance.txt": "5dc81df403ab0844c31497355529d60c415086015a1061b2808de72cee310475",
+      "results/rj-added-mode/augmented/protocol.json": "6c5b0bcdc32ae5489d873b84cfb798fac2762a1a2bb40b46d7bc005c8b70acf3",
+      "results/rj-added-mode/augmented/summary.json": "acac180f384414008fa9276151aa57723883b25606923bd3cc309a2e96f67926",
+      "results/rj-added-mode/augmented/independent-audit.json": "c951a9f28d6ea2d4951bb8062e9647213875544c78b2c8a62aab6b82a3b36caf"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_added_mode.py --output results/rj-added-mode-new",
+    "subsequent_steps": "Run per-arm generic analysis, first-time 200 predictions and audits as documented in report; do not rerun sampling.",
+    "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_added_mode.py results/rj-added-mode"
   }
 }

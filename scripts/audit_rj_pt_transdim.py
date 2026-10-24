@@ -13,7 +13,7 @@ from rj_correlated_density import FrozenDensities
 
 out=Path(sys.argv[1]).resolve();work=out/'audit';work.mkdir(exist_ok=False)
 rj_config=read_config(out/'rj.toml');density=FrozenDensities(rj_config)
-truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt')
+truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt');nobs=len(obs)
 _,ld=np.linalg.slogdet(cov);checks=0;error=0;accepted_checks=0;cold=[];failure_categories={}
 def load(p):return [np.fromstring(s,sep=' ') for s in p.read_text().splitlines() if s and not s.startswith('#')]
 def insertion(r):
@@ -38,14 +38,14 @@ for c in range(4):
    else:assert kb==ka
    ratio=(b[2]-a[2])/temp+b[3]-a[3]+h
    assert abs(ratio-float(tr[2500+i,8]))<1e-8;accepted_checks+=1
-  # Check every failed evaluation has all 12 observation rows and a non-valid row.
+  # Check every failed evaluation has all observation rows and a non-valid row.
   failed=[s.split() for s in (d/f'temperature_{t}_failed_models.txt').read_text().splitlines() if s and not s.startswith('#')]
   rows=[s.split() for s in (d/f'temperature_{t}_failed_rows.txt').read_text().splitlines() if s and not s.startswith('#')]
   groups={}
   for r in rows:groups.setdefault(int(r[0]),[]).append(r)
   assert set(groups)=={int(r[0]) for r in failed}
   for f in failed:
-   rs=groups[int(f[0])];assert len(rs)==12 and [int(r[1]) for r in rs]==list(range(12))
+   rs=groups[int(f[0])];assert len(rs)==nobs and [int(r[1]) for r in rs]==list(range(nobs))
    bad=[r[2] for r in rs if r[2]!='valid'];assert bad
    for status in bad:failure_categories[status]=failure_categories.get(status,0)+1
   for i in [0,12500,24999]:
@@ -54,7 +54,7 @@ for c in range(4):
    name=f'c{c}-t{t}-i{i}';write_config(work/f'{name}.toml',config);prediction=forward(out/'dispweave',work/f'{name}.toml',work/name)
    assert all(row[4]=='valid' for row in prediction)
    residual=np.array([float(row[3]) for row in prediction])-obs[:,1]
-   ll=-.5*(residual@np.linalg.solve(cov,residual)+ld+12*np.log(2*np.pi))
+   ll=-.5*(residual@np.linalg.solve(cov,residual)+ld+nobs*np.log(2*np.pi))
    error=max(error,abs(ll-r[2]));assert abs(ll-r[2])<1e-7;checks+=1
 summary=json.loads((out/'summary.json').read_text());layers=np.array([[r[1] for r in chain] for chain in cold])
 for p in summary['layer_probabilities']:
