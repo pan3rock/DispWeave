@@ -209,6 +209,8 @@ NUTS 不接受 `leapfrog_steps` 或 `step_jitter`。默认质量适应仍为 `no
 实现、额外 Jacobian 成本和检查点短测见 [预热实验选项](docs/nuts-warmup-policies.md)。
 后续 [原始初值在线检查](docs/nuts-online-warmup-audit.md) 发现全程温和策略拖慢启动，
 目前不建议据检查点短测启用为默认策略。
+可另设 `conservative_metric_restart = true`，同时保持 `conservative_warmup = false`，
+仅对接受质量更新后的重启使用温和策略；见 [独立重启验证](docs/nuts-metric-restart-audit.md)。
 输出保留全部正式状态，trace 同时包含预热标记、树深、树深截断、最大绝对能量误差与失败类型。
 正式采样有发散、无效计算、树深截断或整链未移动时返回 5，结果仍保存；返回 0 不保证充分混合。
 诊断脚本额外汇总树深和梯度评估代价。NUTS 的 `accepted` 是候选替换指示，不是额外 Metropolis 检验。

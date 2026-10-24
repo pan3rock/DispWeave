@@ -327,6 +327,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
         options.find_initial_step_size=toml::find_or<bool>(cfg,"find_initial_step_size",false);
         options.metric_shrinkage=toml::find_or<double>(cfg,"metric_shrinkage",0.);
         options.conservative_warmup=toml::find_or<bool>(cfg,"conservative_warmup",false);
+        options.conservative_metric_restart=toml::find_or<bool>(cfg,"conservative_metric_restart",false);
         options.metric_max_stiffness_ratio=toml::find_or<double>(cfg,"metric_max_stiffness_ratio",0.);
         if(options.metric_max_stiffness_ratio>0 && prior_name!="reference_gaussian_vs")
             throw std::invalid_argument("Local Gauss-Newton metric guard requires reference_gaussian_vs");
@@ -481,6 +482,7 @@ int run_sampler(const std::filesystem::path& config_path,const std::filesystem::
     if constexpr(nuts) metadata<<"\nsampler="<<(options.kernel==NUTSKernel::slice?"slice_nuts_hoffman_gelman_2014":"multinomial_nuts")
         <<"\nfind_initial_step_size="<<options.find_initial_step_size<<"\nmetric_shrinkage="<<options.metric_shrinkage<<"\nmax_depth="<<options.max_depth
         <<"\nconservative_warmup="<<options.conservative_warmup
+        <<"\nconservative_metric_restart="<<options.conservative_metric_restart
         <<"\nmetric_max_stiffness_ratio="<<options.metric_max_stiffness_ratio;
     else metadata<<"\nsampler=static_hmc\nleapfrog_steps="<<options.leapfrog_steps<<"\nstep_jitter="<<options.step_jitter;
     metadata<<"\ninitial_step_size="<<options.step_size

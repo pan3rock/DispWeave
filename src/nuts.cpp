@@ -19,6 +19,8 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
     if(density.status!=EvaluationStatus::valid || !std::isfinite(density.value)
        || density.gradient.size()!=initial.size() || !density.gradient.allFinite()) throw std::invalid_argument("Invalid initial NUTS density or gradient");
     const bool adapt_metric=o.metric_adaptation!=MetricAdaptation::none;
+    if(o.conservative_metric_restart && !adapt_metric)
+        throw std::invalid_argument("Conservative metric restart requires metric adaptation");
     if(!std::isfinite(o.metric_shrinkage) || o.metric_shrinkage<0 || (o.metric_shrinkage>0 && !adapt_metric))
         throw std::invalid_argument("metric_shrinkage must be nonnegative and requires metric adaptation");
     if(adapt_metric && !o.adapt_step_size) throw std::invalid_argument("Metric adaptation requires step adaptation");
@@ -41,13 +43,14 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
     double step=o.step_size;
     NUTSResult out;out.draws.resize(o.draws,q.size());
     const auto search=[&](int iteration) {
-        const auto result=o.conservative_warmup?
+        const auto result=(o.conservative_warmup || (iteration>0 && o.conservative_metric_restart))?
             detail::find_conservative_step(target,q,density,metric,rng,step,iteration):
             detail::find_step_size(target,q,density,metric,rng,step,iteration);
         step=result.step_size;out.step_size_searches.push_back(result);
     };
     if(o.find_initial_step_size) search(0);
     const double center=o.conservative_warmup?1.:10.;
+    const bool conservative_restart=o.conservative_warmup || o.conservative_metric_restart;
     detail::DualAveraging adaptation(step,o.target_accept,center);
     for(int i=0;i<o.warmup+o.draws;++i) {
         HamiltonianState start{q,metric.momentum(rng),density};
@@ -107,9 +110,9 @@ NUTSResult sample_nuts(const LogDensity& target,const Eigen::VectorXd& initial,c
                         if(o.metric_shrinkage>0)
                             previous_covariance=covariance.covariance(o.metric_adaptation,previous_covariance,o.metric_shrinkage);
                         metric=candidate;out.metric_updates.push_back({i+1,covariance.count(),mass});
-                        if(o.conservative_warmup) step=adaptation.averaged_step();
+                        if(conservative_restart) step=adaptation.averaged_step();
                         if(o.find_initial_step_size) search(i+1);
-                        adaptation=detail::DualAveraging(step,o.target_accept,center);
+                        adaptation=detail::DualAveraging(step,o.target_accept,conservative_restart?1.:10.);
                     }
                     // A rejected update keeps the metric and continuing DA state.
                     covariance=detail::CovarianceAccumulator(initial.size());++window;

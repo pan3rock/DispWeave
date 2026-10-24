@@ -20,6 +20,7 @@ struct NUTSOptions {
     // Pseudo-observations retaining the previous window's POSITION covariance.
     double metric_shrinkage=0; // Zero preserves the original adaptation path.
     bool conservative_warmup=false; // Shrink-only search; DA centered on the starting step.
+    bool conservative_metric_restart=false; // Keep ordinary startup; use conservative restarts after accepted metric updates.
     double metric_max_stiffness_ratio=0; // 0 disables the local-curvature guard; otherwise >=1.
     std::function<Eigen::MatrixXd(const Eigen::VectorXd&)> local_curvature;
     std::function<void(const MetricDecision&)> metric_progress;

@@ -39,15 +39,42 @@ int main() {try {
     auto fixed=reject;fixed.metric_adaptation=MetricAdaptation::none;fixed.metric_shrinkage=0;fixed.metric_max_stiffness_ratio=0;
     const auto unchanged=sample_nuts(normal,zero,huge,fixed);
     require(rejected.draws==unchanged.draws && rejected.step_size==unchanged.step_size && rejected.mass==unchanged.mass,"Rejected update changed sampling path");
+    auto restart=reject;restart.conservative_warmup=false;restart.conservative_metric_restart=true;
+    guards=decisions=0;const auto restart_rejected=sample_nuts(normal,zero,huge,restart);
+    require(restart_rejected.metric_updates.empty() && guards==3 && decisions==3 && restart_rejected.step_size_searches.size()==1,"Rejected restart-only update changed adaptation");
+    fixed=restart;fixed.conservative_metric_restart=false;fixed.metric_adaptation=MetricAdaptation::none;
+    fixed.metric_shrinkage=0;fixed.metric_max_stiffness_ratio=0;
+    const auto restart_fixed=sample_nuts(normal,zero,huge,fixed);
+    require(restart_rejected.draws==restart_fixed.draws && restart_rejected.step_size==restart_fixed.step_size,"Restart-only rejection changed RNG or DA");
+    // Ordinary startup is exactly preserved through transition 99, including
+    // both tree kernels and configurations with/without initial step search.
+    for(auto kernel:{NUTSKernel::slice,NUTSKernel::multinomial}) for(bool search_enabled:{false,true}) {
+        NUTSOptions o;o.kernel=kernel;o.find_initial_step_size=search_enabled;o.warmup=300;o.draws=20;
+        o.metric_adaptation=MetricAdaptation::dense;o.metric_shrinkage=25;
+        std::vector<Eigen::VectorXd> before,after;
+        o.progress=[&](int,const Eigen::VectorXd& q,const NUTSTransition&) {before.push_back(q);};
+        const auto original=sample_nuts(normal,zero,identity,o);
+        o.conservative_metric_restart=true;
+        o.progress=[&](int,const Eigen::VectorXd& q,const NUTSTransition&) {after.push_back(q);};
+        const auto changed=sample_nuts(normal,zero,identity,o);
+        for(int i=0;i<100;++i) {
+            const auto& a=original.transitions[i];const auto& b=changed.transitions[i];
+            require(before[i]==after[i] && a.step_size==b.step_size && a.evaluations==b.evaluations
+                && a.acceptance_probability==b.acceptance_probability && a.depth==b.depth
+                && a.status==b.status && a.divergent==b.divergent,"Restart-only changed initial warmup");
+        }
+        require(original.metric_updates[0].mass==changed.metric_updates[0].mass,"First candidate metric changed");
+    }
     // Actual distribution checks for separate and combined options.
-    for(int policy=0;policy<3;++policy) for(int seed:{17,2026,99173}) {
+    for(int policy=0;policy<5;++policy) for(int seed:{17,2026,99173}) {
         const LogDensity target=[&](const Eigen::VectorXd& q) {return DensityEvaluation{EvaluationStatus::valid,-.5*q.dot(precision*q),-precision*q};};
         NUTSOptions o;o.kernel=NUTSKernel::multinomial;o.find_initial_step_size=true;o.warmup=300;o.draws=12000;
         o.target_accept=.95;o.seed=seed;o.metric_adaptation=MetricAdaptation::dense;o.metric_shrinkage=25;
-        o.conservative_warmup=policy!=1;o.metric_max_stiffness_ratio=policy?4:0;
+        o.conservative_warmup=policy==0 || policy==2;o.conservative_metric_restart=policy>=3;
+        o.metric_max_stiffness_ratio=(policy==1 || policy==2 || policy==4)?4:0;
         int curvature_calls=0;o.local_curvature=[&](const Eigen::VectorXd&) {++curvature_calls;return precision;};
         const auto r=sample_nuts(target,zero,EuclideanMetric(precision),o);
-        require(curvature_calls==(policy?3:0),"Guard ran outside slow windows");
+        require(curvature_calls==(o.metric_max_stiffness_ratio>0?3:0),"Guard ran outside slow windows");
         const Eigen::MatrixXd white=cov.llt().matrixL().solve(r.draws.transpose()).transpose();
         for(int j=0;j<2;++j) {moment(white.col(j),0);moment(white.col(j).array().square().matrix(),1);}
         moment((white.col(0).array()*white.col(1).array()).matrix(),0);
@@ -67,6 +94,9 @@ int main() {try {
     invalid=reject;invalid.local_curvature={};failed=false;
     try {sample_nuts(normal,zero,huge,invalid);}catch(const std::invalid_argument&) {failed=true;}
     require(failed,"Missing curvature accepted");
+    invalid=fixed;invalid.conservative_metric_restart=true;failed=false;
+    try {sample_nuts(normal,zero,huge,invalid);}catch(const std::invalid_argument&) {failed=true;}
+    require(failed,"Restart-only option accepted without metric adaptation");
     const LogDensity point=[](const Eigen::VectorXd& q) {return q.squaredNorm()>0?DensityEvaluation{}:DensityEvaluation{EvaluationStatus::valid,0,Eigen::VectorXd::Zero(q.size())};};
     failed=false;try {detail::find_conservative_step(point,zero,point(zero),identity,rng,.1,0);}catch(const std::runtime_error&) {failed=true;}
     require(failed,"Unbounded conservative search");

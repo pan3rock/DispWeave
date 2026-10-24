@@ -79,6 +79,8 @@ python scripts/benchmark_nuts_warmup.py --exe build/dispweave \
 尝试温和重启，并保持矩阵检查独立。需要先验证首次更新前随机路径逐位兼容，
 再用相同预算评估后续窗口；不能直接假定这一调整必然解决问题。
 
+后续已实现独立的 `conservative_metric_restart`，见 [独立重启验证](nuts-metric-restart-audit.md)。
+
 本轮只扩展试验脚本和报告，没有修改生产采样器。验证包括 Python 语法检查、CLI 错误参数检查、
 真实四次受限运行、输入/配置/二进制哈希、原始初值/先验/支持域一致性和矩阵检查之前的路径对照。
 

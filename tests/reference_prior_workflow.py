@@ -67,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
         if algorithm=='nuts':
             guarded=copy.deepcopy(cfg)
             guarded['nuts'].update(kernel='multinomial',metric_adaptation='dense',metric_shrinkage=25.,
-                find_initial_step_size=True,conservative_warmup=True,metric_max_stiffness_ratio=4.)
+                find_initial_step_size=True,conservative_metric_restart=True,metric_max_stiffness_ratio=4.)
             guard_path=work/'guarded.toml';write_config(guard_path,guarded)
             guard_out=work/'guarded'
             run('nuts','--config',guard_path,'--data',work/'data/observations.txt','--output',guard_out,codes=(0,5))
@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory(prefix='dw-reference-prior-') as temp:
                 assert len(searches)==1+int(decisions[0,1])
                 trace=np.loadtxt(guard_out/f'chain_{c}_trace.txt',dtype=str,skiprows=1)
                 assert np.all(trace[100:,3]==trace[100,3])
-            assert 'conservative_warmup=1' in (guard_out/'metadata.txt').read_text()
+            assert 'conservative_metric_restart=1' in (guard_out/'metadata.txt').read_text()
             # Recover an interrupted first chain while preserving a completed second chain.
             recovery=work/'recovery';recovery.mkdir()
             recovery_cfg=copy.deepcopy(cfg);recovery_cfg['nuts']['record_failures']=True

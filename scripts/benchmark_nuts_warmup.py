@@ -68,13 +68,15 @@ def main():
     p.add_argument('--modern-only', action='store_true', help='Run only multinomial plus step search, both original starts')
     p.add_argument('--policy-ablation', action='store_true',
                    help='Compare conservative warmup alone with conservative warmup plus a ratio-4 online metric guard')
+    p.add_argument('--restart-ablation', action='store_true',
+                   help='Keep ordinary startup; compare conservative metric restarts with/without the ratio-4 guard')
     args = p.parse_args()
     if args.warmup < 150 or args.draws < 1 or not 0 < args.timeout <= 120:
         p.error('Need warmup >=150, draws >=1, timeout in (0,120] seconds')
     if not np.isfinite(args.metric_shrinkage) or args.metric_shrinkage < 0:
         p.error('metric-shrinkage must be finite and nonnegative')
-    if args.policy_ablation and args.modern_only:
-        p.error('policy-ablation and modern-only are mutually exclusive')
+    if sum([args.policy_ablation,args.restart_ablation,args.modern_only]) > 1:
+        p.error('policy-ablation, restart-ablation and modern-only are mutually exclusive')
     ref = args.reference.resolve(); out = args.output.resolve(); out.mkdir()
     base = read_config(ref/'nuts.toml')
     assert len(base['model']['vs']) == 45 and len(base['inversion']['starts_vs']) == 4
@@ -90,6 +92,8 @@ def main():
     variants = VARIANTS[-1:] if args.modern_only else VARIANTS
     if args.policy_ablation:
         variants = [('conservative', 'multinomial', True), ('conservative-guard', 'multinomial', True)]
+    if args.restart_ablation:
+        variants = [('restart', 'multinomial', True), ('restart-guard', 'multinomial', True)]
     for label, kernel, search in variants:
         for chain in [0, 1]:
             cfg = copy.deepcopy(base)
@@ -102,6 +106,9 @@ def main():
             if args.policy_ablation:
                 cfg['nuts'].update(conservative_warmup=True,
                     metric_max_stiffness_ratio=4. if label == 'conservative-guard' else 0.)
+            if args.restart_ablation:
+                cfg['nuts'].update(conservative_warmup=False,conservative_metric_restart=True,
+                    metric_max_stiffness_ratio=4. if label == 'restart-guard' else 0.)
             path = out/f'{label}-{chain}.toml'; write_config(path, cfg)
             jobs.append((label, chain, path))
     protocol = dict(interpretation='Warmup ablation pilot, not a new posterior acceptance run',
@@ -114,8 +121,10 @@ def main():
         variants=[dict(label=a, kernel=b, step_search=c) for a, b, c in variants],
         metric_shrinkage=args.metric_shrinkage,
         policy_ablation=args.policy_ablation,
+        restart_ablation=args.restart_ablation,
         policy_details=dict(conservative_warmup=args.policy_ablation,
-            metric_max_stiffness_ratio_by_variant={label:4. if label == 'conservative-guard' else 0. for label, _, _ in variants}),
+            conservative_metric_restart=args.restart_ablation,
+            metric_max_stiffness_ratio_by_variant={label:4. if label.endswith('-guard') else 0. for label, _, _ in variants}),
         source_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
         binary_sha256=digest(exe), script_sha256=digest(Path(__file__)),
         inputs={name:digest(inputs/name) for name in ['nuts.toml', 'observations.txt', 'covariance.txt']},
