@@ -63,7 +63,7 @@
   <header>
     <h1>DispWeave · 反演结果</h1>
     <p>地壳合成数据 · 125 个观测点 · 最新完整验收：0.95＋步长搜索。仅本地查看。</p>
-    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#small-lvz">独立六层算例</a><a href="#rj-comparison">RJMCMC 对照</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
+    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#small-lvz">独立六层算例</a><a href="#rj-predictive">RJMCMC 结果</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
   </header>
   <div class="status"><strong>原地壳算例：固定层 NUTS 四链验收通过，采样约 5 分钟。</strong>
     每链预热 1000、正式 1000，共 4000 个正式状态。最大 R̂ = 1.00352，最低 bulk / tail ESS ≈ 1695 / 1990。
@@ -92,6 +92,20 @@
       <p><a href="../../docs/small-lvz-validation.md">完整结果与限制</a> · <a href="../../results/small-lvz-validation/truth.toml">目标模型</a> · <a href="../../results/small-lvz-validation/reference.toml">参考模型</a> · <a href="../../results/small-lvz-validation/observations.txt">合成观测</a> · <a href="../../results/small-lvz-validation/nuts.toml">采样配置</a></p>
     </figcaption>
     <a class="image-link" href="../../results/small-lvz-validation/comparison.png" target="_blank" rel="noopener" aria-label="打开六层低速模型验证原图"><img src="../../results/small-lvz-validation/comparison.png" alt="独立六层算例的目标、参考、LM、NUTS 后验，频散数据拟合与标准化残差。" loading="lazy"></a>
+  </figure>
+  <figure id="rj-predictive">
+    <figcaption>
+      <div class="figure-heading"><h2>RJMCMC：两次实验的后验预测</h2><a href="../../docs/rj-predictive-closeout.md">检查报告</a></div>
+      <p>独立的12点两层合成算例。两次各选400个冷链模型，无预测失败；观测均落在逐点95%含噪预测区间内。绿色点线为目标，橙色虚线为同数据LM（界面已知并固定在1.5 km）；蓝/紫区间分别表示两次实验。拟合相近不代表地下分层唯一，也不代表后验已收敛。</p>
+    </figcaption>
+    <a class="image-link" href="../../results/rj-predictive-closeout/predictive.png" target="_blank" rel="noopener"><img src="../../results/rj-predictive-closeout/predictive.png" alt="两次RJ实验分别展示原始观测及噪声、绿色目标曲线、橙色LM拟合、无噪声与含噪后验预测区间及残差。" loading="lazy"></a>
+  </figure>
+  <figure id="rj-uncertainty">
+    <figcaption>
+      <h2>RJMCMC：深度与分层不确定性</h2>
+      <p>每次使用全部100000个正式冷链状态，分别汇总。浅层速度较集中，主界面附近区间明显变宽，额外层数与界面仍不确定。深部结果受半空间假设限制。当前阶段收尾，停止通用调参；完整后验仍未验收。</p>
+    </figcaption>
+    <a class="image-link" href="../../results/rj-predictive-closeout/model-uncertainty.png" target="_blank" rel="noopener"><img src="../../results/rj-predictive-closeout/model-uncertainty.png" alt="两次实验各自的速度95%逐点区间、目标与LM剖面，以及每0.1千米界面占据概率和层数占比。" loading="lazy"></a>
   </figure>
   <figure id="rj-comparison">
     <figcaption><div class="figure-heading"><h2>5. RJMCMC 与固定界面 NUTS 对照</h2><div class="downloads"><a href="../../results/rj-nuts-comparison/comparison.png" target="_blank" rel="noopener">原图</a><a href="../../results/rj-nuts-comparison/comparison.pdf" target="_blank" rel="noopener">PDF</a></div></div>
