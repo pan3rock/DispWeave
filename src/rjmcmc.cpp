@@ -13,6 +13,7 @@ RJEvaluation evaluate(const RJLikelihood& likelihood,const RJState& state) {
 void validate(const RJPrior& prior,const RJState& initial,const RJOptions& o) {
     prior.validate();
     if(!prior.supports(initial) || o.warmup<0 || o.draws<1 || o.warmup>std::numeric_limits<int>::max()-o.draws
+       || !std::isfinite(o.velocity_refresh_probability) || o.velocity_refresh_probability<0 || o.velocity_refresh_probability>1
        || !std::isfinite(o.vs_step) || o.vs_step<=0 || !std::isfinite(o.interface_step) || o.interface_step<=0)
         throw std::invalid_argument("Invalid RJ initial state or sampler options");
     // Birth/death changes K by one. Do not silently explore only one disconnected class.
@@ -40,7 +41,8 @@ public:
     }
     RJTransition step(int iteration,double beta=1) {
         const int k=static_cast<int>(current.state.vs.size());
-        const auto move=static_cast<RJMove>(index(4));
+        auto move=static_cast<RJMove>(index(4));
+        if(move==RJMove::velocity && o.velocity_refresh_probability>0 && uniform()<o.velocity_refresh_probability) move=RJMove::velocity_refresh;
         RJProposal proposal{current.state,move};
         if(move==RJMove::birth) {
             if(k<prior.max_layers && rj_insertion_length(prior,current.state)>0) {
@@ -55,6 +57,10 @@ public:
                 proposal.index=index(k-1);proposal.state.interfaces[proposal.index]+=o.interface_step*normal(rng);
                 proposal.status=prior.supports(proposal.state)?RJProposalStatus::valid:RJProposalStatus::outside_support;
             }
+        } else if(move==RJMove::velocity_refresh) {
+            Eigen::VectorXd vs(k);
+            for(int j=0;j<k;++j) vs[j]=prior.vs_lower+(prior.vs_upper-prior.vs_lower)*uniform();
+            proposal=rj_velocity_refresh(prior,current.state,vs);
         } else {
             proposal.index=index(k);proposal.state.vs[proposal.index]+=o.vs_step*normal(rng);
             proposal.status=prior.supports(proposal.state)?RJProposalStatus::valid:RJProposalStatus::outside_support;

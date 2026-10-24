@@ -10,7 +10,7 @@ from benchmark_crust_depth import forward
 from joint_results import read_config,write_config,save_json
 
 out=Path(sys.argv[1]).resolve();work=out/'warmup-audit';work.mkdir(exist_ok=False)
-cfg=read_config(out/'rj.toml');options=cfg['rjmcmc'];warm=options['warmup'];cold=options['tempering']['cold_start_steps'];temps=options['tempering']['temperatures']
+cfg=read_config(out/'rj.toml');options=cfg['rjmcmc'];warm=options['warmup'];cold=options['tempering'].get('cold_start_steps',0);temps=options['tempering']['temperatures']
 truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt');_,ld=np.linalg.slogdet(cov)
 def rows(path):return [np.fromstring(line,sep=' ') for line in path.read_text().splitlines() if line and not line.startswith('#')]
 def insertion(r):return np.maximum(np.diff(np.r_[0,r[4:3+int(r[1])],5])-.6,0).sum()
@@ -51,17 +51,18 @@ for c in range(4):
    if swap[9]:l,h=map(int,swap[2:4]);first[l],first[h]=first[h],first[l]
   if tr[warm,5]=='0':np.testing.assert_array_equal(series[-1][1:],first[t][1:])
   # Independent physical likelihood at the end of the cold initialization phase.
-  row=series[cold];k=int(row[1]);v=row[3+k:];config=copy.deepcopy(truth)
+  probe=cold if cold else warm
+  row=series[probe];k=int(row[1]);v=row[3+k:];config=copy.deepcopy(truth)
   config['model']=dict(depth=[0.,*row[4:3+k]],vs=v.tolist(),vp=(1.8*v).tolist(),rho=[2.3]*k)
   name=f'c{c}-t{t}-cold-end';write_config(work/f'{name}.toml',config);pred=forward(out/'dispweave',work/f'{name}.toml',work/name)
   assert all(r[4]=='valid' for r in pred)
   delta=np.array([float(r[3]) for r in pred])-obs[:,1];ll=-.5*(delta@np.linalg.solve(cov,delta)+ld+12*np.log(2*np.pi))
   error=max(error,abs(ll-row[2]));assert abs(ll-row[2])<1e-7
-  stages.append(dict(ladder=c,temperature=temp,initial_logL=float(series[0][2]),cold_end_logL=float(row[2]),warmup_end_logL=float(series[-1][2]),cold_end_K=k,
+  stages.append(dict(ladder=c,temperature=temp,initial_logL=float(series[0][2]),initialization_end_logL=float(series[cold][2]),probe_iteration=probe-1,probe_logL=float(row[2]),warmup_end_logL=float(series[-1][2]),probe_K=k,
    cold_failures=int(np.sum((tr[:cold,3]=='1')&(tr[:cold,4]=='forward_failure'))),tempered_warmup_failures=int(np.sum((tr[cold:warm,3]=='1')&(tr[cold:warm,4]=='forward_failure')))))
  loglikes.append([[float(r[2]) for r in slot] for slot in state])
 report=dict(passed=True,validated_states_including_initial=checks,accepted_warmup_ratios_verified=accepts,rejected_warmup_states_verified=rejected,
- cold_end_likelihood_recomputations=16,maximum_log_likelihood_error=error,stages=stages,interpretation='All warmup excluded from posterior; initialization changes only discarded transitions, no state selection or resetting.')
+ probe_likelihood_recomputations=16,maximum_log_likelihood_error=error,stages=stages,interpretation='All warmup excluded from posterior; initialization changes only discarded transitions, no state selection or resetting.')
 save_json(out/'warmup-audit.json',report)
 import matplotlib
 matplotlib.use('Agg')
@@ -70,6 +71,6 @@ fig,axes=plt.subplots(2,2,figsize=(10,6),layout='constrained')
 for c,ax in enumerate(axes.flat):
  for t,temp in enumerate(temps):ax.plot(np.arange(-1,warm),loglikes[c][t],label=f'T={temp} slot',lw=.8)
  ax.axvline(cold-.5,color='#222222',ls='--');ax.set(title=f'Ladder {c}',xlabel='Warmup iteration',ylabel='Raw log likelihood',ylim=(-250,40));ax.grid(alpha=.15)
-axes[0,0].legend(fontsize=7);fig.suptitle('Initialization audit: first 500 steps all T=1; plots clipped at logL=-250')
+axes[0,0].legend(fontsize=7);fig.suptitle((f'Initialization audit: first {cold} steps all T=1' if cold else 'PT warmup: fixed ladder, no cold initialization')+'; plots clipped at logL=-250')
 fig.savefig(out/'warmup.png',dpi=160);plt.close(fig)
 print(report)

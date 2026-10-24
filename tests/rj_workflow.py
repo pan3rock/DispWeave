@@ -95,6 +95,14 @@ with tempfile.TemporaryDirectory() as tmp:
             assert [int(r[0]) for r in rows]==list(range(-1,60))
         swaps=[r.split() for r in (work / f'pt-initialized/ladder_{c}/swaps.txt').read_text().splitlines() if not r.startswith('#')]
         assert min(int(r[0]) for r in swaps)==19
+    refresh_config=work / 'refresh.toml'
+    refresh_config.write_text(content.replace('[rjmcmc]', '[rjmcmc]\nvelocity_refresh_probability = 1.0'))
+    sample(work / 'refresh', config=refresh_config)
+    for c in range(3):
+        trace=[r.split() for r in (work / f'refresh/chain_{c}_trace.txt').read_text().splitlines() if not r.startswith('#')]
+        assert any(r[1]=='velocity_refresh' for r in trace)
+        assert all(r[1]!='velocity' for r in trace)
+    assert 'velocity_refresh_probability=1' in (work / 'refresh/metadata.txt').read_text()
     (a / 'observations.txt').write_bytes(missing.read_bytes())
     run('rj-predict', '--run', a, '--output', work / 'failed-predict', '--draws-per-chain', 2, codes=(5,))
     failed = [r.split() for r in (work / 'failed-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]

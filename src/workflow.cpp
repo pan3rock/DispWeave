@@ -520,6 +520,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
     RJOptions options;
     options.warmup=toml::find_or<int>(cfg,"warmup",options.warmup);options.draws=toml::find_or<int>(cfg,"draws",options.draws);
     options.vs_step=toml::find_or<double>(cfg,"vs_step",options.vs_step);
+    options.velocity_refresh_probability=toml::find_or<double>(cfg,"velocity_refresh_probability",0);
     options.interface_step=toml::find_or<double>(cfg,"interface_step",options.interface_step);
     const auto seed=toml::find_or<std::int64_t>(cfg,"seed",2026);
     if(seed<0) throw std::invalid_argument("RJ seed must be nonnegative");
@@ -597,7 +598,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
                 int eval=0;
                 for(size_t i=0;i<result.temperatures[t].transitions.size();++i) {
                     const auto& tr=result.temperatures[t].transitions[i];
-                    const char* move=tr.move==RJMove::birth?"birth":tr.move==RJMove::death?"death":tr.move==RJMove::interface?"interface":"velocity";
+                    const char* move=tr.move==RJMove::birth?"birth":tr.move==RJMove::death?"death":tr.move==RJMove::interface?"interface":tr.move==RJMove::velocity_refresh?"velocity_refresh":"velocity";
                     const char* proposal=tr.proposal_status==RJProposalStatus::valid?"valid":tr.proposal_status==RJProposalStatus::unavailable?"unavailable":"outside_support";
                     f<<tr.warmup<<' '<<move<<' '<<proposal<<' '<<tr.evaluated<<' '<<(tr.evaluated?status(tr.evaluation_status):"not_evaluated")<<' '<<tr.accepted<<' '<<tr.layers_before<<' '<<tr.layers_after<<' '<<tr.log_accept_ratio<<' '<<(tr.evaluated?++eval:-1)<<' '<<result.layers_after_swaps[i][t]<<'\n';
                     if(!tr.warmup && tr.evaluated && tr.evaluation_status!=EvaluationStatus::valid) issues=true;
@@ -614,6 +615,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
         metadata<<"version="<<DW_VERSION<<"\nsampler=parallel_tempered_rjmcmc\nseed="<<options.seed
                 <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nswap_every="<<pt.swap_every<<"\ntemperatures=";
         for(double t:pt.temperatures) metadata<<t<<' ';
+        if(options.velocity_refresh_probability) metadata<<"\nvelocity_refresh_probability="<<options.velocity_refresh_probability<<"\nrefresh=joint prior-uniform Vs within velocity action; fixed K/interfaces";
         if(pt.save_warmup || pt.cold_start_steps) metadata<<"\nsave_warmup="<<pt.save_warmup<<"\ncold_start_steps="<<pt.cold_start_steps<<"\ninitialization=first cold_start_steps at T=1 without swaps; remaining warmup and production use declared fixed ladder";
         metadata<<"\ntarget=prior * likelihood^(1/T); fixed temperatures; no adaptation\nretained=post-swap fixed-temperature slots; top-level chains are T=1 only\nstarts=each independent ladder duplicates its supplied start across temperatures\ntotal_target_evaluations="<<calls
                 <<"\ndiagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
@@ -654,7 +656,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
         trace<<"# warmup move proposal_status evaluated evaluation_status accepted layers_before layers_after log_accept_ratio evaluation_index\n";
         int accepted=0,changes=0,forward_failures=0,numerical_failures=0,trace_evaluation=0;
         for(const auto& t:result.transitions) {
-            const char* move=t.move==RJMove::birth?"birth":t.move==RJMove::death?"death":t.move==RJMove::interface?"interface":"velocity";
+            const char* move=t.move==RJMove::birth?"birth":t.move==RJMove::death?"death":t.move==RJMove::interface?"interface":t.move==RJMove::velocity_refresh?"velocity_refresh":"velocity";
             const char* proposal=t.proposal_status==RJProposalStatus::valid?"valid":t.proposal_status==RJProposalStatus::unavailable?"unavailable":"outside_support";
             trace<<t.warmup<<' '<<move<<' '<<proposal<<' '<<t.evaluated<<' '<<(t.evaluated?status(t.evaluation_status):"not_evaluated")<<' '<<t.accepted<<' '
                  <<t.layers_before<<' '<<t.layers_after<<' '<<t.log_accept_ratio<<' '<<(t.evaluated?++trace_evaluation:-1)<<'\n';
@@ -677,6 +679,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
             <<"depth_limit=interface prior support; not halfspace bottom\nmove_probabilities=.25 .25 .25 .25\n"
             <<"posterior=transdimensional, conditional on declared support and fixed Vp/Vs and density\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
+    if(options.velocity_refresh_probability) metadata<<"velocity_refresh_probability="<<options.velocity_refresh_probability<<"\nrefresh=joint prior-uniform Vs within velocity action; fixed K/interfaces\n";
     std::cout<<"RJ chains="<<starts.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';return issues?5:0;
 }
 int run_rj_predictive(const std::filesystem::path& run,const std::filesystem::path& output,int per_chain,unsigned long long seed) {

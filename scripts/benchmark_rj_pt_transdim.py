@@ -75,7 +75,7 @@ def analyze(out,source):
             phases={}
             for name,tt in [('warmup',tr[:warm]),('production',tr[warm:])]:
                 phases[name]=dict(evaluations=int(np.sum(tt[:,3]=='1')),forward_failures=int(np.sum((tt[:,3]=='1')&(tt[:,4]=='forward_failure'))),numerical_failures=int(np.sum((tt[:,3]=='1')&(tt[:,4]=='numerical_failure'))),
-                    moves={m:dict(proposals=int(np.sum(tt[:,1]==m)),accepted=int(np.sum((tt[:,1]==m)&(tt[:,5]=='1')))) for m in ['birth','death','interface','velocity']})
+                    moves={m:dict(proposals=int(np.sum(tt[:,1]==m)),accepted=int(np.sum((tt[:,1]==m)&(tt[:,5]=='1')))) for m in ['birth','death','interface','velocity','velocity_refresh']})
             k=np.array([int(r[1]) for r in states[t]])
             sampler.append(dict(ladder=c,temperature=temps[t],total_evaluations=calls,**phases,**residence(k,1,4),visited_2_4=residence(k,2,4) if np.all(k>=2) else None))
     meta=dict(line.split('=',1) for line in (out/'rj/metadata.txt').read_text().splitlines());assert cost==int(meta['total_target_evaluations'])
@@ -97,10 +97,17 @@ def analyze(out,source):
         baseline=dict(total_target_evaluations=oldcost,layer_probabilities=old['layer_probabilities'],depth_profiles=old['depth_profiles'],formal_evaluations=sum(s['target_evaluations'] for s in old['sampler']),formal_forward_failures=sum(s['forward_failures'] for s in old['sampler'])),
         interpretation='Unvisited K is not certified zero probability. Hot states are excluded from posterior diagnostics. Forward failures remain an unresolved support limitation.')
     report['accepted']=report['mixing_passed'] and report['formal_forward_failures']==0 and report['formal_numerical_failures']==0
-    if start_steps:
+    if start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0):
         previous=json.loads(Path('results/rj-pt-transdim/summary.json').read_text())
         report['previous_pt']={k:previous[k] for k in ['layer_probabilities','depth_profiles','exchange','total_target_evaluations','formal_forward_failures','formal_evaluations']}
     save_json(out/'summary.json',report)
+    plot(out,report)
+    print(json.dumps({k:v for k,v in report.items() if k not in ['sampler','baseline','depth_profiles','structural_indicators']},indent=2))
+
+
+def plot(out,report):
+    cfg=read_config(out/'rj.toml');probs=report['layer_probabilities'];profiles=report['depth_profiles'];old=report['baseline'];depth=np.array([p['depth'] for p in profiles])
+    label='PT + joint Vs' if cfg['rjmcmc'].get('velocity_refresh_probability',0) else 'PT + cold start' if cfg['rjmcmc']['tempering'].get('cold_start_steps',0) else 'RJ + PT'
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -111,28 +118,30 @@ def analyze(out,source):
     axes[0].set(xticks=range(1,5),xlabel='K (includes halfspace)',ylabel='Observed fraction');axes[0].legend(fontsize=8)
     axes[1].plot([1,1,2.3,2.3],[0,1.5,1.5,5],color='#228833',ls='--',label='Target');axes[1].set(xlabel='Per-chain median Vs (km/s)',ylabel='Depth (km)',ylim=(5,0));axes[1].legend(fontsize=8)
     axes[2].plot([p['rhat'] for p in old['depth_profiles']],depth,label='Original RJ',color='#0077bb')
-    axes[2].plot([p['rhat'] for p in profiles],depth,label='RJ + PT',color='#aa4499');axes[2].axvline(1.01,color='#222222',ls='--');axes[2].set(xlabel='Depth Vs R-hat',ylim=(5,0));axes[2].legend(fontsize=8)
-    if start_steps:
+    axes[2].plot([p['rhat'] for p in profiles],depth,label=label,color='#aa4499');axes[2].axvline(1.01,color='#222222',ls='--');axes[2].set(xlabel='Depth Vs R-hat',ylim=(5,0));axes[2].legend(fontsize=8)
+    if 'previous_pt' in report:
         axes[2].plot([p['rhat'] for p in report['previous_pt']['depth_profiles']],depth,label='Previous PT',color='#777777',ls=':');axes[2].legend(fontsize=8)
     for ax in axes:ax.grid(alpha=.15)
-    fig.suptitle('K=1–4, equal total proposal budget | '+('passed' if report['accepted'] else 'NOT accepted; diagnostic estimates only'))
+    fig.suptitle(label+' | K=1–4, equal total proposal budget | '+('passed' if report['accepted'] else 'NOT accepted; diagnostic estimates only'))
     fig.savefig(out/'comparison.png',dpi=160);plt.close(fig)
-    print(json.dumps({k:v for k,v in report.items() if k not in ['sampler','baseline','depth_profiles','structural_indicators']},indent=2))
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--analyze-only',action='store_true');parser.add_argument('--cold-start-steps',type=int,default=0);parser.add_argument('--save-warmup',action='store_true');a=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--analyze-only',action='store_true');parser.add_argument('--plot-only',action='store_true');parser.add_argument('--cold-start-steps',type=int,default=0);parser.add_argument('--save-warmup',action='store_true');parser.add_argument('--velocity-refresh-probability',type=float,default=0);a=parser.parse_args()
+    if not 0<=a.velocity_refresh_probability<=1:parser.error('refresh probability must be in [0,1]')
     if not 0<=a.cold_start_steps<2500:parser.error('cold-start-steps must be in [0,2500)')
     source=Path('results/rj-nuts-comparison').resolve();out=a.output.resolve()
+    if a.plot_only:plot(out,json.loads((out/'summary.json').read_text()));return
     if a.analyze_only:analyze(out,source);return
     out.mkdir(parents=True,exist_ok=False)
     for name in ['observations.txt','covariance.txt','truth.toml']:shutil.copy2(source/name,out/name)
     shutil.copy2('build/dispweave',out/'dispweave');shutil.copy2(__file__,out/'run-script.py')
     cfg=read_config(source/'rj.toml');cfg['rjmcmc'].update(warmup=2500,draws=25000,tempering=dict(temperatures=[1.,2.,4.,8.],swap_every=10))
+    if a.velocity_refresh_probability:cfg['rjmcmc']['velocity_refresh_probability']=a.velocity_refresh_probability
     if a.cold_start_steps:cfg['rjmcmc']['tempering']['cold_start_steps']=a.cold_start_steps
     if a.save_warmup:cfg['rjmcmc']['tempering']['save_warmup']=True
     write_config(out/'rj.toml',cfg)
-    save_json(out/'protocol.json',dict(source=str(source),total_local_proposals=440000,baseline_total_local_proposals=440000,ladders=4,warmup=2500,draws=25000,temperatures=[1,2,4,8],swap_every=10,no_retries_tuning_or_extensions=True,cold_start_steps=a.cold_start_steps,save_warmup=a.save_warmup,initialization='Independent T=1 updates without exchanges for cold_start_steps within warmup; no resets or best-state selection',
+    save_json(out/'protocol.json',dict(source=str(source),total_local_proposals=440000,baseline_total_local_proposals=440000,ladders=4,warmup=2500,draws=25000,temperatures=[1,2,4,8],swap_every=10,no_retries_tuning_or_extensions=True,velocity_refresh_probability=a.velocity_refresh_probability,cold_start_steps=a.cold_start_steps,save_warmup=a.save_warmup,initialization='Independent T=1 updates without exchanges for cold_start_steps within warmup; no resets or best-state selection',
         acceptance='All K=1..4 indicator and 31 depth diagnostics Rhat<=1.01 and bulk/tail ESS>=400; constants/unvisited K remain unresolved; separately report all forward/numerical failures. Overall acceptance requires both mixing and zero formal failures.',
         hashes={name:digest(out/name) for name in ['dispweave','rj.toml','observations.txt','covariance.txt','truth.toml','run-script.py']}))
     call=invoke(out/'dispweave',out,'rj',['rjmcmc','--config',out/'rj.toml','--data',out/'observations.txt','--covariance',out/'covariance.txt','--output',out/'rj'],300)

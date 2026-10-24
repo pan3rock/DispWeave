@@ -10,6 +10,7 @@ struct RJOptions {
     int warmup=1000,draws=10000;
     double vs_step=.1,interface_step=.2; // Physical-unit Gaussian standard deviations.
     std::uint64_t seed=2026,chain_id=0;
+    double velocity_refresh_probability=0; // Conditional on the 1/4 velocity action; default disabled.
 };
 struct RJTransition {
     bool warmup=false,accepted=false,evaluated=false;

@@ -18,6 +18,16 @@ Eigen::VectorXd remove(const Eigen::VectorXd& x,Eigen::Index i) {
     Eigen::VectorXd y(x.size()-1);y.head(i)=x.head(i);y.tail(x.size()-i-1)=x.tail(x.size()-i-1);return y;
 }
 }
+RJProposal rj_velocity_refresh(const RJPrior& p,const RJState& s,const Eigen::VectorXd& vs) {
+    source_valid(p,s);
+    RJProposal out{s,RJMove::velocity_refresh};out.status=RJProposalStatus::outside_support;
+    if(vs.size()!=s.vs.size() || !vs.allFinite()) return out;
+    out.state.vs=vs;
+    if(!p.supports(out.state)) return out;
+    out.status=RJProposalStatus::valid;
+    out.log_forward=out.log_reverse=-static_cast<double>(vs.size())*std::log(p.vs_upper-p.vs_lower);
+    return out;
+}
 double rj_insertion_length(const RJPrior& p,const RJState& s) {
     source_valid(p,s);double sum=0,left=0;
     for(Eigen::Index i=0;i<s.vs.size();++i) {
