@@ -31,7 +31,7 @@ for c in range(4):
   for i,r in enumerate(series):
    k=int(r[1]);assert r[0]==i-1 and len(r)==2*k+3 and np.isfinite(r).all() and 1<=k<=4
    assert np.all(np.diff(np.r_[0,r[4:3+k],5])>=.3) and np.all((r[3+k:]>=.8)&(r[3+k:]<=2.7))
-   prior=-math.log(4)+math.lgamma(k)-(k-1)*math.log(5-.3*k)-k*math.log(1.9)
+   weights=cfg['rj_prior']['layer_weights'];prior=math.log(weights[k-cfg['rj_prior']['min_layers']]/sum(weights))+math.lgamma(k)-(k-1)*math.log(5-.3*k)-k*math.log(1.9)
    assert abs(prior-r[3])<1e-12;checks+=1
   tr=np.loadtxt(d/f'temperature_{t}_local_trace.txt',dtype=str,skiprows=1)
   for i in range(warm):
@@ -42,7 +42,7 @@ for c in range(4):
     k,kk=int(before[1]),int(local[1]);h=0;move=trace[1]
     if move=='birth':assert kk==k+1;h=math.log(insertion(before)*1.9/k)
     elif move=='death':assert kk==k-1;h=-math.log(insertion(local)*1.9/kk)
-    elif move=='correlated':assert kk==k;h=density.logq(before)-density.logq(local)
+    elif move=='correlated':assert kk==k;h=0 if options.get('correlated_local_scale',0) else density.logq(before)-density.logq(local)
     else:assert kk==k
     beta=1 if i<cold else 1/temp
     value=beta*(local[2]-before[2])+local[3]-before[3]+h

@@ -55,4 +55,22 @@ RJProposal RJGaussianMixture::draw(const RJPrior& p,const RJState& current,std::
     for(int i=0;i<z.size();++i) z[i]=normal(rng);
     return propose(p,current,means_[j]+lower_[j]*z);
 }
+RJProposal RJGaussianMixture::propose_local(const RJPrior& p,const RJState& current,const Eigen::VectorXd& x) const {
+    if(!p.supports(current) || current.vs.size()!=k_) throw std::invalid_argument("Invalid local correlated source");
+    RJProposal result{current,RJMove::correlated};result.status=RJProposalStatus::outside_support;
+    if(x.size()!=2*k_-1 || !x.allFinite()) return result;
+    result.state={x.head(k_-1),x.tail(k_)};
+    if(p.supports(result.state)) result.status=RJProposalStatus::valid;
+    // Equal full-mixture forward/reverse densities cancel, including near boundaries:
+    // proposals outside support are rejected once, never truncated or redrawn.
+    return result;
+}
+RJProposal RJGaussianMixture::draw_local(const RJPrior& p,const RJState& current,std::mt19937_64& rng,double scale) const {
+    if(!std::isfinite(scale) || scale<=0) throw std::invalid_argument("Local correlated scale must be positive finite");
+    if(!p.supports(current) || current.vs.size()!=k_) throw std::invalid_argument("Invalid local correlated source");
+    std::discrete_distribution<size_t> choose(weights_.begin(),weights_.end());size_t j=choose(rng);
+    std::normal_distribution<double> normal;Eigen::VectorXd z(2*k_-1);
+    for(int i=0;i<z.size();++i) z[i]=normal(rng);
+    return propose_local(p,current,pack(current)+scale*(lower_[j]*z));
+}
 }

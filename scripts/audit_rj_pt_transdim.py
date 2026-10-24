@@ -12,7 +12,7 @@ from posterior_diagnostics import diagnose
 from rj_correlated_density import FrozenDensities
 
 out=Path(sys.argv[1]).resolve();work=out/'audit';work.mkdir(exist_ok=False)
-density=FrozenDensities(read_config(out/'rj.toml'))
+rj_config=read_config(out/'rj.toml');density=FrozenDensities(rj_config)
 truth=read_config(out/'truth.toml');obs=np.loadtxt(out/'observations.txt');cov=np.loadtxt(out/'covariance.txt')
 _,ld=np.linalg.slogdet(cov);checks=0;error=0;accepted_checks=0;cold=[];failure_categories={}
 def load(p):return [np.fromstring(s,sep=' ') for s in p.read_text().splitlines() if s and not s.startswith('#')]
@@ -34,7 +34,7 @@ for c in range(4):
    elif move=='death':
     assert kb==ka-1;h=-math.log(insertion(b)*1.9/kb)
    elif move=='correlated':
-    assert kb==ka;h=density.logq(a)-density.logq(b)
+    assert kb==ka;h=0 if rj_config['rjmcmc'].get('correlated_local_scale',0) else density.logq(a)-density.logq(b)
    else:assert kb==ka
    ratio=(b[2]-a[2])/temp+b[3]-a[3]+h
    assert abs(ratio-float(tr[2500+i,8]))<1e-8;accepted_checks+=1

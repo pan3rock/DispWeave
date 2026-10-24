@@ -21,5 +21,9 @@ public:
     double log_density(const RJState&) const;
     RJProposal propose(const RJPrior&,const RJState&,const Eigen::VectorXd& coordinates) const;
     RJProposal draw(const RJPrior&,const RJState&,std::mt19937_64&) const;
+    // State-independent mixture of zero-mean increments: q(y|x)=q(x|y).
+    // Means of fitted components are ignored; covariance/weights stay frozen.
+    RJProposal propose_local(const RJPrior&,const RJState&,const Eigen::VectorXd& coordinates) const;
+    RJProposal draw_local(const RJPrior&,const RJState&,std::mt19937_64&,double scale) const;
 };
 }

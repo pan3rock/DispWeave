@@ -522,6 +522,7 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
     options.vs_step=toml::find_or<double>(cfg,"vs_step",options.vs_step);
     options.velocity_refresh_probability=toml::find_or<double>(cfg,"velocity_refresh_probability",0);
     options.correlated_probability=toml::find_or<double>(cfg,"correlated_probability",0);
+    options.correlated_local_scale=toml::find_or<double>(cfg,"correlated_local_scale",0);
     if(document.contains("rj_correlated_models")) {
       const auto model_table=toml::find(document,"rj_correlated_models");
       for(const auto& entry:model_table.as_array()) {
@@ -634,7 +635,11 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
         metadata<<"version="<<DW_VERSION<<"\nsampler=parallel_tempered_rjmcmc\nseed="<<options.seed
                 <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nswap_every="<<pt.swap_every<<"\ntemperatures=";
         for(double t:pt.temperatures) metadata<<t<<' ';
-        if(options.correlated_probability) metadata<<"\ncorrelated_probability="<<options.correlated_probability<<"\ncorrelated=frozen physical-coordinate Gaussian mixture at fixed K; full q reverse/forward correction";
+        if(options.correlated_probability) {
+            metadata<<"\ncorrelated_probability="<<options.correlated_probability<<"\ncorrelated="
+                <<(options.correlated_local_scale>0?"symmetric local frozen-covariance mixture; q ratio cancels; outside support rejected once":"frozen physical-coordinate Gaussian mixture at fixed K; full q reverse/forward correction");
+            if(options.correlated_local_scale>0) metadata<<"\ncorrelated_local_scale="<<options.correlated_local_scale;
+        }
         if(options.velocity_refresh_probability) metadata<<"\nvelocity_refresh_probability="<<options.velocity_refresh_probability<<"\nrefresh=joint prior-uniform Vs within velocity action; fixed K/interfaces";
         if(pt.save_warmup || pt.cold_start_steps) metadata<<"\nsave_warmup="<<pt.save_warmup<<"\ncold_start_steps="<<pt.cold_start_steps<<"\ninitialization=first cold_start_steps at T=1 without swaps; remaining warmup and production use declared fixed ladder";
         metadata<<"\ntarget=prior * likelihood^(1/T); fixed temperatures; no adaptation\nretained=post-swap fixed-temperature slots; top-level chains are T=1 only\nstarts=each independent ladder duplicates its supplied start across temperatures\ntotal_target_evaluations="<<calls
@@ -699,7 +704,11 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
             <<"depth_limit=interface prior support; not halfspace bottom\nmove_probabilities=.25 .25 .25 .25\n"
             <<"posterior=transdimensional, conditional on declared support and fixed Vp/Vs and density\n"
             <<"diagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
-    if(options.correlated_probability) metadata<<"correlated_probability="<<options.correlated_probability<<"\ncorrelated=frozen physical-coordinate Gaussian mixture at fixed K; full q reverse/forward correction\n";
+    if(options.correlated_probability) {
+        metadata<<"correlated_probability="<<options.correlated_probability<<"\ncorrelated="
+            <<(options.correlated_local_scale>0?"symmetric local frozen-covariance mixture; q ratio cancels; outside support rejected once":"frozen physical-coordinate Gaussian mixture at fixed K; full q reverse/forward correction")<<'\n';
+        if(options.correlated_local_scale>0) metadata<<"correlated_local_scale="<<options.correlated_local_scale<<'\n';
+    }
     if(options.velocity_refresh_probability) metadata<<"velocity_refresh_probability="<<options.velocity_refresh_probability<<"\nrefresh=joint prior-uniform Vs within velocity action; fixed K/interfaces\n";
     std::cout<<"RJ chains="<<starts.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';return issues?5:0;
 }

@@ -20,7 +20,8 @@ def read_models(path, prior, draws):
     for i,r in enumerate(rows):
         k=int(r[1]);assert r[0]==i and r[1]==k and 1<=k<=4 and len(r)==2*k+3 and np.isfinite(r).all()
         assert np.all(np.diff(np.r_[0.,r[4:k+3],5.])>=.3) and np.all((r[k+3:]>=.8)&(r[k+3:]<=2.7))
-        lp=-math.log(4)+math.lgamma(k)-(k-1)*math.log(5-.3*k)-k*math.log(1.9)
+        weights=prior['layer_weights'];assert prior['min_layers']<=k<=prior['max_layers']
+        lp=math.log(weights[k-prior['min_layers']]/sum(weights))+math.lgamma(k)-(k-1)*math.log(5-.3*k)-k*math.log(1.9)
         assert abs(lp-r[3])<1e-12
     return rows
 
@@ -95,12 +96,21 @@ def analyze(out,source=None):
         baseline=dict(total_target_evaluations=oldcost,layer_probabilities=old['layer_probabilities'],depth_profiles=old['depth_profiles'],formal_evaluations=sum(s['target_evaluations'] for s in old['sampler']),formal_forward_failures=sum(s['forward_failures'] for s in old['sampler']))
     def good(d):return d['status']=='no_flag' and d['rhat']<=1.01 and min(d['ess_bulk'],d['ess_tail'])>=400
     ds=[p['diagnostics'] for p in probs]+profiles
+    fixed_k=cfg['rj_prior']['min_layers'] if cfg['rj_prior']['min_layers']==cfg['rj_prior']['max_layers'] else None
+    if fixed_k is not None:
+        coordinates=np.array([[r[4:] for r in chain] for chain in cold])
+        names=[f'interface_{j+1}' for j in range(fixed_k-1)]+[f'vs_{j+1}' for j in range(fixed_k)]
+        parameters=[dict(name=name,**diagnose(coordinates[:,:,j])) for j,name in enumerate(names)]
+        ds=parameters+profiles
     report=dict(accepted=False,mixing_passed=all(good(d) for d in ds),visited_K_mixing_passed=all(good(p['diagnostics']) for p in probs if p['probability']>0),depth_mixing_passed=all(good(p) for p in profiles),
         layer_probabilities=probs,depth_profiles=profiles,structural_indicators=structural,sampler=sampler,exchange=exchange,total_target_evaluations=cost,
         formal_evaluations=sum(s['production']['evaluations'] for s in sampler),formal_forward_failures=sum(s['production']['forward_failures'] for s in sampler),formal_numerical_failures=sum(s['production']['numerical_failures'] for s in sampler),
         baseline=baseline,
         interpretation='Unvisited K is not certified zero probability. Hot states are excluded from posterior diagnostics. Forward failures remain an unresolved support limitation.')
     report['accepted']=report['mixing_passed'] and report['formal_forward_failures']==0 and report['formal_numerical_failures']==0
+    if fixed_k is not None:
+        report.update(fixed_k=fixed_k,parameters=parameters,visited_K_mixing_passed=None,
+            interpretation=f'Conditional on K={fixed_k}; constant K indicators are expected and excluded from mixing gate. All coordinates and depths checked. Forward failures remain unresolved.')
     if source is not None and (start_steps or cfg['rjmcmc'].get('velocity_refresh_probability',0) or cfg['rjmcmc'].get('correlated_probability',0)):
         previous=json.loads(Path('results/rj-pt-transdim/summary.json').read_text())
         report['previous_pt']={k:previous[k] for k in ['layer_probabilities','depth_profiles','exchange','total_target_evaluations','formal_forward_failures','formal_evaluations']}
@@ -112,6 +122,7 @@ def analyze(out,source=None):
 def plot(out,report):
     cfg=read_config(out/'rj.toml');probs=report['layer_probabilities'];profiles=report['depth_profiles'];old=report['baseline'];depth=np.array([p['depth'] for p in profiles])
     label='PT + correlated z/Vs' if cfg['rjmcmc'].get('correlated_probability',0) else 'PT + joint Vs' if cfg['rjmcmc'].get('velocity_refresh_probability',0) else 'PT + cold start' if cfg['rjmcmc']['tempering'].get('cold_start_steps',0) else 'RJ + PT'
+    if cfg['rjmcmc'].get('correlated_local_scale',0):label='PT + local correlated z/Vs'
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -127,7 +138,8 @@ def plot(out,report):
     if 'previous_pt' in report:
         axes[2].plot([p['rhat'] for p in report['previous_pt']['depth_profiles']],depth,label='Previous PT',color='#777777',ls=':');axes[2].legend(fontsize=8)
     for ax in axes:ax.grid(alpha=.15)
-    fig.suptitle(label+' | K=1–4, equal total proposal budget | '+('passed' if report['accepted'] else 'NOT accepted; diagnostic estimates only'))
+    layer_label=f'fixed K={report["fixed_k"]}' if 'fixed_k' in report else 'K=1–4'
+    fig.suptitle(label+' | '+layer_label+', equal total proposal budget | '+('passed' if report['accepted'] else 'NOT accepted; diagnostic estimates only'))
     fig.savefig(out/'comparison.png',dpi=160);plt.close(fig)
 
 

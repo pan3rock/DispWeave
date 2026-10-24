@@ -12,6 +12,7 @@ struct RJOptions {
     double vs_step=.1,interface_step=.2; // Physical-unit Gaussian standard deviations.
     std::uint64_t seed=2026,chain_id=0;
     double correlated_probability=0; // Conditional on velocity action, disjoint from refresh.
+    double correlated_local_scale=0; // 0: independent q; >0: symmetric frozen-covariance increments.
     std::vector<RJGaussianMixture> correlated_models; // Exactly one frozen density per K when enabled.
     double velocity_refresh_probability=0; // Conditional on the 1/4 velocity action; default disabled.
 };

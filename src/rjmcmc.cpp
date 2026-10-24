@@ -14,6 +14,8 @@ void validate(const RJPrior& prior,const RJState& initial,const RJOptions& o) {
     prior.validate();
     if(!prior.supports(initial) || o.warmup<0 || o.draws<1 || o.warmup>std::numeric_limits<int>::max()-o.draws
        || !std::isfinite(o.correlated_probability) || o.correlated_probability<0 || o.correlated_probability>1
+       || !std::isfinite(o.correlated_local_scale) || o.correlated_local_scale<0
+       || (o.correlated_local_scale>0 && o.correlated_probability==0)
        || o.correlated_probability+o.velocity_refresh_probability>1
        || !std::isfinite(o.velocity_refresh_probability) || o.velocity_refresh_probability<0 || o.velocity_refresh_probability>1
        || !std::isfinite(o.vs_step) || o.vs_step<=0 || !std::isfinite(o.interface_step) || o.interface_step<=0)
@@ -72,7 +74,9 @@ public:
                 proposal.status=prior.supports(proposal.state)?RJProposalStatus::valid:RJProposalStatus::outside_support;
             }
         } else if(move==RJMove::correlated) {
-            for(const auto& model:o.correlated_models) if(model.layers()==k) {proposal=model.draw(prior,current.state,rng);break;}
+            for(const auto& model:o.correlated_models) if(model.layers()==k) {
+                proposal=o.correlated_local_scale>0?model.draw_local(prior,current.state,rng,o.correlated_local_scale):model.draw(prior,current.state,rng);break;
+            }
         } else if(move==RJMove::velocity_refresh) {
             Eigen::VectorXd vs(k);
             for(int j=0;j<k;++j) vs[j]=prior.vs_lower+(prior.vs_upper-prior.vs_lower)*uniform();

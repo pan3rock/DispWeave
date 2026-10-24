@@ -44,6 +44,7 @@ int main(int argc,char** argv) try {
     require(toml::find_or<int>(pt,"cold_start_steps",0)==0,"Cold start not supported by reconstruction");
     require(toml::find_or<double>(opts,"velocity_refresh_probability",0.)==0,"Refresh not supported");
     double cp=toml::find_or<double>(opts,"correlated_probability",0.),vs_step=toml::find<double>(opts,"vs_step"),z_step=toml::find<double>(opts,"interface_step");
+    double local_scale=toml::find_or<double>(opts,"correlated_local_scale",0.);
     std::map<int,dw::RJGaussianMixture> mixtures;
     if(config.contains("rj_correlated_models"))for(const auto& m:toml::find(config,"rj_correlated_models").as_array()) {
         int k=toml::find<int>(m,"layers");std::vector<dw::RJGaussianComponent> parts;
@@ -79,7 +80,7 @@ int main(int argc,char** argv) try {
                 if(move==dw::RJMove::birth) {if(k<prior.max_layers&&dw::rj_insertion_length(prior,before)>0) {double z=dw::rj_insertion_position(prior,before,uniform());double v=prior.vs_lower+(prior.vs_upper-prior.vs_lower)*uniform();p=dw::rj_birth(prior,before,z,v);}}
                 else if(move==dw::RJMove::death) {if(k>prior.min_layers)p=dw::rj_death(prior,before,index(k-1));}
                 else if(move==dw::RJMove::interface) {if(k>1) {int j=index(k-1);p.state.interfaces[j]+=z_step*normal(rng);p.status=prior.supports(p.state)?dw::RJProposalStatus::valid:dw::RJProposalStatus::outside_support;}}
-                else if(move==dw::RJMove::correlated)p=mixtures.at(k).draw(prior,before,rng);
+                else if(move==dw::RJMove::correlated)p=local_scale>0?mixtures.at(k).draw_local(prior,before,rng,local_scale):mixtures.at(k).draw(prior,before,rng);
                 else {int j=index(k);p.state.vs[j]+=vs_step*normal(rng);p.status=prior.supports(p.state)?dw::RJProposalStatus::valid:dw::RJProposalStatus::outside_support;}
                 require(tr[2]==status_names[int(p.status)],"Proposal status mismatch");require((tr[3]=="1")== (p.status==dw::RJProposalStatus::valid),"Evaluation mismatch");
                 double ratio=std::stod(tr[8]),lp=NAN,h=NAN,dll=NAN,qo=NAN,qn=NAN;bool accepted=false;
