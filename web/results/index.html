@@ -63,7 +63,7 @@
   <header>
     <h1>DispWeave · 反演结果</h1>
     <p>地壳合成数据 · 125 个观测点 · 最新完整验收：0.95＋步长搜索。仅本地查看。</p>
-    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
+    <nav aria-label="结果导航"><a href="#nuts-model">模型对照</a><a href="#nuts-fit">NUTS 拟合</a><a href="#data">原始数据</a><a href="#small-lvz">独立六层算例</a><a href="#config">推荐配置</a><a href="#more">补充图与报告</a></nav>
   </header>
   <div class="status"><strong>四链验收通过，采样约 5 分钟。</strong>
     每链预热 1000、正式 1000，共 4000 个正式状态。最大 R̂ = 1.00352，最低 bulk / tail ESS ≈ 1695 / 1990。
@@ -85,6 +85,14 @@
   </figure>
   <p class="note">后验以固定界面、Brocher05 物性关系、参考先验（每层 σ=0.1 km/s）和假设观测噪声为条件。
     图中参考模型不是合成目标；先验中心与目标的作用不同。数据约束程度请结合补充区的先验／后验对照判断。</p>
+  <figure id="small-lvz">
+    <figcaption><div class="figure-heading"><h2>4. 独立六层低速模型验证</h2><div class="downloads"><a href="../../results/small-lvz-validation/comparison.png" target="_blank" rel="noopener">原图</a><a href="../../results/small-lvz-validation/comparison.pdf" target="_blank" rel="noopener">PDF</a></div></div>
+      <p>新算例使用一致的层界面与物性关系，36 个基阶观测，已知噪声 σ=0.02 km/s。绿色为目标、洋红虚线为 LM、蓝线为 NUTS、浅蓝为 95% 区间；LM 与 NUTS 中心结果确实接近。</p>
+      <p><strong>四链采样与数值核查通过，各耗时约 7.5–8.5 秒。</strong>前两层真值落在逐层 95% 区间之外；5–9 km 层比上一层更慢的后验概率为 83.7%，其速度差区间跨过零。采样收敛不等于局部结构准确恢复，本次不继续调参。</p>
+      <p><a href="../../docs/small-lvz-validation.md">完整结果与限制</a> · <a href="../../results/small-lvz-validation/truth.toml">目标模型</a> · <a href="../../results/small-lvz-validation/reference.toml">参考模型</a> · <a href="../../results/small-lvz-validation/observations.txt">合成观测</a> · <a href="../../results/small-lvz-validation/nuts.toml">采样配置</a></p>
+    </figcaption>
+    <a class="image-link" href="../../results/small-lvz-validation/comparison.png" target="_blank" rel="noopener" aria-label="打开六层低速模型验证原图"><img src="../../results/small-lvz-validation/comparison.png" alt="独立六层算例的目标、参考、LM、NUTS 后验，频散数据拟合与标准化残差。" loading="lazy"></a>
+  </figure>
   <section class="sources" id="config" aria-labelledby="config-title">
     <h2 id="config-title">推荐配置与复现</h2>
     <p>本算例采用 slice NUTS、目标接受率 0.95、合理步长搜索及标准密集矩阵适应。
