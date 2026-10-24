@@ -302,5 +302,27 @@
       2026102701,
       2026102702
     ]
+  },
+  "prediction_only_screening": {
+    "source": "results/rj-data-discrimination",
+    "report": "docs/rj-structure-paths.md",
+    "seed": null,
+    "selection": "Deterministic 8 states per chain per family; 64 existing states + target.",
+    "model_forward_calls": 65,
+    "frequency_mode_queries": 2470,
+    "new_samples": 0,
+    "sha256": {
+      "scripts/check_rj_data_discrimination.py": "5af160d8d60008deb088dcc008bdc0a29f72a9ea7bb41f83370b1a420910a804",
+      "scripts/audit_rj_data_discrimination.py": "406517c952edb2cb852a7cb358c9674ea758a3b26910f44689218ebe64edcc19",
+      "results/rj-data-discrimination/protocol.json": "240e58e9b322607a4d0351f8755f436271a018573afc11124aa1fbd73bfc87c1",
+      "results/rj-data-discrimination/selection.json": "1a487d2689799085a292e44f8b10713f863de3795fcb53c690de113dd38aa832",
+      "results/rj-data-discrimination/summary.json": "f4e6e9099bfbe50102ec9c81a7317d241c7b2e3091f6fcb3a693e30a09279d8a",
+      "results/rj-data-discrimination/audit.json": "88c19f2091b6432dd0f0f5516ad4872d0822ed4b2428a6afa13b5efa4f1898e3",
+      "results/rj-data-discrimination/execution-recovery.json": "7dfc6845907aebae410e1cf92ffe26d03869f77f113b99440f1ce5944f2f0b1d",
+      "results/rj-data-discrimination/execution-script.py": "4ab1044445d252f6a11fc965ed39955deab724af41bb250b98e523443fd4f265"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_data_discrimination.py --output results/rj-data-discrimination-new",
+    "audit": "python scripts/audit_rj_data_discrimination.py results/rj-data-discrimination-new",
+    "analyze_only": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/check_rj_data_discrimination.py --output results/rj-data-discrimination --analyze-only"
   }
 }

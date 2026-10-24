@@ -30,6 +30,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [低速夹层混合问题定位](docs/rj-lvz-mixing-diagnosis.md)：离线重建44万步、无新增正演；冷链K=4联合接受率仅0.61%，主要损失是越界和拟合变差，优先验证固定K的局部相关更新。
 [固定K=4局部相关对照](docs/rj-local-k4.md)：已实现并验证，但尺度0.2提高接受率后反而降低ESS、加剧结构表示差异；不采用为推荐配置，停止本轮尺度调参。
 [结构表示与切换路径](docs/rj-structure-paths.md)：跨维链约97%的A/B切换经过K=3；已有预测差异小于噪声，但地下剖面不同。暂不开发重排提议，按分层非唯一性收尾，保留后验未验收限制。
+[新增观测辨别力筛查](docs/rj-structure-paths.md#后续数据辨别力筛查扩频与高阶模态)：64个已有模型与目标共65次正演；第一高阶0.6 Hz存在差异线索，但未形成通过预设规则的相邻频段。保留模态未解析和未收敛限制，不启动新链。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**
