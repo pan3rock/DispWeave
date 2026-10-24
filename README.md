@@ -211,6 +211,8 @@ NUTS 不接受 `leapfrog_steps` 或 `step_jitter`。默认质量适应仍为 `no
 目前不建议据检查点短测启用为默认策略。
 可另设 `conservative_metric_restart = true`，同时保持 `conservative_warmup = false`，
 仅对接受质量更新后的重启使用温和策略；见 [独立重启验证](docs/nuts-metric-restart-audit.md)。
+后续 [固定矩阵的步长目标对照](docs/nuts-step-size-audit.md) 中，目标接受率 0.90/0.95
+比 0.99 显示更高的短链 ESS/成本；尚未验证从原始初值出发的完整流程，不据此切换默认配置。
 输出保留全部正式状态，trace 同时包含预热标记、树深、树深截断、最大绝对能量误差与失败类型。
 正式采样有发散、无效计算、树深截断或整链未移动时返回 5，结果仍保存；返回 0 不保证充分混合。
 诊断脚本额外汇总树深和梯度评估代价。NUTS 的 `accepted` 是候选替换指示，不是额外 Metropolis 检验。
