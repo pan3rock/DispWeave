@@ -395,5 +395,40 @@
     "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_added_mode.py --output results/rj-added-mode-new",
     "subsequent_steps": "Run per-arm generic analysis, first-time 200 predictions and audits as documented in report; do not rerun sampling.",
     "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_added_mode.py results/rj-added-mode"
+  },
+  "mode_proposal_refit": {
+    "source": "results/rj-mode-refit",
+    "report": "docs/rj-lvz-transfer.md#针对14点数据重训练冻结提议",
+    "seed": 2026103101,
+    "training_source": "results/rj-added-mode/augmented",
+    "new_target_evaluations": 362171,
+    "source_training_evaluations": 362547,
+    "earlier_q_training_evaluations": 371844,
+    "audit_model_calls": 48,
+    "new_predictive_forwards": 0,
+    "clear_improvement": true,
+    "full_posterior_accepted": false,
+    "sha256": {
+      "scripts/benchmark_rj_mode_refit.py": "f22bb05692f75b641860cee560ce962e31d122d2fb1932a301bd4154c2aa341f",
+      "scripts/analyze_rj_mode_refit.py": "cd84cc16492699771c8768858b499f9060b57f9d4f8dce14c1e6078ffec7bd87",
+      "scripts/benchmark_rj_pt_transdim.py": "380ab71540d177c250444ec6ffcd947d3b22b09bd3d9ac7ab1626e6ec0afb382",
+      "scripts/audit_rj_pt_transdim.py": "822ef767fde757ce1363b204dccf96283fc353e006e1943567b175a07445a137",
+      "results/rj-mode-refit/rj.toml": "646c5517b2590a37bdaf218f11630a0c999c8f26dcff4f942915139a1a730562",
+      "results/rj-mode-refit/truth.toml": "6a56a6d5ec1564b89158404a82f00b65efada310e828f7a632c419805224d7b4",
+      "results/rj-mode-refit/observations.txt": "a0e625a836bd96edd6f3335f4dd73e2f9d4f3b3471349bf9e09d205ac6dcb080",
+      "results/rj-mode-refit/covariance.txt": "5dc81df403ab0844c31497355529d60c415086015a1061b2808de72cee310475",
+      "results/rj-mode-refit/design.json": "f46c9971b379c2b072838c9f26721aacd7d64d313bc9b298ce66aaade04ad1b9",
+      "results/rj-mode-refit/training.json": "7330468f533cfe00471dae09bf09c61604572a04a4a15f8fc6583be5ac37d7f4",
+      "results/rj-mode-refit/protocol.json": "44a6550b9e601765dba998d34f34a2ed605bcc2287f54791c79b5bb20fb44136",
+      "results/rj-mode-refit/summary.json": "d6298055067e20444577dd5d6fd128ac0b3fd81474230925693cb885aa3f7795",
+      "results/rj-mode-refit/refit-summary.json": "76436efab844605d40ac814a3dbf62fcfeaf99e443b238a73b42870f0bd7c8d8",
+      "results/rj-mode-refit/training-audit.json": "c51e655b9f69208c964cfbdbc3213221517ae3852f6bd9c0263fb491e8eda41b",
+      "results/rj-mode-refit/independent-audit.json": "5089132d2425471b8b02d8e206e32baa3bd6cdd41031510be04cca06817208a2",
+      "results/rj-mode-refit/indicator-audit.json": "4f3b34bf550165e35429c2cba3db377288a24803750e1474046a2b1ffdbd385b",
+      "results/rj-mode-refit/audit-indicators.py": "42d2e927b7478ea90477c8cd4f370b37e72a9dbfb04aeaea463fb921c6b6d006"
+    },
+    "reproduce": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/benchmark_rj_mode_refit.py --output results/rj-mode-refit-new",
+    "subsequent_steps": "Generic PT analysis, analyze_rj_mode_refit.py, and formal audit as documented in report.",
+    "analyze_cached": "MPLCONFIGDIR=/tmp/dispweave-mpl python scripts/analyze_rj_mode_refit.py results/rj-mode-refit"
   }
 }
