@@ -96,6 +96,7 @@
   <figure id="rj-lvz">
     <figcaption>
       <div class="figure-heading"><h2>RJMCMC：三层低速夹层迁移验证</h2><a href="../../docs/rj-lvz-transfer.md">新算例报告</a></div>
+      <p><strong>结构路径检查完成，暂不增加重排机制。</strong>两类结构的额外界面分别位于低速层上方/下方，剖面不同，但已有预测中位曲线最大差仅约0.33σ。原跨维链约97%的切换经过K=3，固定K=4测试移除了这条通道。当前按分层非唯一性收尾，完整后验仍未验收。<a href="../../results/rj-structure-paths/comparison.png" target="_blank" rel="noopener">结构与预测对照图</a> · <a href="../../docs/rj-structure-paths.md">路径依据与停止判断</a></p>
       <p><strong>局部相关更新对照：不采用。</strong>固定K=4、尺度0.2，接受率升至28.46%，但最低ESS下降，结构表示指标R̂升至1.242。接受率提高没有带来更充分探索，本轮不继续扫描尺度。<a href="../../results/rj-local-k4/comparison.png" target="_blank" rel="noopener">独立/局部更新对照图</a> · <a href="../../docs/rj-local-k4.md">实现、验证与否定结果</a></p>
       <p><strong>剩余问题已定位：</strong>冷链K=4的联合提议接受率仅0.61%，约35.4%越界；有效候选的主要损失是拟合变差。夹层厚度与速度强相关，优先验证层内局部更新。此次只重建和分析旧轨迹，新增正演/采样均为0。<a href="../../results/rj-lvz-diagnosis/diagnosis.png" target="_blank" rel="noopener">参数相关性与拒绝分类图</a> · <a href="../../docs/rj-lvz-mixing-diagnosis.md">定位依据与下一步</a></p>
       <p>目标界面0.8/1.8 km，Vs=1.6/1.0/2.3 km/s。使用新算例自己的预运行训练提议，训练成本计入。约98.3%正式状态含低速夹层，位置中位数接近目标，400次预测均成功；但深度仅3/31点通过，最大R̂≈1.050。能恢复特征，定量后验仍未验收，没有继续调参。</p>
