@@ -66,11 +66,15 @@ def main():
     p.add_argument('--metric-shrinkage', type=float, default=0,
                    help='Pseudo-count retaining previous position covariance; zero is the original experiment')
     p.add_argument('--modern-only', action='store_true', help='Run only multinomial plus step search, both original starts')
+    p.add_argument('--policy-ablation', action='store_true',
+                   help='Compare conservative warmup alone with conservative warmup plus a ratio-4 online metric guard')
     args = p.parse_args()
     if args.warmup < 150 or args.draws < 1 or not 0 < args.timeout <= 120:
         p.error('Need warmup >=150, draws >=1, timeout in (0,120] seconds')
     if not np.isfinite(args.metric_shrinkage) or args.metric_shrinkage < 0:
         p.error('metric-shrinkage must be finite and nonnegative')
+    if args.policy_ablation and args.modern_only:
+        p.error('policy-ablation and modern-only are mutually exclusive')
     ref = args.reference.resolve(); out = args.output.resolve(); out.mkdir()
     base = read_config(ref/'nuts.toml')
     assert len(base['model']['vs']) == 45 and len(base['inversion']['starts_vs']) == 4
@@ -84,6 +88,8 @@ def main():
     shutil.copyfile(Path(__file__), out/Path(__file__).name)
     jobs = []
     variants = VARIANTS[-1:] if args.modern_only else VARIANTS
+    if args.policy_ablation:
+        variants = [('conservative', 'multinomial', True), ('conservative-guard', 'multinomial', True)]
     for label, kernel, search in variants:
         for chain in [0, 1]:
             cfg = copy.deepcopy(base)
@@ -93,6 +99,9 @@ def main():
                                record_progress=True, record_failures=True)
             if args.metric_shrinkage:
                 cfg['nuts']['metric_shrinkage'] = args.metric_shrinkage
+            if args.policy_ablation:
+                cfg['nuts'].update(conservative_warmup=True,
+                    metric_max_stiffness_ratio=4. if label == 'conservative-guard' else 0.)
             path = out/f'{label}-{chain}.toml'; write_config(path, cfg)
             jobs.append((label, chain, path))
     protocol = dict(interpretation='Warmup ablation pilot, not a new posterior acceptance run',
@@ -104,6 +113,9 @@ def main():
         metric_adaptation=base['nuts']['metric_adaptation'],
         variants=[dict(label=a, kernel=b, step_search=c) for a, b, c in variants],
         metric_shrinkage=args.metric_shrinkage,
+        policy_ablation=args.policy_ablation,
+        policy_details=dict(conservative_warmup=args.policy_ablation,
+            metric_max_stiffness_ratio_by_variant={label:4. if label == 'conservative-guard' else 0. for label, _, _ in variants}),
         source_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
         binary_sha256=digest(exe), script_sha256=digest(Path(__file__)),
         inputs={name:digest(inputs/name) for name in ['nuts.toml', 'observations.txt', 'covariance.txt']},
@@ -133,6 +145,22 @@ def main():
             last_25_warmup=phase_stats(warmup[-25:]), partial_progress_lines=partial,
             completed_transition_evaluations_lower_bound=sum(int(r[5]) for r in rows),
             frozen_step=None, exact_total_evaluations=None, step_search_evaluations=None)
+        decisions_path = dest/'chain_0_metric_decisions.txt'
+        decisions = []
+        if decisions_path.exists():
+            for line in decisions_path.read_text().splitlines():
+                if not line.strip() or line.startswith('#'):
+                    continue
+                fields = line.split()
+                if len(fields) == 5:
+                    iteration, accepted, old, candidate, ratio = fields
+                    decisions.append(dict(iteration=int(iteration), accepted=bool(int(accepted)),
+                        old_stiffness=float(old), candidate_stiffness=float(candidate), ratio=float(ratio)))
+        record['metric_decisions'] = decisions
+        record['completed_guard_evaluations'] = len(decisions)
+        if args.warmup == 300:
+            record['warmup_segments'] = [dict(begin=begin, end=end, **phase_stats(warmup[begin:end]))
+                for begin,end in [(0,75),(75,100),(100,150),(150,250),(250,300)]]
         if retained:
             steps = [float(r[6]) for r in retained]
             assert len(set(steps)) == 1, 'Production step changed'
@@ -142,8 +170,14 @@ def main():
                      (dest/'chain_0_cost.txt').read_text().splitlines())}
             assert costs['target_evaluations'] == 1+costs['transition_evaluations']+costs['step_search_evaluations']
             assert costs['transition_evaluations'] == record['completed_transition_evaluations_lower_bound']
-            record['exact_total_evaluations'] = costs['target_evaluations']+costs['preflight_evaluations']+costs['metric_evaluations']
+            record['exact_total_evaluations'] = (costs['target_evaluations']+costs['preflight_evaluations']
+                +costs['metric_evaluations']+costs.get('guard_evaluations',0))
             record['step_search_evaluations'] = costs['step_search_evaluations']
+            assert costs.get('guard_evaluations',0) == len(decisions)
+            trace = np.loadtxt(dest/'chain_0_trace.txt', dtype=str, skiprows=1, ndmin=2)
+            assert len(trace) == len(rows)
+            record['warmup']['depth_caps'] = int(trace[:args.warmup,9].astype(int).sum())
+            record['production']['depth_caps'] = int(trace[args.warmup:,9].astype(int).sum())
             samples = np.loadtxt(dest/'chain_0_vs.txt', ndmin=2)
             assert samples.shape == (args.draws, 45) and np.isfinite(samples).all()
         if label == 'slice' and args.warmup == 300 and args.metric_shrinkage == 0:
