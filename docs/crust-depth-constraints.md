@@ -98,3 +98,6 @@ MPLCONFIGDIR=/tmp/dw-matplotlib python scripts/analyze_crust_constraints.py \
 脚本核对原验收状态、样本形状、逐层统计及相关矩阵，重新计算实际截断先验方差；
 每个分段的样本方差与 `wᵀ Cov(Vs) w` 独立核对。另保存哈希、CSV、JSON、PNG/PDF，
 并独立核对输入未变、分位数和分段权重。生产内核、原采样结果及主图保持不变。
+
+后续 [σ=0.2 的四链先验敏感性对照](crust-prior-sensitivity.md) 已通过验收，支持薄层细节依赖
+先验的判断，并发现 19–23 km 层需要进一步检查速度下界。
