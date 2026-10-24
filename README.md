@@ -16,7 +16,7 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 [独立六层低速模型验证](docs/small-lvz-validation.md) 已完成：四链与导数检查通过；LM/NUTS 中心接近，但低速对比仍不确定，不追加调参。
 [RJMCMC 与固定界面 NUTS 对照](docs/rj-nuts-comparison.md) 已完成一次有限预算验证：NUTS 通过，RJ 的层数和界面混合未达标，保留警告基线。
 [固定 K=2 的自由界面检查](docs/rj-fixed-k2.md) 四链通过；[K=3/4 检查](docs/rj-fixed-higher-k.md) 均失败，优先改进高层数内部结构探索，暂不重写 birth/death。
-[开源实现调研](docs/rj-open-source-review.md) 已核查近期 BayesBay/Eryn/openMCMC 与 BayHunter：保留当前正确性基线，下一项优先有限预算 PT 对照；尚未实现。
+[开源实现调研](docs/rj-open-source-review.md) 已核查近期 BayesBay/Eryn/openMCMC 与 BayHunter：保留当前正确性基线。[PT 对照已完成](docs/rj-tempering-validation.md)：K=4 最差 R-hat 从 1.706 降至 1.051，成本接近，但仍未达到验收线。
 目标与参考的区别及新增恢复对照见 [合成目标补图记录](docs/crust-target-comparison.md)。
 
 **M8 已完成：频散、Rayleigh 模态椭圆率与 P 接收函数的固定维度联合反演。**

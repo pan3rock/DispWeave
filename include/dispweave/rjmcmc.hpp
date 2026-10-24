@@ -27,4 +27,29 @@ struct RJResult {
 // Four actions have fixed probability 1/4. Unavailable actions are self-transitions.
 // No HMC coupling, adaptive proposals, gradients, clipping or truncated random walks.
 RJResult sample_rjmcmc(const RJLikelihood&,const RJPrior&,const RJState&,const RJOptions& = {});
+
+// Fixed ladder: target at T is prior * likelihood^(1/T). No adaptation.
+struct RJPTOptions {
+    RJOptions local;
+    std::vector<double> temperatures{1,2,4,8};
+    int swap_every=10;
+};
+struct RJSwap {
+    int iteration=0;
+    bool warmup=false,accepted=false;
+    size_t lower=0,upper=0;
+    int replica_lower=0,replica_upper=0;
+    double log_like_lower=0,log_like_upper=0,log_accept_ratio=0;
+};
+struct RJPTResult {
+    // Draws are at fixed temperature slots AFTER swaps; local traces precede swaps.
+    std::vector<RJResult> temperatures;
+    std::vector<RJSwap> swaps;
+    std::vector<std::vector<int>> replica_ids,layers_after_swaps; // Includes warmup.
+};
+double rj_swap_log_ratio(double temperature_i,double temperature_j,double log_like_i,double log_like_j);
+// Each callback records evaluations at its temperature slot. All callbacks must
+// implement the SAME untempered likelihood; only diagnostics may differ.
+RJPTResult sample_rj_tempering(const std::vector<RJLikelihood>&,const RJPrior&,
+                              const std::vector<RJState>&,const RJPTOptions& = {});
 }

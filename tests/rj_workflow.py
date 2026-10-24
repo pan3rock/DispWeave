@@ -68,6 +68,19 @@ with tempfile.TemporaryDirectory() as tmp:
             row = line.split(); row[2] = '100'; lines.append(' '.join(row))
     missing.write_text('\n'.join(lines)+'\n')
     sample(work / 'missing', observations=missing, codes=(1,))
+    ptconfig = work / 'pt.toml'
+    ptconfig.write_text(content + '\n[rjmcmc.tempering]\ntemperatures = [1.0, 2.0, 4.0, 8.0]\nswap_every = 10\n')
+    sample(work / 'pt', config=ptconfig)
+    sample(work / 'pt-replay', config=ptconfig)
+    for file in (work / 'pt').rglob('*.txt'):
+        if file.name != 'metadata.txt':
+            assert file.read_bytes() == (work / 'pt-replay' / file.relative_to(work / 'pt')).read_bytes()
+    for c in range(3):
+        assert (work / f'pt/chain_{c}_models.txt').read_bytes() == (work / f'pt/ladder_{c}/temperature_0_models.txt').read_bytes()
+        assert not (work / f'pt/chain_{c}_trace.txt').exists(), 'Do not mislabel local traces as cold posterior transitions'
+    run('rj-predict', '--run', work / 'pt', '--output', work / 'pt-predict', '--draws-per-chain', 2, codes=(0, 5))
+    selected = [r.split() for r in (work / 'pt-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]
+    assert [(int(r[1]), int(r[2])) for r in selected] == [(c, j*150//2) for c in range(3) for j in range(2)]
     (a / 'observations.txt').write_bytes(missing.read_bytes())
     run('rj-predict', '--run', a, '--output', work / 'failed-predict', '--draws-per-chain', 2, codes=(5,))
     failed = [r.split() for r in (work / 'failed-predict/draws.txt').read_text().splitlines() if not r.startswith('#')]

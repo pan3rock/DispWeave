@@ -535,6 +535,75 @@ int run_rjmcmc(const std::filesystem::path& config_path,const std::filesystem::p
     }
     if(starts.empty()) throw std::invalid_argument("Need at least one RJ start");
     std::filesystem::create_directories(output);std::filesystem::copy_file(config_path,output/"config.toml");save_data(output,data);
+    if(cfg.contains("tempering")) {
+        const auto tc=toml::find(cfg,"tempering");RJPTOptions pt;pt.local=options;
+        pt.temperatures=toml::find<std::vector<double>>(tc,"temperatures");
+        pt.swap_every=toml::find_or<int>(tc,"swap_every",10);
+        bool issues=false;size_t calls=starts.size(); // Preflight evaluations above.
+        for(size_t c=0;c<starts.size();++c) {
+            const auto dir=output/("ladder_"+std::to_string(c));std::filesystem::create_directories(dir);
+            std::vector<std::ofstream> failures,rows;std::vector<int> ids(pt.temperatures.size(),0);
+            std::vector<RJLikelihood> targets;
+            for(size_t t=0;t<pt.temperatures.size();++t) {
+                const auto prefix="temperature_"+std::to_string(t);
+                failures.push_back(output_file(dir/(prefix+"_failed_models.txt")));
+                rows.push_back(output_file(dir/(prefix+"_failed_rows.txt")));
+                failures.back()<<"# evaluation status K interfaces Vs; includes warmup and initial=0\n";
+                rows.back()<<"# evaluation query_index root_status roots_found phase_velocity\n";
+                targets.push_back([&,t](const RJState& state) {
+                    const int id=ids[t]++;const auto e=problem.evaluate(state);
+                    if(e.likelihood.status!=EvaluationStatus::valid) {
+                        failures[t]<<id<<' '<<status(e.likelihood.status)<<' '<<state.vs.size();
+                        for(double z:state.interfaces) failures[t]<<' '<<z;
+                        for(double v:state.vs) failures[t]<<' '<<v;
+                        failures[t]<<'\n';
+                        for(size_t j=0;j<e.forward.rows.size();++j) {const auto& r=e.forward.rows[j];
+                            rows[t]<<id<<' '<<j<<' '<<to_string(r.status)<<' '<<r.roots_found<<' '<<r.phase_velocity<<'\n';}
+                    }
+                    return e.likelihood;
+                });
+            }
+            pt.local.chain_id=c;
+            const auto result=sample_rj_tempering(targets,prior,std::vector<RJState>(targets.size(),starts[c]),pt);
+            for(size_t t=0;t<targets.size();++t) {
+                calls+=ids[t];const auto prefix="temperature_"+std::to_string(t);
+                const auto path=dir/(prefix+"_models.txt");
+                {
+                    auto f=output_file(path);f<<"# draw K raw_log_likelihood log_prior interfaces Vs; after swaps; excludes warmup\n";
+                    for(size_t i=0;i<result.temperatures[t].draws.size();++i) {
+                        const auto& d=result.temperatures[t].draws[i];f<<i<<' '<<d.state.vs.size()<<' '<<d.log_likelihood<<' '<<d.log_prior;
+                        for(double z:d.state.interfaces) f<<' '<<z;
+                        for(double v:d.state.vs) f<<' '<<v;
+                        f<<'\n';
+                    }
+                }
+                if(t==0) std::filesystem::copy_file(path,output/("chain_"+std::to_string(c)+"_models.txt"));
+                auto f=output_file(dir/(prefix+"_local_trace.txt"));
+                f<<"# warmup move proposal_status evaluated evaluation_status accepted layers_before layers_after_local log_accept_ratio evaluation_index layers_after_swap\n";
+                int eval=0;
+                for(size_t i=0;i<result.temperatures[t].transitions.size();++i) {
+                    const auto& tr=result.temperatures[t].transitions[i];
+                    const char* move=tr.move==RJMove::birth?"birth":tr.move==RJMove::death?"death":tr.move==RJMove::interface?"interface":"velocity";
+                    const char* proposal=tr.proposal_status==RJProposalStatus::valid?"valid":tr.proposal_status==RJProposalStatus::unavailable?"unavailable":"outside_support";
+                    f<<tr.warmup<<' '<<move<<' '<<proposal<<' '<<tr.evaluated<<' '<<(tr.evaluated?status(tr.evaluation_status):"not_evaluated")<<' '<<tr.accepted<<' '<<tr.layers_before<<' '<<tr.layers_after<<' '<<tr.log_accept_ratio<<' '<<(tr.evaluated?++eval:-1)<<' '<<result.layers_after_swaps[i][t]<<'\n';
+                    if(!tr.warmup && tr.evaluated && tr.evaluation_status!=EvaluationStatus::valid) issues=true;
+                }
+            }
+            auto swaps=output_file(dir/"swaps.txt");swaps<<"# iteration warmup lower upper replica_lower replica_upper logL_lower logL_upper log_ratio accepted\n";
+            for(const auto& s:result.swaps) swaps<<s.iteration<<' '<<s.warmup<<' '<<s.lower<<' '<<s.upper<<' '<<s.replica_lower<<' '<<s.replica_upper<<' '<<s.log_like_lower<<' '<<s.log_like_upper<<' '<<s.log_accept_ratio<<' '<<s.accepted<<'\n';
+            auto replicas=output_file(dir/"replicas.txt");replicas<<"# iteration warmup replica_id_at_each_fixed_temperature_after_swaps\n";
+            for(size_t i=0;i<result.replica_ids.size();++i) {
+                replicas<<i<<' '<<(i<static_cast<size_t>(options.warmup));for(int id:result.replica_ids[i]) replicas<<' '<<id;replicas<<'\n';
+            }
+        }
+        auto metadata=output_file(output/"metadata.txt");
+        metadata<<"version="<<DW_VERSION<<"\nsampler=parallel_tempered_rjmcmc\nseed="<<options.seed
+                <<"\nwarmup="<<options.warmup<<"\ndraws="<<options.draws<<"\nswap_every="<<pt.swap_every<<"\ntemperatures=";
+        for(double t:pt.temperatures) metadata<<t<<' ';
+        metadata<<"\ntarget=prior * likelihood^(1/T); fixed temperatures; no adaptation\nretained=post-swap fixed-temperature slots; top-level chains are T=1 only\nstarts=each independent ladder duplicates its supplied start across temperatures\ntotal_target_evaluations="<<calls
+                <<"\ndiagnostic_issues="<<issues<<"\nseconds="<<std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()<<'\n';
+        std::cout<<"RJ PT ladders="<<starts.size()<<" diagnostic_issues="<<issues<<" output="<<output<<'\n';return issues?5:0;
+    }
     auto summary=output_file(output/"chains.txt");summary<<"# chain draws accepted dimension_changes forward_failures numerical_failures\n";
     bool issues=false;
     for(size_t chain=0;chain<starts.size();++chain) {
