@@ -5,11 +5,59 @@ An extensible framework for adaptive multimode surface-wave inversion and joint 
 面向一维层状介质，研究多阶 Rayleigh 频散如何约束地下结构，以及数据支持多少模型自由度。
 长期目标是物理可靠性、自适应复杂度和可靠的不确定性评估。
 
+## 最小端到端示例（本地查看）
+
+从仓库根目录运行；需要 C++17、CMake ≥3.16，以及 Python ≥3.11、NumPy、Matplotlib。
+核心构建不需要 Python；绘图依赖需预先安装。配置与输入生成规则均在仓库中，**不依赖已有 results 文件**。
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2
+python scripts/run_quickstart.py
+```
+
+打开 `results/quickstart/comparison.png`，即可看到目标模型、LM、NUTS、RJMCMC 和带噪观测拟合。
+目标用绿色、LM 用洋红虚线、NUTS 用蓝色，区间采用低透明度；所有内容只保存在本地。
+
+[统一配置](examples/quickstart/synthetic.toml) 包含两层目标、6 个基阶观测、噪声、边界、初值和固定种子。
+`synthetic` 同时生成数据并运行 LM；随后 NUTS/RJMCMC 读取同一观测与完整协方差。
+LM/NUTS 固定目标界面，仅反演 Vs；RJMCMC 允许 1–4 层及自由界面，二者参数空间不同。
+速度单位 km/s，深度 km，密度 g/cm³；最后一层为半空间，5 km 仅限制 RJ 界面位置。
+
+| 方法 | 本示例预算 | 输出 |
+|---|---|---|
+| LM | 4 个初值，每个最多 100 次迭代 | `lm/runs.txt`、模型和拟合 |
+| NUTS | 4 链，每链预热 100、保留 100，最大树深 6 | `nuts/`、`nuts_diagnostics.json` |
+| RJMCMC | 4 链，每链预热 100、保留 200 | `rj/`、`rj_diagnostics.json` |
+| 预测 | 每种采样方法每链选 8 个保留状态 | `nuts_predict/`、`rj_predict/` |
+
+**这是短程流程检查，不是推荐的科学采样预算，也不作为收敛验收。** 图中阴影是短链样本
+5–95% 范围，不应当作已验证的可信区间；深度点的样本中位数也未必是一条实际层状模型。
+`report.json` 保存实际命令、返回码、耗时、配置及输入/可执行文件 SHA-256，并分别记录
+`workflow_complete` 和固定为 false 的 `statistical_acceptance`。诊断文件保留 R-hat/ESS 和警告。
+采样器返回 5 时流程继续但保留警告；返回 0 也不证明收敛。LM 无收敛解（返回 4）或其他错误会中止，
+日志留在输出目录。每条子命令限时 180 秒，不自动重试或延长采样。
+
+重复运行必须选择新的输出目录；只更新图无需重新计算：
+
+```bash
+python scripts/run_quickstart.py --output results/quickstart-new
+python scripts/run_quickstart.py --output results/quickstart --plot-only
+```
+
+`--plot-only` 只读取已有结果并覆盖 PNG。已有研究结果仍见 [本地结果页](web/results/index.html)；
+短程示例不替代它们。固定层 LM/NUTS 已在特定算例验证；RJMCMC 的功能与正确性测试已通过，
+当前研究算例的完整定量后验仍未验收。需要真实数据反演时，使用下文 `invert`、`nuts`、`rjmcmc`
+入口提供观测及协方差，不使用 `synthetic` 生成数据。
+
 ## 当前状态
 
 本地结果网页：[反演结果](web/results/index.html)，按算例展示目标、LM/NUTS/RJMCMC结构与数据拟合，注明固定几何和变维反演的区别；固定层扩展结果折叠保留。
 [RJMCMC阶段收尾](docs/rj-predictive-closeout.md#当前阶段总览)：停止当前通用调参与界面重排研究，报告主要特征恢复和分层非唯一性；完整定量后验仍未验收。[复现索引](docs/rj-results-index.json) 保存配置、种子、输入hash和命令，[旧诊断页面](web/results/history.html) 保留历史证据。
 使用方式见 [网页说明](web/results/README.md)，支持浏览器直接打开，无需联网或发布。
+<details>
+<summary>展开历史研究记录（按当时进展记录，旧的“下一步”不代表当前任务）</summary>
+
 [推荐配置与运行命令](docs/nuts-recommended-use.md) 已固定本算例通过验收的 0.95＋步长搜索设置。
 [深度约束分析](docs/crust-depth-constraints.md) 区分单层速度与分段平均值：薄层细节先验依赖较强，部分宽区间平均速度明显收缩。
 [先验宽度敏感性](docs/crust-prior-sensitivity.md) 已完成四链验收：放宽至 0.2 后薄层区间明显扩大，19–23 km 层出现下界影响迹象。
@@ -82,6 +130,8 @@ M7a/M7b 已完成跨维状态、归一化先验、可逆增删层提议及独立
 
 C++17 为主体，Python 用于数据处理和绘图。Eigen 3.4.1、toml11 4.4.0、
 CLI11 2.4.2 和所需 invLM 数值源码随仓库提供，构建无需联网或安装反演框架。
+
+</details>
 
 ## 构建与运行
 

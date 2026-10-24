@@ -493,6 +493,26 @@ T=1补查完成并结束本轮有限可靠性检查：预定最多16对、实际
 与历史一致，无明确漏根或参考不稳定。2项CTest、独立来源/根核查通过，原56对审计
 逐字节回归通过；无新采样、不改求解器、不扩大扫描，完整后验限制保留。
 
+## 最小工作流交付收尾（2026-10-25）
+
+新增 `examples/quickstart/synthetic.toml` 和 `scripts/run_quickstart.py`：不依赖历史结果，
+同一份带噪两层数据依次运行 LM、NUTS、RJMCMC、诊断和预测，输出目标/模型/数据对比 PNG。
+README 前置统一命令与解释，旧研究记录折叠保留。没有修改采样器、追加长链或发布网页。
+
+预算为 LM 四初值，NUTS 四链各 100 预热＋100 保留，RJ 四链各 100＋200，
+每方法每链 8 个预测状态。端到端短程验证两次完成（项目 results 与 /tmp 新目录）；
+本机子命令总耗时不足一秒，绘图与 Python 启动另计，不作为跨机器性能承诺。
+NUTS 返回 0 但参数诊断 warning，RJ 返回 5 且诊断 warning；两者均未统计验收。
+报告分别记录流程完成与统计未验收，保留实际返回码、命令、耗时及输入/程序 hash。
+
+验收：`ctest --test-dir build --output-on-failure -R
+'^(inversion_workflow|nuts_workflow|rj_workflow|posterior_diagnostics|rj_diagnostics|predictive)$'`
+六项通过（10.97 秒）。独立检查确认三方法观测/协方差逐字节一致、RJ 警告未吞掉；
+从 /tmp 运行 plot-only 后所有非 PNG 输出 hash 不变，重用输出目录明确拒绝且不改文件。
+图已检查，目标绿色、LM 洋红虚线、NUTS 蓝色、RJ 紫色，短链范围与固定/变维区别标在图上。
+
+至此本轮交付收尾完成。下一项应由实际数据或新的科学问题驱动；不因本示例短链报警继续调参。
+
 ## 每项完成时的提交规则
 
 1. 只开发当前里程碑的必要实现。
