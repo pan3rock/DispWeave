@@ -87,3 +87,6 @@ MPLCONFIGDIR=/tmp/dw-matplotlib python scripts/plot_nuts_original_starts.py resu
 配置一致性、目标调用数、初始矩阵、步长冻结和适应窗口；独立审计核对哈希及重算诊断。
 历史时序对照只有一个原始 seed；即使本轮通过，也不能宣称目标 0.95 对所有模型、初值与随机流都最优。
 原正式结果及本地网页继续保留，不自动发布或覆盖原结果。
+
+后续 [固定矩阵步长重启对照](nuts-terminal-step.md) 已执行：搜索改善限时进度，但正式成本
+仍偏高，三组均未完整完成，不能据此比较有效样本效率。
